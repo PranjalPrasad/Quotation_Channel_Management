@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pocket Dashboard — Solar Quotation Management</title>
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          peach: {
+            50:  "#FFF8F5",
+            100: "#F8EDEB",
+            200: "#FED5CD",
+            300: "#FADBC6",
+            400: "#FFC69E",
+            500: "#FEB4A7",
+            600: "#F4917D",
+          },
+        },
+        fontFamily: {
+          sans: ["Poppins", "ui-sans-serif", "system-ui"],
+        },
+        borderRadius: {
+          "3xl": "1.75rem",
+          "4xl": "2rem",
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<link rel="stylesheet" href="/dashboard/dashboard.css" />
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <div class="min-h-screen w-full flex">
+
+    <!-- ===================== SIDEBAR ===================== -->
+  <aside id="sidebar" class="sidebar relative flex flex-col items-center py-6 gap-8 bg-white border-r border-gray-100 transition-all duration-300 ease-in-out w-20 shrink-0">
+      <!-- collapse toggle -->
+      <button id="sidebarToggle" aria-label="Toggle sidebar" class="absolute -right-3 top-9 w-6 h-6 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-peach-500 hover:scale-110 transition-transform">
+        <svg id="toggleIcon" class="w-3.5 h-3.5 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+
+      <div class="flex items-center justify-center shrink-0">
+  <img 
+    src="/img/logo.png" 
+    alt="Company Logo"
+    class="w-auto h-12 object-contain"
+  />
+</div>
+
+      <nav class="nav-list w-full flex-1 flex flex-col items-center gap-2 mt-4 px-3">
+  <button class="nav-item active" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+    <span>Dashboard</span>
+  </button>
+  <button class="nav-item" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
+    <span>Quotation Management</span>
+  </button>
+  <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
+    <span>Product Management</span>
+  </button>
+  <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+      <circle cx="9" cy="11" r="3"></circle>
+      <path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path>
+      <path d="M16 9l2 2 4-4"></path>
+    </svg>
+    <span>Customer Management</span>
+  </button>
+  <button class="nav-item" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
+    <span>Reports Management</span>
+  </button>
+</nav>
+    </aside>
+    </aside>
+
+    <!-- ===================== MAIN ===================== -->
+    <main class="flex-1 bg-gray-100 px-6 md:px-10 py-8 overflow-y-auto">
+
+      <!-- top bar : search + bell removed, greeting moved here on the left -->
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <p class="text-sm text-gray-700">👋 Hello, <span class="font-semibold">Barly Vallendito</span></p>
+          <p class="text-[11px] text-gray-400">Welcome</p>
+        </div>
+
+        <div class="flex items-center gap-4 relative">
+          <!-- Notification Icon -->
+          <div class="relative">
+            <button id="notifBtn" aria-label="Notifications" class="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
+              <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+            </button>
+
+            <div id="notifDropdown" class="topbar-dropdown hidden">
+              <p class="topbar-dropdown-title">Notifications</p>
+              <div class="topbar-notif-item">
+                <p>New quotation SQ-1001 received</p>
+                <span>2 min ago</span>
+              </div>
+              <div class="topbar-notif-item">
+                <p>Quotation SQ-1000 accepted</p>
+                <span>1 hr ago</span>
+              </div>
+              <div class="topbar-notif-item">
+                <p>Quotation SQ-0999 rejected</p>
+                <span>3 hr ago</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Icon -->
+          <div class="relative">
+            <button id="profileBtn" aria-label="Profile" class="w-10 h-10 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+              B
+            </button>
+
+            <div id="profileDropdown" class="topbar-dropdown hidden">
+              <button id="profileLogoutBtn" class="topbar-logout-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Hero: Quotation overview + This month ============ -->
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
+        <div class="lg:col-span-3 bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+          <h2 class="text-sm font-semibold text-gray-700 mb-4">Quotation Overview</h2>
+          <div class="flex items-center flex-wrap gap-4">
+            <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium text-gray-600">
+              <span class="px-1.5 py-0.5 rounded bg-white text-[10px] font-bold text-peach-500">ALL TIME</span>
+              <span id="kpiTotalQuotations">248</span> quotations
+            </div>
+            <div class="flex-1 min-w-[110px]">
+              <p class="text-[11px] text-gray-400">Total Quotation Value</p>
+              <p class="text-lg font-semibold text-gray-800" id="kpiTotalValue">₹3.9Cr</p>
+            </div>
+            <div class="min-w-[110px]">
+              <p class="text-[11px] text-gray-400">Accepted</p>
+              <p class="text-sm font-semibold text-gray-700" id="kpiAcceptedInline">156 quotations</p>
+            </div>
+            <button class="ml-auto bg-peach-500 hover:bg-peach-600 transition-colors text-white text-sm font-medium px-6 py-2.5 rounded-xl shadow-sm">New Quotation</button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 rounded-3xl p-6 shadow-sm text-white relative overflow-hidden bg-gradient-to-br from-peach-600 to-peach-400">
+          <div class="flex justify-between items-start mb-6">
+            <p class="text-sm font-medium text-white/90">This Month's Quotations</p>
+            <button aria-label="options" class="text-white/80">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg>
+            </button>
+          </div>
+          <p class="text-2xl font-semibold mb-6"><span id="kpiMonthQuotations">42</span> <span class="text-sm font-normal text-white/80">· Jul 2026</span></p>
+          <div class="w-full h-1.5 bg-white/25 rounded-full overflow-hidden">
+            <div class="h-full bg-white rounded-full" style="width: 62%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Stat cards: Today / Accepted / Rejected / Pending ============ -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-5">
+        <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-11 h-11 rounded-2xl bg-peach-500 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </div>
+          <div>
+            <p class="text-lg font-semibold text-gray-800" id="kpiTodayQuotations">6</p>
+            <p class="text-[11px] text-gray-400">Today's Quotations</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-11 h-11 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+          <div>
+            <p class="text-lg font-semibold text-gray-800" id="kpiAccepted">156</p>
+            <p class="text-[11px] text-gray-400">Accepted Quotations</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-11 h-11 rounded-2xl bg-rose-50 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          </div>
+          <div>
+            <p class="text-lg font-semibold text-gray-800" id="kpiRejected">34</p>
+            <p class="text-[11px] text-gray-400">Rejected Quotations</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="w-11 h-11 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <div>
+            <p class="text-lg font-semibold text-gray-800" id="kpiPending">58</p>
+            <p class="text-[11px] text-gray-400">Pending Quotations</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Monthly Quotation Trend (Chart.js, like the reference dashboard) ============ -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-5">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div>
+            <h2 class="text-sm font-semibold text-gray-700">Monthly Quotation Trend</h2>
+            <p class="text-[11px] text-gray-400">Number of quotations generated per month</p>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chartQuotationTrend"></canvas>
+        </div>
+      </div>
+
+      <!-- ============ Recent Quotations table — exact like the reference dashboard ============ -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div>
+            <h2 class="text-sm font-semibold text-gray-700">Recent Quotations</h2>
+            <p class="text-[11px] text-gray-400">Latest quotations across all customers</p>
+          </div>
+          <a href="/Quotation/quotation.html" id="viewAllBtn" class="text-xs font-medium text-peach-600 hover:underline">View all</a>
+        </div>
+
+        <div class="table-scope">
+          <table class="data-table" id="quotationsTable">
+            <thead>
+              <tr>
+                <th data-key="no">Quotation No. <span class="sort-icon">⇅</span></th>
+                <th data-key="customer">Customer <span class="sort-icon">⇅</span></th>
+                <th data-key="size">System Size <span class="sort-icon">⇅</span></th>
+                <th data-key="amount">Amount <span class="sort-icon">⇅</span></th>
+                <th data-key="status">Status <span class="sort-icon">⇅</span></th>
+                <th data-key="date">Date <span class="sort-icon">⇅</span></th>
+                <th class="actions-th">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="quotationsTbody">
+              <!-- rows injected by dashboard.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-between mt-3 flex-wrap gap-2">
+          <div class="flex items-center gap-2 text-[11px] text-gray-400">
+            <span>Rows per page</span>
+            <select id="rowsPerPage" class="rows-select">
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+            <span id="rowsRangeLabel"></span>
+          </div>
+          <div id="paginationControls" class="flex items-center gap-1 flex-wrap"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===================== RIGHT PANEL ===================== -->
+    <aside class="hidden xl:flex w-80 shrink-0 flex-col bg-white border-l border-gray-100 px-6 py-8 overflow-y-auto">
+
+      <p class="text-xs font-semibold text-gray-500 mb-3">Win Rate</p>
+      <div class="rounded-3xl p-5 mb-3 relative overflow-hidden bg-gradient-to-br from-peach-500 to-peach-300 text-white">
+        <div class="flex justify-between items-center mb-6">
+          <span class="text-[10px] bg-white/25 px-2 py-1 rounded-md">SQMS</span>
+          <span class="font-bold italic text-sm">SOLAR</span>
+        </div>
+        <p class="text-lg font-semibold" id="kpiWinRate">63% accepted</p>
+        <p class="text-[11px] text-white/80">156 of 248 quotations</p>
+      </div>
+      <p class="text-xl font-semibold text-gray-800 mb-1" id="kpiTotalValue2">₹3.9Cr</p>
+      <p class="text-[11px] text-gray-400 mb-6">Total Quotation Value</p>
+
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-semibold text-gray-500">Recent Quotations</p>
+        <button aria-label="options" class="text-gray-300">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg>
+        </button>
+      </div>
+
+      <div id="recentQuotationsList" class="flex flex-col gap-4 mb-6">
+        <!-- rows injected by dashboard.js -->
+      </div>
+
+      <p class="text-xs font-semibold text-gray-500 mb-3">Find Us</p>
+      <div class="flex-1 rounded-3xl overflow-hidden min-h-[160px] relative bg-gray-100">
+        <svg viewBox="0 0 300 200" class="w-full h-full">
+          <rect width="300" height="200" fill="#F3F4F6"></rect>
+          <path d="M0 40 L300 30 M0 90 L300 100 M0 150 L300 140 M40 0 L30 200 M120 0 L130 200 M220 0 L210 200" stroke="#E5E7EB" stroke-width="2" fill="none"></path>
+          <circle cx="150" cy="95" r="8" fill="#FEB4A7"></circle>
+          <circle cx="150" cy="95" r="3" fill="white"></circle>
+          <circle cx="90" cy="60" r="4" fill="#D1D5DB"></circle>
+          <circle cx="210" cy="55" r="4" fill="#D1D5DB"></circle>
+          <circle cx="70" cy="140" r="4" fill="#D1D5DB"></circle>
+          <circle cx="230" cy="150" r="4" fill="#D1D5DB"></circle>
+        </svg>
+        <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[70%] text-xs font-semibold text-gray-600 bg-white/80 px-2 py-0.5 rounded">Highland Park</span>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ============ View / Edit Overlay Modal ============ -->
+  <div id="quoteModal" class="modal-overlay hidden">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div>
+          <div id="modalTitle" class="modal-title">Quotation Details</div>
+          <div id="modalSubtitle" class="modal-subtitle">SQ-0000</div>
+        </div>
+        <button id="modalCloseBtn" class="modal-close-btn" title="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <form id="quoteForm" class="modal-body">
+        <div class="field-group">
+          <label class="field-label" for="fldNo">Quotation No.</label>
+          <input type="text" id="fldNo" class="field-input" disabled>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="fldCustomer">Customer Name</label>
+          <input type="text" id="fldCustomer" class="field-input" data-editable="true">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="fldSize">System Size</label>
+          <input type="text" id="fldSize" class="field-input" data-editable="true">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="fldAmount">Amount (₹)</label>
+          <input type="number" id="fldAmount" class="field-input" data-editable="true">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="fldStatus">Status</label>
+          <select id="fldStatus" class="field-input" data-editable="true">
+            <option value="Pending">Pending</option>
+            <option value="Accepted">Accepted</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="fldDate">Date</label>
+          <input type="date" id="fldDate" class="field-input" disabled>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button type="button" id="modalCancelBtn" class="btn-secondary">Cancel</button>
+        <button type="button" id="modalSaveBtn" class="btn-primary hidden">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden printable quotation slip (used by Print & PDF) -->
+  <div id="printArea" class="print-area">
+    <div class="print-header">
+      <div class="print-brand">Solar Quotation Management</div>
+      <div class="print-doc-title">Quotation Slip</div>
+    </div>
+    <table class="print-table">
+      <tbody>
+        <tr><th>Quotation No.</th><td id="pNo"></td></tr>
+        <tr><th>Customer</th><td id="pCustomer"></td></tr>
+        <tr><th>System Size</th><td id="pSize"></td></tr>
+        <tr><th>Amount</th><td id="pAmount"></td></tr>
+        <tr><th>Status</th><td id="pStatus"></td></tr>
+        <tr><th>Date</th><td id="pDate"></td></tr>
+      </tbody>
+    </table>
+    <div class="print-footer">Generated on <span id="pGenDate"></span></div>
+  </div>
+
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[400] space-y-2 max-w-[calc(100vw-2.5rem)]"></div>
+
+<script src="/dashboard/dashboard.js"></script>
+</body>
+</html>

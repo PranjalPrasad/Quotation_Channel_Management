@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Supply Management Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #ede5d0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            width: 100%;
+            
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            overflow: hidden;
+            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+             border: 1.5px solid #111844;
+        }
+
+        /* Left Side - Branding */
+        .brand-side {
+            flex: 1;
+            background-image: url('/img/solar.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 40px 25px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: flex-start;
+            position: relative;
+            overflow: hidden;
+            min-height: 480px;
+        }
+
+        /* Dark overlay so text is readable on top of image */
+        .brand-side::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0.15) 0%,
+                rgba(0, 0, 0, 0.55) 60%,
+                rgba(0, 0, 0, 0.75) 100%
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .brand-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(6px);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 5px 12px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .brand-title {
+            color: #fff;
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+
+        .brand-subtitle {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 260px;
+        }
+
+        /* Right Side - Form */
+        .form-side {
+            flex: 1;
+            padding: 45px 35px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .form-side h2 {
+            color: #111844;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-side .welcome-text {
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group label i {
+            margin-right: 6px;
+            color: #111844;
+            font-size: 11px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 13px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px 10px 38px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .form-control:hover {
+            border-color: #c7cbd6;
+            box-shadow: 0 2px 6px rgba(17, 24, 68, 0.06);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #111844;
+            box-shadow: 0 0 0 2px rgba(17, 24, 68, 0.1);
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+
+        .password-toggle:hover {
+            color: #111844;
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        .checkbox-label input {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            accent-color: #111844;
+        }
+
+        .forgot-link {
+            font-size: 12px;
+            color: #111844;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 11px;
+            background: #111844;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: #1a2155;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.97);
+            transition: transform 0.1s ease;
+        }
+
+        .btn-primary:not(.loading):active {
+            animation: btnBounce 0.35s ease;
+        }
+
+        @keyframes btnBounce {
+            0%   { transform: scale(0.97); }
+            50%  { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .alert {
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert i {
+            font-size: 12px;
+        }
+
+        .btn-primary.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .btn-primary.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .login-card {
+                flex-direction: column;
+                max-width: 400px;
+            }
+            .brand-side {
+                min-height: 220px;
+                padding: 24px;
+                justify-content: flex-end;
+            }
+            .brand-title { font-size: 20px; }
+            .form-side { padding: 30px; }
+        }
+
+        @keyframes slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-card">
+
+            <!-- Left Side – Background Image + Overlay Text -->
+            <div class="brand-side">
+                <div class="brand-content">
+                    <div class="brand-badge">
+                        <i class="fas fa-solar-panel"></i> Solar Management
+                    </div>
+                    <div class="brand-subtitle">
+                        Control your entire solar ecosystem—from panels to power grids—from one unified platform.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side - Login Form -->
+            <div class="form-side">
+                <h2>Welcome Back</h2>
+                <div class="welcome-text">Please login to your admin account</div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i> Email Address
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input
+                                type="text"
+                                id="email"
+                                class="form-control"
+                                required
+                                placeholder="Admin"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i> Password
+                        </label>
+                        <div class="password-wrapper">
+                            <i class="fas fa-lock" style="left:12px;position:absolute;top:50%;transform:translateY(-50%);z-index:1;color:#9ca3af;font-size:13px;"></i>
+                            <input
+                                type="password"
+                                id="password"
+                                class="form-control"
+                                required
+                                placeholder="Enter your password"
+                                style="padding-right: 38px;"
+                            >
+                            <i class="fas fa-eye password-toggle" id="togglePassword"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rememberMe">
+                            <i class="fas fa-check-circle"></i> Remember me
+                        </label>
+                        <a href="#" class="forgot-link" id="forgotLink">
+                            <i class="fas fa-question-circle"></i> Forgot password?
+                        </a>
+                    </div>
+
+                    <div id="loginError" class="alert alert-error" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="errorMessage"></span>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i> Login to Dashboard
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ---- Dummy credentials (frontend-only auth) ----
+        const DUMMY_EMAIL    = 'admin@gmail.com';
+        const DUMMY_PASSWORD = 'admin@1234';
+
+        // Password toggle
+        document.getElementById('togglePassword').addEventListener('click', function () {
+            const input = document.getElementById('password');
+            input.type = input.type === 'password' ? 'text' : 'password';
+            this.classList.toggle('fa-eye-slash');
+        });
+
+        // Remember me – prefill email
+        const emailInput       = document.getElementById('email');
+        const rememberCheckbox = document.getElementById('rememberMe');
+
+        if (localStorage.getItem('rememberedEmail')) {
+            emailInput.value         = localStorage.getItem('rememberedEmail');
+            rememberCheckbox.checked = true;
+        }
+
+       
+
+        // Login submit
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn  = document.getElementById('loginBtn');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const email    = emailInput.value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!email || !password) {
+                showLoginError('Please enter both email and password');
+                return;
+            }
+
+            loginBtn.classList.add('loading');
+            loginBtn.innerHTML = '<i class="fas fa-spinner"></i> Logging in...';
+            document.getElementById('loginError').style.display = 'none';
+
+            // Simulate a short loading delay
+            setTimeout(() => {
+                if (email === DUMMY_EMAIL && password === DUMMY_PASSWORD) {
+    // Remove all localStorage saves
+    localStorage.removeItem('rememberedEmail');
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('adminName');
+    localStorage.removeItem('adminEmail');
+    localStorage.removeItem('adminRole');
+    localStorage.removeItem('adminId');
+    
+    // Show professional success overlay
+    showOverlayMessage('', 'success');
+    
+    setTimeout(() => {
+        window.location.href = './dashboard/dashboard.html';
+    }, 3000);
+}
+                else {
+    showOverlayMessage('', 'error');
+    loginBtn.classList.remove('loading');
+    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login to Dashboard';
+    document.getElementById('password').value = ''; // Clear password field
+}
+            }, 600);
+        });
+
+        function showLoginError(message) {
+            const errorEl = document.getElementById('loginError');
+            document.getElementById('errorMessage').textContent = message;
+            errorEl.style.display = 'flex';
+            setTimeout(() => errorEl.style.display = 'none', 4000);
+        }
+        function showOverlayMessage(message, type) {
+    // Remove existing overlay if any
+    const existingOverlay = document.querySelector('.message-overlay');
+    if (existingOverlay) existingOverlay.remove();
+    
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'message-overlay';
+    
+    if (type === 'success') {
+        overlay.innerHTML = `
+            <div class="message-card success-card">
+                <div class="message-icon success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3 class="message-title">Authentication Successful</h3>
+                <p class="message-detail">Welcome back, Administrator! You have successfully logged into the Solar Management .</p>
+                <div class="message-meta">
+                    <i class="fas fa-clock"></i> Redirecting to dashboard...
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+        `;
+    } else {
+        overlay.innerHTML = `
+            <div class="message-card error-card">
+                <div class="message-icon error-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3 class="message-title">Authentication Failed</h3>
+                <p class="message-detail">The email address or password you entered is incorrect. Please verify your credentials and try again.</p>
+                <div class="error-suggestions">
+                    <div><i class="fas fa-envelope"></i> Use registered admin email</div>
+                    <div><i class="fas fa-key"></i> Check for case-sensitive password</div>
+                </div>
+                <div class="message-meta">
+                    <i class="fas fa-exclamation-triangle"></i> Attempt remaining: Unlimited
+                </div>
+            </div>
+        `;
+    }
+    
+    // Add styles
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.3s ease;
+        font-family: 'Roboto', sans-serif;
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Add card styles dynamically
+    const style = document.createElement('style');
+    style.textContent = `
+        .message-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px 40px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .success-card { border-top: 4px solid #10b981; }
+        .error-card { border-top: 4px solid #ef4444; }
+        .message-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 32px;
+        }
+        .success-icon {
+            background: #d1fae5;
+            color: #059669;
+        }
+        .error-icon {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .message-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #111844;
+        }
+        .message-detail {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .message-meta {
+            font-size: 11px;
+            color: #7288AE;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .error-suggestions {
+            background: #fef3c7;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 16px 0;
+            text-align: left;
+            font-size: 11px;
+            color: #92400e;
+        }
+        .error-suggestions div {
+            margin: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 3px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .progress-fill {
+            width: 100%;
+            height: 100%;
+            background: #10b981;
+            animation: progressShrink 1.5s linear forwards;
+        }
+        @keyframes progressShrink {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Auto remove after 3 seconds for success, manual close for error
+    if (type === 'success') {
+        setTimeout(() => {
+            overlay.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => overlay.remove(), 300);
+        }, 3000);
+    } else {
+        // Add close button for error message
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = 'Try Again';
+        closeBtn.style.cssText = `
+            background: #111844;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: all 0.2s;
+        `;
+        closeBtn.onmouseover = () => closeBtn.style.background = '#1a2155';
+        closeBtn.onmouseout = () => closeBtn.style.background = '#111844';
+        closeBtn.onclick = () => overlay.remove();
+        
+        const card = overlay.querySelector('.message-card');
+        card.appendChild(closeBtn);
+    }
+}
+
+        document.getElementById('forgotLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            showLoginError('Contact super admin to reset password');
+        });
+    </script>
+</body>
+</html>
