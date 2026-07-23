@@ -17,7 +17,7 @@
 
         body {
             font-family: 'Roboto', sans-serif;
-            background-color: #ede5d0;
+            background-color: #F7ECE1;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -41,8 +41,8 @@
             max-width: 900px;
             display: flex;
             overflow: hidden;
-            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
-             border: 1.5px solid #111844;
+            box-shadow: 0 20px 40px -12px rgba(84, 26, 26, 0.18);
+             border: 1.5px solid #DCC3AA;
         }
 
         /* Left Side - Branding */
@@ -69,9 +69,9 @@
             inset: 0;
             background: linear-gradient(
                 to bottom,
-                rgba(0, 0, 0, 0.15) 0%,
-                rgba(0, 0, 0, 0.55) 60%,
-                rgba(0, 0, 0, 0.75) 100%
+                rgba(84, 26, 26, 0.15) 0%,
+                rgba(84, 26, 26, 0.55) 60%,
+                rgba(84, 26, 26, 0.8) 100%
             );
             pointer-events: none;
             z-index: 0;
@@ -121,10 +121,11 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+            background: #F7ECE1;
         }
 
         .form-side h2 {
-            color: #111844;
+            color: #541A1A;
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 8px;
@@ -150,7 +151,7 @@
 
         .form-group label i {
             margin-right: 6px;
-            color: #111844;
+            color: #810B38;
             font-size: 11px;
         }
 
@@ -163,29 +164,31 @@
             left: 12px;
             top: 50%;
             transform: translateY(-50%);
-            color: #9ca3af;
+            color: #B9997C;
             font-size: 13px;
         }
 
         .form-control {
             width: 100%;
             padding: 10px 12px 10px 38px;
-            border: 1.5px solid #e5e7eb;
+            border: 1.5px solid #DCC3AA;
             border-radius: 10px;
             font-size: 13px;
             transition: all 0.3s ease;
             font-family: 'Roboto', sans-serif;
+            background: #fff;
+            color: #1F2937;
         }
 
         .form-control:hover {
-            border-color: #c7cbd6;
-            box-shadow: 0 2px 6px rgba(17, 24, 68, 0.06);
+            border-color: #B9997C;
+            box-shadow: 0 2px 6px rgba(84, 26, 26, 0.08);
         }
 
         .form-control:focus {
             outline: none;
-            border-color: #111844;
-            box-shadow: 0 0 0 2px rgba(17, 24, 68, 0.1);
+            border-color: #541A1A;
+            box-shadow: 0 0 0 2px rgba(84, 26, 26, 0.15);
         }
 
         .password-wrapper {
@@ -198,12 +201,12 @@
             top: 50%;
             transform: translateY(-50%);
             cursor: pointer;
-            color: #9ca3af;
+            color: #B9997C;
             font-size: 13px;
         }
 
         .password-toggle:hover {
-            color: #111844;
+            color: #541A1A;
         }
 
         .form-options {
@@ -226,24 +229,25 @@
             width: 14px;
             height: 14px;
             cursor: pointer;
-            accent-color: #111844;
+            accent-color: #541A1A;
         }
 
         .forgot-link {
             font-size: 12px;
-            color: #111844;
+            color: #810B38;
             text-decoration: none;
             transition: color 0.3s;
         }
 
         .forgot-link:hover {
             text-decoration: underline;
+            color: #541A1A;
         }
 
         .btn-primary {
             width: 100%;
             padding: 11px;
-            background: #111844;
+            background: #541A1A;
             color: white;
             border: none;
             border-radius: 10px;
@@ -258,7 +262,7 @@
         }
 
         .btn-primary:hover {
-            background: #1a2155;
+            background: #810B38;
             transform: translateY(-1px);
         }
 
@@ -288,9 +292,9 @@
         }
 
         .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
+            background: #FFE4E6;
+            color: #9F1239;
+            border: 1px solid #FBCFE0;
         }
 
         .alert i {
@@ -396,7 +400,7 @@
                             <i class="fas fa-lock"></i> Password
                         </label>
                         <div class="password-wrapper">
-                            <i class="fas fa-lock" style="left:12px;position:absolute;top:50%;transform:translateY(-50%);z-index:1;color:#9ca3af;font-size:13px;"></i>
+                            <i class="fas fa-lock" style="left:12px;position:absolute;top:50%;transform:translateY(-50%);z-index:1;color:#B9997C;font-size:13px;"></i>
                             <input
                                 type="password"
                                 id="password"
@@ -559,7 +563,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.85);
+        background: rgba(84, 26, 26, 0.55);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
@@ -582,10 +586,10 @@
             width: 90%;
             text-align: center;
             animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 40px rgba(84, 26, 26, 0.3);
         }
-        .success-card { border-top: 4px solid #10b981; }
-        .error-card { border-top: 4px solid #ef4444; }
+        .success-card { border-top: 4px solid #047857; }
+        .error-card { border-top: 4px solid #E11D48; }
         .message-icon {
             width: 70px;
             height: 70px;
@@ -597,18 +601,18 @@
             font-size: 32px;
         }
         .success-icon {
-            background: #d1fae5;
-            color: #059669;
+            background: #D1FAE5;
+            color: #047857;
         }
         .error-icon {
-            background: #fee2e2;
-            color: #dc2626;
+            background: #FFE4E6;
+            color: #E11D48;
         }
         .message-title {
             font-size: 20px;
             font-weight: 700;
             margin-bottom: 12px;
-            color: #111844;
+            color: #541A1A;
         }
         .message-detail {
             font-size: 13px;
@@ -618,23 +622,23 @@
         }
         .message-meta {
             font-size: 11px;
-            color: #7288AE;
+            color: #9CA3AF;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
             margin-top: 16px;
             padding-top: 16px;
-            border-top: 1px solid #e5e7eb;
+            border-top: 1px solid #E9D9C6;
         }
         .error-suggestions {
-            background: #fef3c7;
+            background: #FEF3C7;
             border-radius: 8px;
             padding: 12px;
             margin: 16px 0;
             text-align: left;
             font-size: 11px;
-            color: #92400e;
+            color: #B45309;
         }
         .error-suggestions div {
             margin: 6px 0;
@@ -645,7 +649,7 @@
         .progress-bar {
             width: 100%;
             height: 3px;
-            background: #e5e7eb;
+            background: #E9D9C6;
             border-radius: 3px;
             overflow: hidden;
             margin-top: 20px;
@@ -653,7 +657,7 @@
         .progress-fill {
             width: 100%;
             height: 100%;
-            background: #10b981;
+            background: #047857;
             animation: progressShrink 1.5s linear forwards;
         }
         @keyframes progressShrink {
@@ -674,7 +678,7 @@
         const closeBtn = document.createElement('button');
         closeBtn.innerHTML = 'Try Again';
         closeBtn.style.cssText = `
-            background: #111844;
+            background: #541A1A;
             color: white;
             border: none;
             padding: 8px 20px;
@@ -685,8 +689,8 @@
             margin-top: 16px;
             transition: all 0.2s;
         `;
-        closeBtn.onmouseover = () => closeBtn.style.background = '#1a2155';
-        closeBtn.onmouseout = () => closeBtn.style.background = '#111844';
+        closeBtn.onmouseover = () => closeBtn.style.background = '#810B38';
+        closeBtn.onmouseout = () => closeBtn.style.background = '#541A1A';
         closeBtn.onclick = () => overlay.remove();
         
         const card = overlay.querySelector('.message-card');

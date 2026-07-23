@@ -1,0 +1,561 @@
+// ============================================================
+// Sidebar collapse / expand
+// ============================================================
+const sidebar = document.getElementById("sidebar");
+const sidebarToggle = document.getElementById("sidebarToggle");
+const toggleIcon = document.getElementById("toggleIcon");
+let sidebarExpanded = false;
+
+sidebarToggle.addEventListener("click", () => {
+  sidebarExpanded = !sidebarExpanded;
+  sidebar.classList.toggle("expanded", sidebarExpanded);
+  sidebar.classList.toggle("collapsed", !sidebarExpanded);
+  toggleIcon.style.transform = sidebarExpanded ? "rotate(180deg)" : "rotate(0deg)";
+});
+
+// ============================================================
+// Topbar dropdowns
+// ============================================================
+const notifBtn = document.getElementById("notifBtn");
+const notifDropdown = document.getElementById("notifDropdown");
+const profileBtn = document.getElementById("profileBtn");
+const profileDropdown = document.getElementById("profileDropdown");
+const profileLogoutBtn = document.getElementById("profileLogoutBtn");
+
+function closeAllTopbarDropdowns(except) {
+  [notifDropdown, profileDropdown].forEach((dd) => { if (dd && dd !== except) dd.classList.add("hidden"); });
+}
+notifBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const willOpen = notifDropdown.classList.contains("hidden");
+  closeAllTopbarDropdowns();
+  notifDropdown.classList.toggle("hidden", !willOpen);
+});
+profileBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const willOpen = profileDropdown.classList.contains("hidden");
+  closeAllTopbarDropdowns();
+  profileDropdown.classList.toggle("hidden", !willOpen);
+});
+document.addEventListener("click", () => closeAllTopbarDropdowns());
+profileLogoutBtn?.addEventListener("click", () => showToast("Logged out"));
+
+// ============================================================
+// Helpers
+// ============================================================
+function formatINR(n) {
+  const val = Math.round(Number(n) || 0);
+  return "₹" + val.toLocaleString("en-IN");
+}
+function formatDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+function showToast(message) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = "toast-animate bg-gray-800 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg";
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+function pulse(el) {
+  el.classList.remove("pulse");
+  void el.offsetWidth; // restart animation
+  el.classList.add("pulse");
+}
+
+const MARKET_RATE_PER_KW = 58000; // reference market rate used for "Estimated Saving"
+
+// ============================================================
+// Live Cost Calculator engine
+// ============================================================
+const formIds = {
+  material: "cMaterial", installation: "cInstallation", transportation: "cTransportation",
+  civil: "cCivil", labour: "cLabour", electrical: "cElectrical", other: "cOther",
+  discount: "cDiscount", gstPct: "cGstPct",
+};
+
+function readForm(ids) {
+  const g = (id) => parseFloat(document.getElementById(id).value) || 0;
+  return {
+    material: g(ids.material), installation: g(ids.installation), transportation: g(ids.transportation),
+    civil: g(ids.civil), labour: g(ids.labour), electrical: g(ids.electrical), other: g(ids.other),
+    discount: g(ids.discount), gstPct: g(ids.gstPct),
+  };
+}
+
+function computeCosts(v, capacity) {
+  const rawSubtotal = v.material + v.installation + v.transportation + v.civil + v.labour + v.electrical + v.other;
+  const subtotal = Math.max(0, rawSubtotal - v.discount);
+  const gstAmount = subtotal * (v.gstPct / 100);
+  const finalCost = subtotal + gstAmount;
+  const costPerKw = capacity > 0 ? finalCost / capacity : 0;
+  const estimatedSaving = Math.max(0, MARKET_RATE_PER_KW * capacity - finalCost);
+  return { rawSubtotal, subtotal, gstAmount, finalCost, costPerKw, estimatedSaving };
+}
+
+function renderBreakdown(containerId, v, result) {
+  const rows = [
+    { op: "", label: "Material Cost", value: v.material },
+    { op: "+", label: "Installation Cost", value: v.installation },
+    { op: "+", label: "Transportation Cost", value: v.transportation },
+    { op: "+", label: "Civil Work Cost", value: v.civil },
+    { op: "+", label: "Labour Cost", value: v.labour },
+    { op: "+", label: "Electrical Cost", value: v.electrical },
+    { op: "+", label: "Other Charges", value: v.other },
+  ];
+  let html = rows.map((r) => `
+    <div class="calc-row">
+      <span class="calc-op">${r.op}</span>
+      <span class="calc-label">${r.label}</span>
+      <span class="calc-value">${formatINR(r.value)}</span>
+    </div>`).join("");
+
+  html += `
+    <div class="calc-row calc-negative">
+      <span class="calc-op">−</span>
+      <span class="calc-label">Discount</span>
+      <span class="calc-value">${formatINR(v.discount)}</span>
+    </div>
+    <div class="calc-row calc-subtotal">
+      <span class="calc-op"></span>
+      <span class="calc-label">Subtotal</span>
+      <span class="calc-value">${formatINR(result.subtotal)}</span>
+    </div>
+    <div class="calc-row">
+      <span class="calc-op">+</span>
+      <span class="calc-label">GST (${v.gstPct}%)</span>
+      <span class="calc-value">${formatINR(result.gstAmount)}</span>
+    </div>
+    <div class="calc-row calc-final">
+      <span class="calc-op">=</span>
+      <span class="calc-label">Final Cost</span>
+      <span class="calc-value">${formatINR(result.finalCost)}</span>
+    </div>`;
+
+  document.getElementById(containerId).innerHTML = html;
+}
+
+function recalcLive() {
+  const v = readForm(formIds);
+  const capacity = parseFloat(document.getElementById("fCapacity").value) || 0;
+  const result = computeCosts(v, capacity);
+
+  // summary cards
+  const sumMaterial = document.getElementById("sumMaterial");
+  const sumInstallation = document.getElementById("sumInstallation");
+  const sumGst = document.getElementById("sumGst");
+  const sumFinal = document.getElementById("sumFinal");
+  sumMaterial.textContent = formatINR(v.material);
+  sumInstallation.textContent = formatINR(v.installation);
+  sumGst.textContent = formatINR(result.gstAmount);
+  sumFinal.textContent = formatINR(result.finalCost);
+  [sumMaterial, sumInstallation, sumGst, sumFinal].forEach(pulse);
+
+  // live breakdown
+  renderBreakdown("liveCalcBreakdown", v, result);
+
+  // result panel
+  document.getElementById("rSubtotal").textContent = formatINR(result.subtotal);
+  document.getElementById("rGstAmount").textContent = formatINR(result.gstAmount);
+  document.getElementById("rGrandTotal").textContent = formatINR(result.finalCost);
+  document.getElementById("rCostPerKw").textContent = formatINR(result.costPerKw);
+  document.getElementById("rSaving").textContent = formatINR(result.estimatedSaving);
+
+  return { v, capacity, result };
+}
+
+document.querySelectorAll(".calc-input").forEach((el) => el.addEventListener("input", recalcLive));
+document.getElementById("fCapacity")?.addEventListener("input", recalcLive);
+
+// ============================================================
+// Calculation History — seed data
+// ============================================================
+let history = [
+  {
+    id: "CALC-1001", customer: "Priya Enterprises", project: "Commercial Rooftop 10kW", capacity: 10, projectType: "Commercial",
+    material: 275000, installation: 32000, transportation: 6000, civil: 22000, labour: 16000, electrical: 14000, other: 4000,
+    discount: 8000, gstPct: 18, date: "2026-07-14",
+  },
+  {
+    id: "CALC-1002", customer: "Ravi Constructions", project: "Site Office 5kW", capacity: 5, projectType: "Commercial",
+    material: 145000, installation: 18000, transportation: 3500, civil: 12000, labour: 9000, electrical: 7500, other: 2000,
+    discount: 4000, gstPct: 18, date: "2026-07-13",
+  },
+  {
+    id: "CALC-1003", customer: "Meena Textiles", project: "Factory Roof 25kW", capacity: 25, projectType: "Industrial",
+    material: 667000, installation: 95000, transportation: 12000, civil: 55000, labour: 38000, electrical: 30000, other: 9000,
+    discount: 15000, gstPct: 18, date: "2026-07-12",
+  },
+  {
+    id: "CALC-1004", customer: "Suresh Patel", project: "Home Rooftop 4kW", capacity: 4, projectType: "Residential",
+    material: 116000, installation: 10000, transportation: 2500, civil: 8000, labour: 6000, electrical: 5000, other: 1500,
+    discount: 3000, gstPct: 18, date: "2026-07-11",
+  },
+  {
+    id: "CALC-1005", customer: "Global Foods Pvt Ltd", project: "Warehouse 50kW", capacity: 50, projectType: "Industrial",
+    material: 1349000, installation: 180000, transportation: 22000, civil: 110000, labour: 78000, electrical: 60000, other: 18000,
+    discount: 35000, gstPct: 18, date: "2026-07-09",
+  },
+];
+
+function historyResult(rec) {
+  return computeCosts(rec, rec.capacity);
+}
+
+// ============================================================
+// History table render / sort
+// ============================================================
+let sortKey = "date";
+let sortDir = "desc";
+const historyTbody = document.getElementById("historyTbody");
+
+function sortedHistory() {
+  const list = [...history];
+  list.sort((a, b) => {
+    let av, bv;
+    if (sortKey === "finalCost") { av = historyResult(a).finalCost; bv = historyResult(b).finalCost; }
+    else if (sortKey === "capacity") { av = a.capacity; bv = b.capacity; }
+    else if (sortKey === "date") { av = new Date(a.date).getTime(); bv = new Date(b.date).getTime(); }
+    else { av = String(a[sortKey]).toLowerCase(); bv = String(b[sortKey]).toLowerCase(); }
+    if (av < bv) return sortDir === "asc" ? -1 : 1;
+    if (av > bv) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+  return list;
+}
+
+const ICONS = {
+  view: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>',
+  delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>',
+};
+
+function actionIconsHtml(id) {
+  return `
+    <div class="row-actions">
+      <button class="action-icon-btn icon-view" data-action="view" data-id="${id}" title="View">${ICONS.view}</button>
+      <button class="action-icon-btn icon-edit" data-action="edit" data-id="${id}" title="Edit">${ICONS.edit}</button>
+      <button class="action-icon-btn icon-delete" data-action="delete" data-id="${id}" title="Delete">${ICONS.delete}</button>
+    </div>`;
+}
+
+function renderHistoryTable() {
+  const list = sortedHistory();
+  historyTbody.innerHTML = list.length ? list.map((rec) => {
+    const result = historyResult(rec);
+    return `
+    <tr data-id="${rec.id}" class="fade-in">
+      <td data-label="Calculation ID" class="font-medium">${rec.id}</td>
+      <td data-label="Customer">${rec.customer}</td>
+      <td data-label="Project">${rec.project}</td>
+      <td data-label="Capacity">${rec.capacity} kW</td>
+      <td data-label="Final Cost">${formatINR(result.finalCost)}</td>
+      <td data-label="Date">${formatDate(rec.date)}</td>
+      <td data-label="Actions">${actionIconsHtml(rec.id)}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7" style="text-align:center; padding: 24px; color:#9CA3AF;">No calculations saved yet.</td></tr>`;
+  updateSortIcons();
+}
+
+function updateSortIcons() {
+  document.querySelectorAll("#historyTable thead th[data-key]").forEach((th) => {
+    const icon = th.querySelector(".sort-icon");
+    const key = th.getAttribute("data-key");
+    th.classList.toggle("sorted", key === sortKey);
+    icon.textContent = key === sortKey ? (sortDir === "asc" ? "↑" : "↓") : "⇅";
+  });
+}
+
+document.querySelectorAll("#historyTable thead th[data-key]").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.getAttribute("data-key");
+    if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+    else { sortKey = key; sortDir = "asc"; }
+    renderHistoryTable();
+  });
+});
+
+function findRecord(id) { return history.find((r) => r.id === id); }
+
+function nextCalcId() {
+  const maxNum = history.reduce((max, r) => {
+    const n = parseInt(r.id.replace(/\D/g, ""), 10);
+    return isNaN(n) ? max : Math.max(max, n);
+  }, 1000);
+  return `CALC-${maxNum + 1}`;
+}
+
+// ============================================================
+// Save Calculation
+// ============================================================
+document.getElementById("saveCalcBtn")?.addEventListener("click", () => {
+  const v = readForm(formIds);
+  const capacity = parseFloat(document.getElementById("fCapacity").value) || 0;
+  const customer = document.getElementById("fCustomer").value.trim() || "Unnamed Customer";
+  const project = document.getElementById("fProject").value.trim() || "Untitled Project";
+  const projectType = document.getElementById("fProjectType").value;
+
+  const rec = {
+    id: nextCalcId(), customer, project, capacity, projectType,
+    material: v.material, installation: v.installation, transportation: v.transportation,
+    civil: v.civil, labour: v.labour, electrical: v.electrical, other: v.other,
+    discount: v.discount, gstPct: v.gstPct, date: new Date().toISOString().slice(0, 10),
+  };
+  history.unshift(rec);
+  sortKey = "date"; sortDir = "desc";
+  renderHistoryTable();
+  showToast(`Saved as ${rec.id}`);
+});
+
+// ============================================================
+// View Modal
+// ============================================================
+const viewModal = document.getElementById("viewModal");
+document.getElementById("viewModalCloseBtn")?.addEventListener("click", () => viewModal.classList.add("hidden"));
+document.getElementById("viewModalCloseBtn2")?.addEventListener("click", () => viewModal.classList.add("hidden"));
+viewModal?.addEventListener("click", (e) => { if (e.target === viewModal) viewModal.classList.add("hidden"); });
+
+function openViewModal(id) {
+  const rec = findRecord(id);
+  if (!rec) return;
+  const result = historyResult(rec);
+
+  document.getElementById("viewModalSubtitle").textContent = `${rec.id} · ${formatDate(rec.date)}`;
+  document.getElementById("vCustomer").textContent = rec.customer;
+  document.getElementById("vProject").textContent = rec.project;
+  document.getElementById("vCapacity").textContent = `${rec.capacity} kW`;
+  document.getElementById("vProjectType").textContent = rec.projectType;
+
+  renderBreakdown("viewCalcBreakdown", rec, result);
+  viewModal.classList.remove("hidden");
+}
+
+// ============================================================
+// Edit Modal
+// ============================================================
+const editModal = document.getElementById("editModal");
+let editingId = null;
+
+document.getElementById("editModalCloseBtn")?.addEventListener("click", () => editModal.classList.add("hidden"));
+document.getElementById("editCancelBtn")?.addEventListener("click", () => editModal.classList.add("hidden"));
+editModal?.addEventListener("click", (e) => { if (e.target === editModal) editModal.classList.add("hidden"); });
+
+function openEditModal(id) {
+  const rec = findRecord(id);
+  if (!rec) return;
+  editingId = id;
+
+  document.getElementById("editModalSubtitle").textContent = rec.id;
+  document.getElementById("eCustomer").value = rec.customer;
+  document.getElementById("eProject").value = rec.project;
+  document.getElementById("eCapacity").value = rec.capacity;
+  document.getElementById("eProjectType").value = rec.projectType;
+  document.getElementById("eMaterial").value = rec.material;
+  document.getElementById("eInstallation").value = rec.installation;
+  document.getElementById("eTransportation").value = rec.transportation;
+  document.getElementById("eCivil").value = rec.civil;
+  document.getElementById("eLabour").value = rec.labour;
+  document.getElementById("eElectrical").value = rec.electrical;
+  document.getElementById("eOther").value = rec.other;
+  document.getElementById("eDiscount").value = rec.discount;
+  document.getElementById("eGstPct").value = rec.gstPct;
+
+  editModal.classList.remove("hidden");
+}
+
+document.getElementById("editSaveBtn")?.addEventListener("click", () => {
+  const rec = findRecord(editingId);
+  if (!rec) return;
+
+  rec.customer = document.getElementById("eCustomer").value.trim() || rec.customer;
+  rec.project = document.getElementById("eProject").value.trim() || rec.project;
+  rec.capacity = parseFloat(document.getElementById("eCapacity").value) || rec.capacity;
+  rec.projectType = document.getElementById("eProjectType").value;
+  rec.material = parseFloat(document.getElementById("eMaterial").value) || 0;
+  rec.installation = parseFloat(document.getElementById("eInstallation").value) || 0;
+  rec.transportation = parseFloat(document.getElementById("eTransportation").value) || 0;
+  rec.civil = parseFloat(document.getElementById("eCivil").value) || 0;
+  rec.labour = parseFloat(document.getElementById("eLabour").value) || 0;
+  rec.electrical = parseFloat(document.getElementById("eElectrical").value) || 0;
+  rec.other = parseFloat(document.getElementById("eOther").value) || 0;
+  rec.discount = parseFloat(document.getElementById("eDiscount").value) || 0;
+  rec.gstPct = parseFloat(document.getElementById("eGstPct").value) || 0;
+
+  editModal.classList.add("hidden");
+  renderHistoryTable();
+  showToast(`${rec.id} updated — costs recalculated`);
+});
+
+// ============================================================
+// Delete Modal
+// ============================================================
+const deleteModal = document.getElementById("deleteModal");
+let deletingId = null;
+
+document.getElementById("deleteModalCloseBtn")?.addEventListener("click", () => deleteModal.classList.add("hidden"));
+document.getElementById("deleteCancelBtn")?.addEventListener("click", () => deleteModal.classList.add("hidden"));
+deleteModal?.addEventListener("click", (e) => { if (e.target === deleteModal) deleteModal.classList.add("hidden"); });
+
+function openDeleteModal(id) {
+  deletingId = id;
+  document.getElementById("deleteCalcId").textContent = id;
+  deleteModal.classList.remove("hidden");
+}
+
+document.getElementById("deleteConfirmBtn")?.addEventListener("click", () => {
+  history = history.filter((r) => r.id !== deletingId);
+  deleteModal.classList.add("hidden");
+  renderHistoryTable();
+  showToast(`${deletingId} deleted`);
+  deletingId = null;
+});
+
+// ============================================================
+// Row action wiring
+// ============================================================
+historyTbody?.addEventListener("click", (e) => {
+  const actionBtn = e.target.closest("[data-action]");
+  if (!actionBtn) return;
+  const id = actionBtn.getAttribute("data-id");
+  const action = actionBtn.getAttribute("data-action");
+  if (action === "view") openViewModal(id);
+  else if (action === "edit") openEditModal(id);
+  else if (action === "delete") openDeleteModal(id);
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  [viewModal, editModal, deleteModal].forEach((m) => m.classList.add("hidden"));
+});
+
+// ============================================================
+// Print — prints the current live calculation
+// ============================================================
+document.getElementById("printCalcBtn")?.addEventListener("click", () => {
+  const { v, capacity, result } = recalcLive();
+  const customer = document.getElementById("fCustomer").value.trim() || "—";
+  const project = document.getElementById("fProject").value.trim() || "—";
+  const projectType = document.getElementById("fProjectType").value;
+
+  const rows = [
+    ["Customer", customer],
+    ["Project", project],
+    ["Capacity", `${capacity} kW`],
+    ["Project Type", projectType],
+    ["Material Cost", formatINR(v.material)],
+    ["Installation Cost", formatINR(v.installation)],
+    ["Transportation Cost", formatINR(v.transportation)],
+    ["Civil Work Cost", formatINR(v.civil)],
+    ["Labour Cost", formatINR(v.labour)],
+    ["Electrical Cost", formatINR(v.electrical)],
+    ["Other Charges", formatINR(v.other)],
+    ["Discount", formatINR(v.discount)],
+    ["Subtotal", formatINR(result.subtotal)],
+    [`GST (${v.gstPct}%)`, formatINR(result.gstAmount)],
+  ];
+
+  const printBody = document.getElementById("printBody");
+  printBody.innerHTML = rows.map(([label, value]) => `<tr><th>${label}</th><td>${value}</td></tr>`).join("")
+    + `<tr class="print-total"><th>Final Cost</th><td>${formatINR(result.finalCost)}</td></tr>`;
+
+  document.getElementById("pGenDate").textContent = new Date().toLocaleString("en-IN");
+  window.print();
+});
+
+// ============================================================
+// Export PDF — history table
+// ============================================================
+document.getElementById("exportPdfBtn")?.addEventListener("click", () => {
+  if (!window.jspdf) { showToast("PDF library failed to load"); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+  doc.setFontSize(16);
+  doc.setTextColor(129, 11, 56);
+  doc.text("Solar Quotation Management", 40, 45);
+  doc.setFontSize(11);
+  doc.setTextColor(107, 114, 128);
+  doc.text("Calculation History", 40, 62);
+  doc.setDrawColor(129, 11, 56);
+  doc.line(40, 72, 555, 72);
+
+  const cols = ["ID", "Customer", "Project", "Capacity", "Final Cost", "Date"];
+  const colX = [40, 110, 240, 380, 440, 500];
+  let y = 96;
+  doc.setFontSize(9);
+  doc.setTextColor(107, 114, 128);
+  cols.forEach((c, i) => doc.text(c, colX[i], y));
+  y += 8;
+  doc.setDrawColor(220, 195, 170);
+  doc.line(40, y, 555, y);
+  y += 16;
+
+  doc.setFontSize(9);
+  sortedHistory().forEach((rec) => {
+    const result = historyResult(rec);
+    if (y > 780) { doc.addPage(); y = 50; }
+    doc.setTextColor(31, 41, 55);
+    doc.text(String(rec.id), colX[0], y);
+    doc.text(String(rec.customer).slice(0, 18), colX[1], y);
+    doc.text(String(rec.project).slice(0, 20), colX[2], y);
+    doc.text(`${rec.capacity} kW`, colX[3], y);
+    doc.text(formatINR(result.finalCost), colX[4], y);
+    doc.text(formatDate(rec.date), colX[5], y);
+    y += 20;
+  });
+
+  doc.setFontSize(8);
+  doc.setTextColor(156, 163, 175);
+  doc.text(`Generated on ${new Date().toLocaleString("en-IN")}`, 40, y + 16);
+
+  doc.save("calculation-history.pdf");
+  showToast("Downloaded calculation-history.pdf");
+});
+
+// ============================================================
+// Export Excel — history table
+// ============================================================
+document.getElementById("exportExcelBtn")?.addEventListener("click", () => {
+  if (!window.XLSX) { showToast("Excel library failed to load"); return; }
+
+  const rows = sortedHistory().map((rec) => {
+    const result = historyResult(rec);
+    return {
+      "Calculation ID": rec.id,
+      "Customer": rec.customer,
+      "Project": rec.project,
+      "Capacity (kW)": rec.capacity,
+      "Project Type": rec.projectType,
+      "Material Cost": rec.material,
+      "Installation Cost": rec.installation,
+      "Transportation Cost": rec.transportation,
+      "Civil Work Cost": rec.civil,
+      "Labour Cost": rec.labour,
+      "Electrical Cost": rec.electrical,
+      "Other Charges": rec.other,
+      "Discount": rec.discount,
+      "GST %": rec.gstPct,
+      "Subtotal": Math.round(result.subtotal),
+      "GST Amount": Math.round(result.gstAmount),
+      "Final Cost": Math.round(result.finalCost),
+      "Cost Per kW": Math.round(result.costPerKw),
+      "Date": rec.date,
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = Object.keys(rows[0] || {}).map(() => ({ wch: 16 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Calculation History");
+  XLSX.writeFile(wb, "calculation-history.xlsx");
+  showToast("Downloaded calculation-history.xlsx");
+});
+
+// ============================================================
+// Init
+// ============================================================
+recalcLive();
+renderHistoryTable();

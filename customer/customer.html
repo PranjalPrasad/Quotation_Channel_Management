@@ -21,14 +21,16 @@
       extend: {
         colors: {
           peach: {
-            50:  "#FFF8F5",
-            100: "#F8EDEB",
-            200: "#FED5CD",
-            300: "#FADBC6",
-            400: "#FFC69E",
-            500: "#FEB4A7",
-            600: "#F4917D",
+            50:  "#FBF6EF",
+            100: "#F1E2D1",
+            200: "#E4CBAE",
+            300: "#DCC3AA",
+            400: "#A8446B",
+            500: "#810B38",
+            600: "#6B0930",
+            700: "#541A1A",
           },
+          cream: "#F7ECE1",
         },
         fontFamily: {
           sans: ["Poppins", "ui-sans-serif", "system-ui"],
@@ -47,24 +49,24 @@
 <link rel="stylesheet" href="/dashboard/dashboard.css" />
 <link rel="stylesheet" href="/customer/customer.css" />
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
+<body class="bg-cream min-h-screen font-sans">
 
   <div class="min-h-screen w-full flex">
 
-    <!-- ===================== SIDEBAR (unchanged, copied from dashboard.html) ===================== -->
-    <aside id="sidebar" class="sidebar relative flex flex-col items-center py-6 gap-8 bg-white border-r border-gray-100 transition-all duration-300 ease-in-out w-20 shrink-0">
-      <button id="sidebarToggle" aria-label="Toggle sidebar" class="absolute -right-3 top-9 w-6 h-6 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-peach-500 hover:scale-110 transition-transform">
+    <!-- ===================== SIDEBAR (matches dashboard.html exactly) ===================== -->
+    <aside id="sidebar" class="sidebar relative flex flex-col items-center py-5 gap-6 bg-cream border-r border-peach-300 transition-all duration-300 ease-in-out w-20 shrink-0">
+      <button id="sidebarToggle" aria-label="Toggle sidebar" class="absolute -right-3 top-8 w-6 h-6 rounded-full bg-cream shadow-md border border-peach-300 flex items-center justify-center text-peach-500 hover:scale-110 transition-transform">
         <svg id="toggleIcon" class="w-3.5 h-3.5 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"></polyline>
         </svg>
       </button>
 
       <div class="flex items-center justify-center shrink-0">
-        <img src="/img/logo.png" alt="Company Logo" class="w-auto h-12 object-contain" />
+        <img src="/img/logo.webp" alt="Company Logo" class="w-auto h-11 object-contain" />
       </div>
 
-      <nav class="nav-list w-full flex-1 flex flex-col items-center gap-2 mt-4 px-3">
-        <button class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='../dashboard/dashboard.html'">
+      <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
+        <button class="nav-item active" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
           <span>Dashboard</span>
         </button>
@@ -76,7 +78,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
           <span>Product Management</span>
         </button>
-        <button class="nav-item active" data-label="Customer Management" aria-label="Customer Management">
+        <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
             <circle cx="9" cy="11" r="3"></circle>
@@ -89,22 +91,42 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
           <span>Reports Management</span>
         </button>
+
+        <button class="nav-item active" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <span>Project Management</span>
+        </button>
+
+        <button class="nav-item active" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span>User Management</span>
+        </button>
+
+        <button class="nav-item active" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
+          <span>Cost Calculator</span>
+        </button>
+
+        <button class="nav-item active" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+          <span>Approval Management</span>
+        </button>
       </nav>
     </aside>
 
     <!-- ===================== MAIN ===================== -->
-    <main class="flex-1 bg-gray-100 px-6 md:px-10 py-8 overflow-y-auto">
+    <main class="flex-1 bg-cream px-6 md:px-10 py-8 overflow-y-auto">
 
-      <!-- Topbar (unchanged, copied from dashboard.html) -->
-      <div class="flex items-center justify-between mb-8">
+      <!-- Topbar (matches dashboard.html exactly) -->
+      <div class="flex items-center justify-between mb-6">
         <div>
-          <p class="text-sm text-gray-700">👋 Hello, <span class="font-semibold">Barly Vallendito</span></p>
-          <p class="text-[11px] text-gray-400">Welcome</p>
+          <p class="text-sm text-gray-700">Customer Management</p>
+          <p class="text-[11px] text-gray-400">Manage all customer records, project information and follow-up activities.</p>
         </div>
 
-        <div class="flex items-center gap-4 relative">
+        <div class="flex items-center gap-3 relative">
           <div class="relative">
-            <button id="notifBtn" aria-label="Notifications" class="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
+            <button id="notifBtn" aria-label="Notifications" class="w-9 h-9 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
               <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -120,7 +142,7 @@
           </div>
 
           <div class="relative">
-            <button id="profileBtn" aria-label="Profile" class="w-10 h-10 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">B</button>
+            <button id="profileBtn" aria-label="Profile" class="w-9 h-9 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">B</button>
             <div id="profileDropdown" class="topbar-dropdown hidden">
               <button id="profileLogoutBtn" class="topbar-logout-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -139,8 +161,8 @@
       <!-- Page header -->
       <div class="cm-header">
         <div>
-          <h1 class="cm-title">Customer Management</h1>
-          <p class="cm-subtitle">Manage all customer records, project information and follow-up activities.</p>
+          <h1 class="cm-title"></h1>
+          <p class="cm-subtitle"></p>
         </div>
         <div class="cm-header-actions">
           <div class="export-wrap" id="exportWrap">
@@ -214,45 +236,17 @@
         </div>
       </div>
 
-      <!-- Filters -->
+      <!-- Filter bar -->
       <div class="filter-card">
         <div class="filter-row">
           <div class="filter-group grow">
-            <label class="filter-label" for="searchName">Search Customer</label>
+            <label class="filter-label">Search</label>
             <div class="filter-search-wrap">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
               <input type="text" id="searchName" class="field-input" placeholder="Search by name, mobile or email">
             </div>
           </div>
-          <!-- <div class="filter-group fixed">
-            <label class="filter-label">Customer Type</label>
-            <div class="custom-select" id="filterTypeSelect">
-              <button type="button" class="custom-select-trigger field-input" id="filterTypeTrigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="cs-label">All</span>
-                <svg class="cs-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </button>
-              <div class="custom-select-panel hidden" role="listbox">
-                <div class="custom-select-option selected" data-value="All" role="option">All</div>
-                <div class="custom-select-option" data-value="Residential" role="option">Residential</div>
-                <div class="custom-select-option" data-value="Commercial" role="option">Commercial</div>
-                <div class="custom-select-option" data-value="Industrial" role="option">Industrial</div>
-              </div>
-            </div>
-          </div> -->
-          <!-- <div class="filter-group fixed">
-            <label class="filter-label">Status</label>
-            <div class="custom-select" id="filterStatusSelect">
-              <button type="button" class="custom-select-trigger field-input" id="filterStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="cs-label">All</span>
-                <svg class="cs-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </button>
-              <div class="custom-select-panel hidden" role="listbox">
-                <div class="custom-select-option selected" data-value="All" role="option">All</div>
-                <div class="custom-select-option" data-value="Active" role="option">Active</div>
-                <div class="custom-select-option" data-value="Inactive" role="option">Inactive</div>
-              </div>
-            </div>
-          </div> -->
+
           <div class="filter-group">
             <label class="filter-label">&nbsp;</label>
             <button class="btn-secondary btn-reset" id="resetFiltersBtn" type="button">
@@ -293,7 +287,7 @@
         </div>
 
         <div id="emptyState" class="empty-state hidden">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#FED5CD" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="16" y1="11" x2="22" y2="11"></line></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#DCC3AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="16" y1="11" x2="22" y2="11"></line></svg>
           <h3>No customers found</h3>
           <p>Try adjusting your filters, or add your first customer to get started.</p>
           <button class="btn-primary" id="addFirstCustomerBtn" type="button">+ Add First Customer</button>

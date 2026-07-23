@@ -93,7 +93,7 @@ let customers = [
   { id: 'CUST-1007', name: 'Anita Deshmukh', mobile: '9765011223', email: 'anita.deshmukh@example.com', address: '9 Rose Villa', city: 'Nagpur', state: 'Maharashtra', gst: '', type: 'Residential', project: '3kW Rooftop, Nagpur', status: 'Inactive', created: '2026-06-13' },
   { id: 'CUST-1008', name: 'Rajesh Traders', mobile: '9822334455', email: 'rajesh.traders@example.com', address: 'Market Yard', city: 'Solapur', state: 'Maharashtra', gst: '', type: 'Commercial', project: '7kW Shop Roof, Solapur', status: 'Active', created: '2026-06-14' },
   { id: 'CUST-1009', name: 'Sunrise Apartments', mobile: '9765098765', email: 'admin@sunriseapts.com', address: 'Baner Road', city: 'Pune', state: 'Maharashtra', gst: '27SUNRA4321J1Z6', type: 'Residential', project: '15kW Society Terrace, Baner', status: 'Active', created: '2026-06-16' },
-  { id: 'CUST-1010', name: 'Vikram Industries', mobile: '9911001122', email: 'vikram.ind@example.com', address: 'MIDC Chakan', city: 'Pune', state: 'Maharashtra', gst: '27VIKRI8765K1Z1', type: 'Industrial', project: '30kW Plant Roof, Chakan', status: 'Pending' === undefined ? 'Active' : 'Active', created: '2026-06-18' },
+  { id: 'CUST-1010', name: 'Vikram Industries', mobile: '9911001122', email: 'vikram.ind@example.com', address: 'MIDC Chakan', city: 'Pune', state: 'Maharashtra', gst: '27VIKRI8765K1Z1', type: 'Industrial', project: '30kW Plant Roof, Chakan', status: 'Active', created: '2026-06-18' },
 ];
 
 let followups = [

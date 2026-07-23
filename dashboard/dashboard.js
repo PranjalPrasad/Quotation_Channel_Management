@@ -26,57 +26,107 @@ navItems.forEach((item) => {
 });
 
 // ============================================================
-// Monthly Quotation Trend chart — Chart.js, same shape/behaviour
-// as the reference dashboard, recoloured to the peach theme
+// Quotation Status Distribution + System Size Distribution
+// — Chart.js doughnut charts, recoloured to the Color Hunt
+// palette (#810B38 / #F1E2D1 / #DCC3AA / #541A1A)
 // ============================================================
-const peach = "#FEB4A7";
-const peachDark = "#F4917D";
-const gridColor = "rgba(75, 86, 148, 0.10)";
-const axisFontColor = "#9CA3AF";
-
 Chart.defaults.font.family = "'Poppins', sans-serif";
 Chart.defaults.font.size = 11;
 
-const trendMonths = ["Jan-25", "Feb-25", "Mar-25", "Apr-25", "May-25", "Jun-25"];
-const trendCounts = [25, 31, 42, 38, 45, 52];
+const paletteBerry = "#810B38";
+const paletteMaroon = "#541A1A";
+const paletteTan = "#DCC3AA";
+const paletteCream = "#F1E2D1";
 
-window.trendChart = new Chart(document.getElementById("chartQuotationTrend"), {
-  type: "line",
+const donutTooltipOpts = {
+  backgroundColor: "#fff",
+  titleColor: "#1F2937",
+  bodyColor: "#6B7280",
+  borderColor: "#F1F1F1",
+  borderWidth: 1,
+  padding: 10,
+  cornerRadius: 10,
+  displayColors: true,
+  boxWidth: 8,
+  boxHeight: 8,
+  boxPadding: 4,
+};
+
+// ---- Chart 1: Quotation Status Distribution ----
+const statusCounts = { Pending: 58, Accepted: 156, Rejected: 34 };
+
+window.statusPieChart = new Chart(document.getElementById("chartStatusDistribution"), {
+  type: "doughnut",
   data: {
-    labels: trendMonths,
+    labels: Object.keys(statusCounts),
     datasets: [{
-      label: "Quotations",
-      data: trendCounts,
-      borderColor: peachDark,
-      backgroundColor: "rgba(254, 180, 167, 0.25)",
-      fill: true,
-      tension: 0.35,
-      pointBackgroundColor: peachDark,
-      pointBorderColor: "#fff",
-      pointBorderWidth: 2,
-      pointRadius: 4,
-      pointHoverRadius: 6,
+      data: Object.values(statusCounts),
+      backgroundColor: [paletteTan, paletteBerry, paletteMaroon],
+      borderColor: "#F1E2D1",
+      borderWidth: 3,
+      hoverOffset: 6,
     }]
   },
   options: {
     responsive: true,
     maintainAspectRatio: false,
+    cutout: "62%",
     plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: "#fff",
-        titleColor: "#1F2937",
-        bodyColor: "#6B7280",
-        borderColor: "#F1F1F1",
-        borderWidth: 1,
-        padding: 10,
-        cornerRadius: 10,
-        displayColors: false,
-      }
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: axisFontColor } },
-      y: { grid: { color: gridColor }, ticks: { color: axisFontColor, precision: 0 } }
+      legend: {
+        position: "bottom",
+        labels: { color: "#6B7280", boxWidth: 10, boxHeight: 10, padding: 10, usePointStyle: true, pointStyle: "circle" }
+      },
+      tooltip: donutTooltipOpts,
+    }
+  }
+});
+
+// ---- Chart 2: Quotations by System Size Category ----
+function sizeCategory(sizeStr) {
+  const kw = parseFloat(sizeStr);
+  if (kw <= 5) return "Small (≤5 kW)";
+  if (kw <= 20) return "Medium (6–20 kW)";
+  return "Large (>20 kW)";
+}
+
+const sizeBuckets = {};
+quotationsForSizeChart().forEach((q) => {
+  const cat = sizeCategory(q.size);
+  sizeBuckets[cat] = (sizeBuckets[cat] || 0) + 1;
+});
+
+function quotationsForSizeChart() {
+  // Mirrors the same records used by the full quotations table below
+  return [
+    { size: '3 kW' }, { size: '10 kW' }, { size: '5 kW' }, { size: '25 kW' },
+    { size: '4 kW' }, { size: '50 kW' }, { size: '3 kW' }, { size: '7 kW' },
+    { size: '15 kW' }, { size: '30 kW' }, { size: '3 kW' }, { size: '20 kW' },
+    { size: '6 kW' }, { size: '4 kW' }, { size: '40 kW' },
+  ];
+}
+
+window.sizePieChart = new Chart(document.getElementById("chartSizeDistribution"), {
+  type: "doughnut",
+  data: {
+    labels: Object.keys(sizeBuckets),
+    datasets: [{
+      data: Object.values(sizeBuckets),
+      backgroundColor: [paletteBerry, paletteTan, paletteMaroon],
+      borderColor: "#F1E2D1",
+      borderWidth: 3,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: "62%",
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: { color: "#6B7280", boxWidth: 10, boxHeight: 10, padding: 10, usePointStyle: true, pointStyle: "circle" }
+      },
+      tooltip: donutTooltipOpts,
     }
   }
 });
@@ -124,7 +174,7 @@ renderRecentQuotations();
 // ============================================================
 // Recent Quotations — full table (sort, paginate, view/edit,
 // print, PDF export, duplicate) — same behaviour as the
-// reference dashboard, recoloured to the peach theme
+// reference dashboard, recoloured to the palette theme
 // ============================================================
 let quotations = [
   { no: 'SQ-1001', customer: 'Amit Sharma', size: '3 kW', amount: 165000, status: 'Pending', date: '2026-07-15' },
@@ -382,12 +432,12 @@ function downloadQuotationPdf(no) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
 
   doc.setFontSize(16);
-  doc.setTextColor(244, 145, 125);
+  doc.setTextColor(129, 11, 56);
   doc.text('Solar Quotation Management', 40, 50);
   doc.setFontSize(11);
   doc.setTextColor(107, 114, 128);
   doc.text('Quotation Slip', 40, 68);
-  doc.setDrawColor(244, 145, 125);
+  doc.setDrawColor(129, 11, 56);
   doc.line(40, 78, 555, 78);
 
   const rows = [

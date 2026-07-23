@@ -1,0 +1,612 @@
+// ============================================================
+// Sidebar collapse / expand (matches dashboard behaviour)
+// ============================================================
+const sidebar = document.getElementById("sidebar");
+const sidebarToggle = document.getElementById("sidebarToggle");
+const toggleIcon = document.getElementById("toggleIcon");
+
+let sidebarExpanded = false;
+
+sidebarToggle.addEventListener("click", () => {
+  sidebarExpanded = !sidebarExpanded;
+  sidebar.classList.toggle("expanded", sidebarExpanded);
+  sidebar.classList.toggle("collapsed", !sidebarExpanded);
+  toggleIcon.style.transform = sidebarExpanded ? "rotate(180deg)" : "rotate(0deg)";
+});
+
+// ============================================================
+// Topbar: notification + profile dropdowns
+// ============================================================
+const notifBtn = document.getElementById("notifBtn");
+const notifDropdown = document.getElementById("notifDropdown");
+const profileBtn = document.getElementById("profileBtn");
+const profileDropdown = document.getElementById("profileDropdown");
+const profileLogoutBtn = document.getElementById("profileLogoutBtn");
+
+function closeAllTopbarDropdowns(except) {
+  [notifDropdown, profileDropdown].forEach((dd) => {
+    if (dd && dd !== except) dd.classList.add("hidden");
+  });
+}
+
+notifBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const willOpen = notifDropdown.classList.contains("hidden");
+  closeAllTopbarDropdowns();
+  notifDropdown.classList.toggle("hidden", !willOpen);
+});
+
+profileBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const willOpen = profileDropdown.classList.contains("hidden");
+  closeAllTopbarDropdowns();
+  profileDropdown.classList.toggle("hidden", !willOpen);
+});
+
+document.addEventListener("click", () => closeAllTopbarDropdowns());
+
+profileLogoutBtn?.addEventListener("click", () => {
+  showToast("Logged out");
+});
+
+// ============================================================
+// Helpers
+// ============================================================
+function formatINR(n) {
+  return "₹" + Number(n).toLocaleString("en-IN");
+}
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function showToast(message) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = "toast-animate bg-gray-800 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg";
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ============================================================
+// Seed data — quotation approval requests
+// ============================================================
+let approvals = [
+  {
+    id: "QA-2045", customer: "Amit Sharma", salesExec: "Rohit Verma", project: "Rooftop Solar — 3kW",
+    amount: 165000, submittedDate: "2026-07-15", status: "Pending",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 6, rate: 14500 },
+      { name: "3kW Grid-tie Inverter", qty: 1, rate: 32000 },
+      { name: "Mounting Structure", qty: 1, rate: 18000 },
+    ],
+    gst: 14850, installation: 12000, transportation: 3000,
+    remarks: "Customer requested installation within 15 days of approval.",
+    timeline: { submitted: "2026-07-15", reviewed: null, approved: null, converted: null },
+  },
+  {
+    id: "QA-2044", customer: "Priya Enterprises", salesExec: "Sneha Kulkarni", project: "Commercial Rooftop — 10kW",
+    amount: 540000, submittedDate: "2026-07-14", status: "Approved",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 19, rate: 14500 },
+      { name: "10kW Grid-tie Inverter", qty: 1, rate: 95000 },
+      { name: "Mounting Structure", qty: 1, rate: 48000 },
+    ],
+    gst: 48600, installation: 35000, transportation: 6000,
+    remarks: "Approved for standard commercial installation timeline.",
+    timeline: { submitted: "2026-07-14", reviewed: "2026-07-15", approved: "2026-07-16", converted: null },
+  },
+  {
+    id: "QA-2043", customer: "Ravi Constructions", salesExec: "Rohit Verma", project: "Site Office — 5kW",
+    amount: 275000, submittedDate: "2026-07-14", status: "Rejected",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 9, rate: 14500 },
+      { name: "5kW Grid-tie Inverter", qty: 1, rate: 48000 },
+    ],
+    gst: 24750, installation: 15000, transportation: 3500,
+    remarks: "Budget exceeded client's approved ceiling.",
+    timeline: { submitted: "2026-07-14", reviewed: "2026-07-15", approved: null, converted: null },
+  },
+  {
+    id: "QA-2042", customer: "Meena Textiles", salesExec: "Karan Mehta", project: "Factory Roof — 25kW",
+    amount: 1320000, submittedDate: "2026-07-13", status: "Converted",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 46, rate: 14500 },
+      { name: "25kW String Inverter", qty: 1, rate: 210000 },
+      { name: "Mounting Structure", qty: 1, rate: 95000 },
+    ],
+    gst: 118800, installation: 65000, transportation: 12000,
+    remarks: "Installation completed and handed over to customer.",
+    timeline: { submitted: "2026-07-13", reviewed: "2026-07-13", approved: "2026-07-14", converted: "2026-07-20" },
+  },
+  {
+    id: "QA-2041", customer: "Suresh Patel", salesExec: "Sneha Kulkarni", project: "Home Rooftop — 4kW",
+    amount: 210000, submittedDate: "2026-07-12", status: "Pending",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 8, rate: 14500 },
+      { name: "4kW Grid-tie Inverter", qty: 1, rate: 38000 },
+    ],
+    gst: 18900, installation: 10000, transportation: 2500,
+    remarks: "Awaiting site survey confirmation before approval.",
+    timeline: { submitted: "2026-07-12", reviewed: null, approved: null, converted: null },
+  },
+  {
+    id: "QA-2040", customer: "Global Foods Pvt Ltd", salesExec: "Karan Mehta", project: "Warehouse — 50kW",
+    amount: 2650000, submittedDate: "2026-07-12", status: "Approved",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 93, rate: 14500 },
+      { name: "50kW Central Inverter", qty: 1, rate: 420000 },
+      { name: "Mounting Structure", qty: 1, rate: 180000 },
+    ],
+    gst: 238500, installation: 120000, transportation: 22000,
+    remarks: "Approved subject to final structural clearance.",
+    timeline: { submitted: "2026-07-12", reviewed: "2026-07-13", approved: "2026-07-14", converted: null },
+  },
+  {
+    id: "QA-2039", customer: "Anita Deshmukh", salesExec: "Rohit Verma", project: "Home Rooftop — 3kW",
+    amount: 158000, submittedDate: "2026-07-11", status: "Rejected",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 6, rate: 14500 },
+      { name: "3kW Grid-tie Inverter", qty: 1, rate: 32000 },
+    ],
+    gst: 14220, installation: 8000, transportation: 2000,
+    remarks: "Customer opted for a different vendor.",
+    timeline: { submitted: "2026-07-11", reviewed: "2026-07-12", approved: null, converted: null },
+  },
+  {
+    id: "QA-2038", customer: "Rajesh Traders", salesExec: "Karan Mehta", project: "Shop Rooftop — 7kW",
+    amount: 372000, submittedDate: "2026-07-11", status: "Revision Required",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 13, rate: 14500 },
+      { name: "7kW Grid-tie Inverter", qty: 1, rate: 62000 },
+    ],
+    gst: 33480, installation: 14000, transportation: 3000,
+    remarks: "Pricing needs to reflect the revised panel count discussed with customer.",
+    timeline: { submitted: "2026-07-11", reviewed: "2026-07-12", approved: null, converted: null },
+  },
+  {
+    id: "QA-2037", customer: "Sunrise Apartments", salesExec: "Sneha Kulkarni", project: "Society Rooftop — 15kW",
+    amount: 795000, submittedDate: "2026-07-10", status: "Converted",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 28, rate: 14500 },
+      { name: "15kW String Inverter", qty: 1, rate: 130000 },
+      { name: "Mounting Structure", qty: 1, rate: 58000 },
+    ],
+    gst: 71550, installation: 40000, transportation: 7000,
+    remarks: "Handed over with 2-year AMC included.",
+    timeline: { submitted: "2026-07-10", reviewed: "2026-07-10", approved: "2026-07-11", converted: "2026-07-18" },
+  },
+  {
+    id: "QA-2036", customer: "Vikram Industries", salesExec: "Rohit Verma", project: "Plant Rooftop — 30kW",
+    amount: 1580000, submittedDate: "2026-07-09", status: "Pending",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 56, rate: 14500 },
+      { name: "30kW String Inverter", qty: 1, rate: 250000 },
+      { name: "Mounting Structure", qty: 1, rate: 110000 },
+    ],
+    gst: 142200, installation: 72000, transportation: 14000,
+    remarks: "Large order — needs finance team sign-off before approval.",
+    timeline: { submitted: "2026-07-09", reviewed: null, approved: null, converted: null },
+  },
+  {
+    id: "QA-2035", customer: "Kavita Rao", salesExec: "Sneha Kulkarni", project: "Home Rooftop — 3kW",
+    amount: 162000, submittedDate: "2026-07-08", status: "Approved",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 6, rate: 14500 },
+      { name: "3kW Grid-tie Inverter", qty: 1, rate: 32000 },
+    ],
+    gst: 14580, installation: 8000, transportation: 2000,
+    remarks: "Standard residential approval.",
+    timeline: { submitted: "2026-07-08", reviewed: "2026-07-08", approved: "2026-07-09", converted: null },
+  },
+  {
+    id: "QA-2034", customer: "Deepak Motors", salesExec: "Karan Mehta", project: "Showroom Rooftop — 20kW",
+    amount: 1050000, submittedDate: "2026-07-08", status: "Pending",
+    products: [
+      { name: "Mono PERC Panel 540W", qty: 37, rate: 14500 },
+      { name: "20kW String Inverter", qty: 1, rate: 175000 },
+      { name: "Mounting Structure", qty: 1, rate: 78000 },
+    ],
+    gst: 94500, installation: 50000, transportation: 9500,
+    remarks: "Waiting on customer's electrical NOC before approval.",
+    timeline: { submitted: "2026-07-08", reviewed: null, approved: null, converted: null },
+  },
+];
+
+// ============================================================
+// Summary cards
+// ============================================================
+function renderSummary() {
+  document.getElementById("kpiPending").textContent = approvals.filter(a => a.status === "Pending").length;
+  document.getElementById("kpiApproved").textContent = approvals.filter(a => a.status === "Approved").length;
+  document.getElementById("kpiRejected").textContent = approvals.filter(a => a.status === "Rejected").length;
+  document.getElementById("kpiConverted").textContent = approvals.filter(a => a.status === "Converted").length;
+}
+
+// ============================================================
+// Table state: filter tab, search fields, sort, pagination
+// ============================================================
+let activeTab = "All";
+let sortKey = "submittedDate";
+let sortDir = "desc";
+let currentPage = 1;
+let rowsPerPage = 10;
+
+const tbody = document.getElementById("approvalTbody");
+const paginationControls = document.getElementById("paginationControls");
+const rowsRangeLabel = document.getElementById("rowsRangeLabel");
+const rowsPerPageSelect = document.getElementById("rowsPerPage");
+
+const searchId = document.getElementById("searchId");
+const searchCustomer = document.getElementById("searchCustomer");
+const searchExec = document.getElementById("searchExec");
+const searchStatus = document.getElementById("searchStatus");
+
+const statusPillClass = {
+  Pending: "pill-pending",
+  Approved: "pill-approved",
+  Rejected: "pill-rejected",
+  "Revision Required": "pill-revision",
+  Converted: "pill-converted",
+};
+
+function filteredApprovals() {
+  const idQ = searchId.value.trim().toLowerCase();
+  const custQ = searchCustomer.value.trim().toLowerCase();
+  const execQ = searchExec.value.trim().toLowerCase();
+  const statusQ = searchStatus.value;
+
+  return approvals.filter((a) => {
+    if (activeTab !== "All" && a.status !== activeTab) return false;
+    if (idQ && !a.id.toLowerCase().includes(idQ)) return false;
+    if (custQ && !a.customer.toLowerCase().includes(custQ)) return false;
+    if (execQ && !a.salesExec.toLowerCase().includes(execQ)) return false;
+    if (statusQ && a.status !== statusQ) return false;
+    return true;
+  });
+}
+
+function sortedApprovals() {
+  const list = filteredApprovals();
+  list.sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (sortKey === "amount") { /* numeric already */ }
+    else if (sortKey === "submittedDate") { av = new Date(av).getTime(); bv = new Date(bv).getTime(); }
+    else { av = String(av).toLowerCase(); bv = String(bv).toLowerCase(); }
+    if (av < bv) return sortDir === "asc" ? -1 : 1;
+    if (av > bv) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+  return list;
+}
+
+const ICONS = {
+  view: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+  review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>',
+};
+
+function actionIconsHtml(id) {
+  return `
+    <div class="row-actions">
+      <button class="action-icon-btn icon-view" data-action="view" data-id="${id}" title="View">${ICONS.view}</button>
+      <button class="action-icon-btn icon-review" data-action="review" data-id="${id}" title="Review">${ICONS.review}</button>
+    </div>`;
+}
+
+function renderTable() {
+  const data = sortedApprovals();
+  const totalRows = data.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+  if (currentPage > totalPages) currentPage = totalPages;
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const pageRows = data.slice(start, start + rowsPerPage);
+
+  tbody.innerHTML = pageRows.length ? pageRows.map((a) => `
+    <tr data-id="${a.id}">
+      <td data-label="Quotation ID" class="font-medium">${a.id}</td>
+      <td data-label="Customer">${a.customer}</td>
+      <td data-label="Sales Executive">${a.salesExec}</td>
+      <td data-label="Project">${a.project}</td>
+      <td data-label="Amount">${formatINR(a.amount)}</td>
+      <td data-label="Submitted">${formatDate(a.submittedDate)}</td>
+      <td data-label="Status"><span class="pill ${statusPillClass[a.status]}">${a.status}</span></td>
+      <td data-label="Actions">${actionIconsHtml(a.id)}</td>
+    </tr>
+  `).join("") : `<tr><td colspan="8" style="text-align:center; padding: 24px; color:#9CA3AF;">No quotations match your search.</td></tr>`;
+
+  rowsRangeLabel.textContent = totalRows === 0
+    ? "No records"
+    : `${start + 1}–${Math.min(start + rowsPerPage, totalRows)} of ${totalRows}`;
+
+  renderPagination(totalPages);
+  updateSortIcons();
+}
+
+function renderPagination(totalPages) {
+  let html = "";
+  html += `<span class="pagination-btn ${currentPage === 1 ? "disabled" : ""}" data-page="prev">‹</span>`;
+  for (let p = 1; p <= totalPages; p++) {
+    if (totalPages > 7 && p !== 1 && p !== totalPages && Math.abs(p - currentPage) > 1) {
+      if (p === 2 || p === totalPages - 1) html += `<span class="pagination-btn disabled">…</span>`;
+      continue;
+    }
+    html += `<span class="pagination-btn ${p === currentPage ? "active" : ""}" data-page="${p}">${p}</span>`;
+  }
+  html += `<span class="pagination-btn ${currentPage === totalPages ? "disabled" : ""}" data-page="next">›</span>`;
+  paginationControls.innerHTML = html;
+
+  paginationControls.querySelectorAll(".pagination-btn:not(.disabled)").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const p = btn.getAttribute("data-page");
+      if (p === "prev") currentPage = Math.max(1, currentPage - 1);
+      else if (p === "next") currentPage = Math.min(totalPages, currentPage + 1);
+      else currentPage = parseInt(p, 10);
+      renderTable();
+    });
+  });
+}
+
+function updateSortIcons() {
+  document.querySelectorAll("#approvalTable thead th[data-key]").forEach((th) => {
+    const icon = th.querySelector(".sort-icon");
+    const key = th.getAttribute("data-key");
+    th.classList.toggle("sorted", key === sortKey);
+    icon.textContent = key === sortKey ? (sortDir === "asc" ? "↑" : "↓") : "⇅";
+  });
+}
+
+document.querySelectorAll("#approvalTable thead th[data-key]").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.getAttribute("data-key");
+    if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+    else { sortKey = key; sortDir = "asc"; }
+    currentPage = 1;
+    renderTable();
+  });
+});
+
+rowsPerPageSelect?.addEventListener("change", () => {
+  rowsPerPage = parseInt(rowsPerPageSelect.value, 10);
+  currentPage = 1;
+  renderTable();
+});
+
+// filter tabs
+document.getElementById("filterTabs")?.addEventListener("click", (e) => {
+  const btn = e.target.closest(".filter-tab");
+  if (!btn) return;
+  document.querySelectorAll(".filter-tab").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  activeTab = btn.getAttribute("data-status");
+  currentPage = 1;
+  renderTable();
+});
+
+// search fields
+[searchId, searchCustomer, searchExec].forEach((el) => {
+  el?.addEventListener("input", () => { currentPage = 1; renderTable(); });
+});
+searchStatus?.addEventListener("change", () => { currentPage = 1; renderTable(); });
+
+// ============================================================
+// View Modal — Quotation Details
+// ============================================================
+const viewModal = document.getElementById("viewModal");
+const viewModalCloseBtn = document.getElementById("viewModalCloseBtn");
+const viewModalCloseBtn2 = document.getElementById("viewModalCloseBtn2");
+const viewModalReviewBtn = document.getElementById("viewModalReviewBtn");
+
+let viewingId = null;
+
+function findApproval(id) {
+  return approvals.find((a) => a.id === id);
+}
+
+const TIMELINE_STEPS = [
+  { key: "submitted", label: "Submitted" },
+  { key: "reviewed", label: "Reviewed" },
+  { key: "approved", label: "Approved" },
+  { key: "converted", label: "Converted" },
+];
+
+const TIMELINE_ICON_DONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+const TIMELINE_ICON_REJECTED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+function renderTimeline(a) {
+  const isRejected = a.status === "Rejected";
+  return TIMELINE_STEPS.map((step, idx) => {
+    const value = a.timeline[step.key];
+    let stateClass = "";
+    let icon = "";
+
+    if (isRejected && step.key === "approved") {
+      stateClass = "rejected";
+      icon = TIMELINE_ICON_REJECTED;
+    } else if (value) {
+      stateClass = "done";
+      icon = TIMELINE_ICON_DONE;
+    } else {
+      // mark the next pending step as "current" if the previous step is done
+      const prevKey = TIMELINE_STEPS[idx - 1]?.key;
+      const prevDone = idx === 0 || a.timeline[prevKey];
+      if (prevDone && !value && !isRejected) stateClass = "current";
+    }
+
+    return `
+      <div class="timeline-step ${stateClass}">
+        <div class="timeline-line"></div>
+        <div class="timeline-dot">${icon}</div>
+        <div class="timeline-label">${isRejected && step.key === "approved" ? "Rejected" : step.label}</div>
+        <div class="timeline-date">${value ? formatDate(value) : "—"}</div>
+      </div>`;
+  }).join("");
+}
+
+function openViewModal(id) {
+  const a = findApproval(id);
+  if (!a) return;
+  viewingId = id;
+
+  document.getElementById("viewModalSubtitle").textContent = `${a.id} · ${a.status}`;
+  document.getElementById("dCustomer").textContent = a.customer;
+  document.getElementById("dExec").textContent = a.salesExec;
+  document.getElementById("dProject").textContent = a.project;
+  document.getElementById("dDate").textContent = formatDate(a.submittedDate);
+
+  document.getElementById("dProducts").innerHTML = a.products.map((p) => `
+    <tr>
+      <td>${p.name}</td>
+      <td class="num">${p.qty}</td>
+      <td class="num">${formatINR(p.rate)}</td>
+      <td class="num">${formatINR(p.qty * p.rate)}</td>
+    </tr>`).join("");
+
+  const subtotal = a.products.reduce((sum, p) => sum + p.qty * p.rate, 0);
+  document.getElementById("dSubtotal").textContent = formatINR(subtotal);
+  document.getElementById("dGst").textContent = formatINR(a.gst);
+  document.getElementById("dInstallation").textContent = formatINR(a.installation);
+  document.getElementById("dTransportation").textContent = formatINR(a.transportation);
+  document.getElementById("dTotal").textContent = formatINR(a.amount);
+
+  document.getElementById("dRemarks").textContent = a.remarks || "No remarks added.";
+  document.getElementById("dTimeline").innerHTML = renderTimeline(a);
+
+  viewModalReviewBtn.classList.toggle("hidden", a.status === "Converted");
+
+  viewModal.classList.remove("hidden");
+}
+
+function closeViewModal() {
+  viewModal.classList.add("hidden");
+  viewingId = null;
+}
+
+viewModalCloseBtn?.addEventListener("click", closeViewModal);
+viewModalCloseBtn2?.addEventListener("click", closeViewModal);
+viewModal?.addEventListener("click", (e) => { if (e.target === viewModal) closeViewModal(); });
+
+viewModalReviewBtn?.addEventListener("click", () => {
+  if (!viewingId) return;
+  closeViewModal();
+  openApprovalModal(viewingId);
+});
+
+// ============================================================
+// Approval Modal — Decision
+// ============================================================
+const approvalModal = document.getElementById("approvalModal");
+const approvalModalCloseBtn = document.getElementById("approvalModalCloseBtn");
+const approvalCancelBtn = document.getElementById("approvalCancelBtn");
+const approvalSubmitBtn = document.getElementById("approvalSubmitBtn");
+const decisionPillsWrap = document.getElementById("decisionPills");
+const managerRemarks = document.getElementById("managerRemarks");
+
+let reviewingId = null;
+let selectedDecision = null;
+
+const DECISION_BUTTON_LABEL = {
+  Approved: "Approve Quotation",
+  Rejected: "Reject Quotation",
+  "Revision Required": "Send for Revision",
+};
+
+function openApprovalModal(id) {
+  const a = findApproval(id);
+  if (!a) return;
+  reviewingId = id;
+  selectedDecision = null;
+  managerRemarks.value = "";
+
+  document.getElementById("approvalModalSubtitle").textContent = `${a.id} · ${a.customer}`;
+  decisionPillsWrap.querySelectorAll(".decision-pill").forEach((p) => p.classList.remove("selected"));
+  approvalSubmitBtn.textContent = "Select a decision";
+  approvalSubmitBtn.disabled = true;
+  approvalSubmitBtn.className = "btn-primary";
+
+  approvalModal.classList.remove("hidden");
+}
+
+function closeApprovalModal() {
+  approvalModal.classList.add("hidden");
+  reviewingId = null;
+  selectedDecision = null;
+}
+
+approvalModalCloseBtn?.addEventListener("click", closeApprovalModal);
+approvalCancelBtn?.addEventListener("click", closeApprovalModal);
+approvalModal?.addEventListener("click", (e) => { if (e.target === approvalModal) closeApprovalModal(); });
+
+decisionPillsWrap?.addEventListener("click", (e) => {
+  const pill = e.target.closest(".decision-pill");
+  if (!pill) return;
+  decisionPillsWrap.querySelectorAll(".decision-pill").forEach((p) => p.classList.remove("selected"));
+  pill.classList.add("selected");
+  selectedDecision = pill.getAttribute("data-decision");
+
+  approvalSubmitBtn.disabled = false;
+  approvalSubmitBtn.textContent = DECISION_BUTTON_LABEL[selectedDecision];
+  approvalSubmitBtn.className = selectedDecision === "Approved" ? "btn-success"
+    : selectedDecision === "Rejected" ? "btn-danger"
+    : "btn-primary";
+});
+
+approvalSubmitBtn?.addEventListener("click", () => {
+  if (!reviewingId || !selectedDecision) return;
+  const a = findApproval(reviewingId);
+  if (!a) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  a.timeline.reviewed = a.timeline.reviewed || today;
+
+  if (selectedDecision === "Approved") {
+    a.status = "Approved";
+    a.timeline.approved = today;
+  } else if (selectedDecision === "Rejected") {
+    a.status = "Rejected";
+  } else {
+    a.status = "Revision Required";
+  }
+
+  if (managerRemarks.value.trim()) {
+    a.remarks = managerRemarks.value.trim();
+  }
+
+  closeApprovalModal();
+  renderSummary();
+  renderTable();
+  showToast(`${a.id} marked as ${a.status}`);
+});
+
+// ============================================================
+// Row action wiring
+// ============================================================
+tbody?.addEventListener("click", (e) => {
+  const actionBtn = e.target.closest("[data-action]");
+  if (actionBtn) {
+    e.stopPropagation();
+    const id = actionBtn.getAttribute("data-id");
+    const action = actionBtn.getAttribute("data-action");
+    if (action === "view") openViewModal(id);
+    else if (action === "review") openApprovalModal(id);
+    return;
+  }
+  const row = e.target.closest("tr[data-id]");
+  if (row) openViewModal(row.getAttribute("data-id"));
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!approvalModal.classList.contains("hidden")) closeApprovalModal();
+  else if (!viewModal.classList.contains("hidden")) closeViewModal();
+});
+
+// ============================================================
+// Init
+// ============================================================
+renderSummary();
+renderTable();

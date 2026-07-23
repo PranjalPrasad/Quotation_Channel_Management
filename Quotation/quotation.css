@@ -1,15 +1,15 @@
 :root {
-    --ink: #1F2937;          /* primary text (was navy --active) */
-    --muted: #9CA3AF;        /* secondary/label text (was --hover2) */
-    --line: #F1F1F1;         /* hairline borders/dividers */
-    --line-soft: #E5E7EB;
-    --bg: #F3F4F6;           /* page background */
-    --card: #FFFFFF;         /* card background */
-    --accent: #FEB4A7;       /* peach-500 — primary brand accent */
-    --accent-dark: #F4917D;  /* peach-600 — hover/active accent */
-    --accent-soft: #FFF1EC;  /* light peach hover background */
-    --accent-100: #F8EDEB;
-    --accent-200: #FED5CD;
+    --ink: #1F2937;          /* primary text */
+    --muted: #9CA3AF;        /* secondary/label text */
+    --line: #DCC3AA;         /* card/sidebar/modal borders — matches ref peach-300 */
+    --line-soft: #DCC3AA;    /* input/button borders — same tan tone as ref */
+    --bg: #F7ECE1;           /* page background — ref cream */
+    --card: #F7ECE1;         /* card background — ref cream (same as page, border differentiates) */
+    --accent: #810B38;       /* primary brand accent — ref berry */
+    --accent-dark: #541A1A;  /* hover/active accent — ref maroon */
+    --accent-soft: #F1E2D1;  /* light peach hover background — ref accent-bg */
+    --accent-100: #F1E2D1;
+    --accent-200: #DCC3AA;
 }
 
 * { box-sizing: border-box; }
@@ -56,8 +56,8 @@ body {
     display: flex; align-items: center; justify-content: center;
     color: var(--accent-dark); cursor: pointer;
 }
-#sidebar-toggle i { transition: transform .3s ease; font-size: 11px; }
-#sidebar.sidebar-expanded #sidebar-toggle i { transform: rotate(180deg); }
+#sidebar-toggle svg { transition: transform .3s ease; width: 12px; height: 12px; flex-shrink: 0; }
+#sidebar.sidebar-expanded #sidebar-toggle svg { transform: rotate(180deg); }
 
 .sidebar-logo { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .sidebar-logo img { height: 42px; width: auto; object-fit: contain; }
@@ -76,6 +76,7 @@ body {
     cursor: pointer;
 }
 .nav-item i { font-size: 16px; width: 19px; text-align: center; flex-shrink: 0; }
+.nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
 .nav-item .nav-label {
     display: block; font-size: 12.5px; font-weight: 500; line-height: 1.3;
     white-space: nowrap; opacity: 0; width: 0; overflow: hidden; margin-left: 0;
@@ -109,6 +110,7 @@ body {
     transition: all .15s ease;
     flex-shrink: 0;
 }
+.icon-btn svg { flex-shrink: 0; }
 .icon-btn:hover { background: var(--accent-soft); border-color: var(--accent-200); color: var(--accent-dark); }
 
 /* ================= MAIN / TOPBAR ================= */
@@ -254,7 +256,7 @@ body {
 }
 .search-box {
     display: flex; align-items: center; gap: 8px;
-    background: var(--bg);
+    background: var(--accent-soft);
     border: 1px solid var(--line-soft);
     border-radius: 12px;
     padding: 9px 14px;
@@ -272,7 +274,7 @@ body {
     padding: 9px 12px;
     font-size: 12px;
     color: var(--ink);
-    background: var(--bg);
+    background: var(--accent-soft);
     outline: none;
     font-family: inherit;
 }
@@ -357,12 +359,12 @@ body {
 .action-icons { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .icon-action-btn {
     width: 30px; height: 30px; border-radius: 10px;
-    border: 1px solid var(--line-soft); background: var(--bg);
-    color: var(--muted); cursor: pointer;
+    border: 1px solid var(--line-soft); background: var(--accent-soft);
+    color: var(--accent-dark); cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 12.5px; transition: all .15s ease; flex-shrink: 0;
 }
-.icon-action-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.icon-action-btn:hover { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
 .icon-action-btn.danger:hover { background: #EF4444; border-color: #EF4444; }
 
 .table-footer {
@@ -374,11 +376,11 @@ body {
 .pagination { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .pagination button {
     min-width: 28px; height: 28px; border-radius: 8px;
-    border: 1px solid var(--line-soft); background: var(--bg);
-    color: var(--ink); cursor: pointer; font-size: 11px; padding: 0 6px;
+    border: 1px solid var(--line-soft); background: var(--accent-soft);
+    color: var(--accent-dark); cursor: pointer; font-size: 11px; padding: 0 6px;
 }
-.pagination button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.pagination button:hover:not(.active):not(:disabled) { background: var(--accent-soft); }
+.pagination button.active { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
+.pagination button:hover:not(.active):not(:disabled) { background: var(--accent); color: #fff; border-color: var(--accent); }
 .pagination button:disabled { opacity: .4; cursor: not-allowed; }
 .pagination .ellipsis { width: 20px; text-align: center; color: var(--muted); }
 
@@ -480,9 +482,12 @@ body {
 .form-field input, .form-field textarea, .form-field select {
     border: 1px solid var(--line-soft); border-radius: 12px;
     padding: 9px 12px; font-size: 12.5px; color: var(--ink);
-    outline: none; background: var(--bg); font-family: inherit; width: 100%;
+    outline: none; background: var(--accent-soft); font-family: inherit; width: 100%;
 }
-.form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(254,180,167,0.25); }
+.form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(129,11,56,0.2);
+    background: #fff;
+}
 .form-field input.invalid, .form-field textarea.invalid, .form-field select.invalid { border-color: #EF4444; }
 .field-error { font-size: 10.5px; color: #EF4444; min-height: 12px; }
 
@@ -529,7 +534,7 @@ body {
 .items-table tr:last-child td { border-bottom: none; }
 .items-table input, .items-table select {
     border: 1px solid var(--line-soft); border-radius: 8px;
-    padding: 6px 8px; font-size: 11.5px; color: var(--ink); background: var(--bg);
+    padding: 6px 8px; font-size: 11.5px; color: var(--ink); background: #fff;
     width: 100%; min-width: 70px; font-family: inherit;
 }
 .items-table td.item-name-cell { min-width: 140px; }
@@ -554,6 +559,7 @@ body {
 .cost-input, .cost-label-input {
     border: 1px solid var(--line-soft); border-radius: 8px;
     padding: 6px 10px; font-size: 12px; text-align: right; width: 130px; max-width: 100%; font-family: inherit;
+    background: #fff;
 }
 .cost-label-input { text-align: left; width: 100%; border: none; background: transparent; font-weight: 500; padding: 0; }
 

@@ -1,0 +1,217 @@
+/* ============================================================
+   User Management — extends dashboard.css theme
+   Reuses: cream/peach palette, Poppins, cards, table, modal
+   patterns already defined in /dashboard/dashboard.css
+   ============================================================ */
+
+/* ============ Search & filter bar ============ */
+.filter-input {
+  font-size: 12.5px;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #DCC3AA;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  height: 38px;
+}
+.filter-input::placeholder { color: #B3A69A; }
+.filter-input:focus { outline: none; border-color: #541A1A; box-shadow: 0 0 0 3px rgba(84,26,26,0.12); }
+
+.filter-select {
+  min-width: 140px;
+  cursor: pointer;
+}
+
+.filter-reset-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #810B38;
+  background: #F1E2D1;
+  border: 1px solid #DCC3AA;
+  border-radius: 10px;
+  padding: 9px 14px;
+  height: 38px;
+  cursor: pointer;
+  transition: background-color .15s ease;
+  white-space: nowrap;
+}
+.filter-reset-btn:hover { background: #E4CBAE; }
+
+/* ============ Users table extras ============ */
+#usersTable th:nth-child(1), #usersTable td:nth-child(1) { width: 8%; }
+#usersTable th.photo-th, #usersTable td:nth-child(2) { width: 7%; }
+#usersTable th:nth-child(3), #usersTable td:nth-child(3) { width: 13%; }
+#usersTable th:nth-child(4), #usersTable td:nth-child(4) { width: 16%; }
+#usersTable th:nth-child(5), #usersTable td:nth-child(5) { width: 10%; }
+#usersTable th:nth-child(6), #usersTable td:nth-child(6) { width: 10%; }
+#usersTable th:nth-child(7), #usersTable td:nth-child(7) { width: 11%; }
+#usersTable th:nth-child(8), #usersTable td:nth-child(8) { width: 8%; }
+#usersTable th:nth-child(9), #usersTable td:nth-child(9) { width: 9%; }
+#usersTable th:nth-child(10), #usersTable td:nth-child(10) { width: 12%; }
+
+.table-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  object-fit: cover;
+  display: block;
+}
+.table-avatar-initials {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #810B38;
+}
+
+/* role pills */
+.role-pill { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; display: inline-block; white-space: nowrap; }
+.role-pill-admin { background: #F1E2D1; color: #541A1A; }
+.role-pill-manager { background: #E0F2FE; color: #0369A1; }
+.role-pill-sales { background: #EDE9FE; color: #6D28D9; }
+
+/* status pills (reuse pill-pending style naming for compatibility) */
+.pill-active { background: #D1FAE5; color: #047857; }
+.pill-inactive { background: #FFE4E6; color: #E11D48; }
+
+/* action icon colors specific to user actions */
+.action-icon-btn.icon-reset:hover { color: #0369A1; background: #E0F2FE; }
+.action-icon-btn.icon-delete:hover { color: #E11D48; background: #FFE4E6; }
+
+/* empty state */
+.empty-state { text-align: center; padding: 34px 10px; }
+.empty-state.hidden { display: none; }
+
+/* ============ Wider modal variants ============ */
+.modal-panel-wide { max-width: 620px; }
+.modal-panel-sm { max-width: 380px; }
+.modal-body-single { grid-template-columns: 1fr !important; }
+
+.read-value {
+  font-size: 13px;
+  color: #1F2937;
+  background: #F1E2D1;
+  border-radius: 10px;
+  padding: 7px 10px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+}
+
+/* avatar upload */
+.avatar-upload-group { grid-column: 1 / -1; }
+.avatar-upload { display: flex; align-items: center; gap: 14px; }
+.avatar-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #810B38;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-preview-lg { width: 64px; height: 64px; font-size: 20px; }
+.avatar-upload-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #541A1A;
+  background: #F1E2D1;
+  border: 1px solid #DCC3AA;
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+.avatar-upload-btn:hover { background: #E4CBAE; }
+
+/* form error banner */
+.form-error {
+  margin: 0 16px 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #E11D48;
+  background: #FFE4E6;
+  border-radius: 9px;
+  padding: 7px 10px;
+}
+.form-error.hidden { display: none; }
+
+/* delete modal icon */
+.delete-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: #FFE4E6;
+  color: #E11D48;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.btn-danger {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: none;
+  background: #E11D48;
+  color: #fff;
+  transition: opacity .15s ease;
+}
+.btn-danger:hover { opacity: .85; }
+
+/* ============ Roles & permissions cards ============ */
+.permission-card {
+  border: 1px solid #DCC3AA;
+  border-radius: 18px;
+  padding: 16px;
+  background: #FBF6EF;
+}
+.permission-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.permission-card-title { font-size: 13px; font-weight: 700; color: #1F2937; }
+.permission-card-count { font-size: 10.5px; color: #9CA3AF; }
+.permission-list { display: flex; flex-direction: column; gap: 7px; }
+.permission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: #374151;
+  padding: 6px 8px;
+  border-radius: 9px;
+  background: #fff;
+  border: 1px solid #F0E4D6;
+}
+.permission-check, .permission-cross {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.permission-check { background: #D1FAE5; color: #047857; }
+.permission-cross { background: #FFE4E6; color: #E11D48; }
+.permission-check svg, .permission-cross svg { width: 11px; height: 11px; }
+
+@media (max-width: 720px) {
+  #usersTable td[data-label="Photo"] .table-avatar,
+  #usersTable td[data-label="Photo"] .table-avatar-initials {
+    margin-left: auto;
+  }
+}

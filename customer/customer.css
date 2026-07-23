@@ -5,8 +5,10 @@
    .modal-*, .field-*, .btn-primary, .btn-secondary, .pill, .pagination-btn,
    .action-icon-btn, .toast-animate — those already live in dashboard.css
    and are reused as-is so this page inherits the exact same theme.
-   Colors reused from dashboard.css: peach #FEB4A7 / peach-dark #F4917D /
-   peach-tint #FFF8F5, text #1F2937, muted #9CA3AF, hairline #F1F1F1 / #F3F4F6.
+
+   Color theme matched to dashboard.css / dashboard.html reference palette:
+   berry #810B38, maroon #541A1A, tan #DCC3AA, cream-100 #F1E2D1,
+   cream page-bg #F7ECE1, hairline #E9D9C6, text #1F2937, muted #9CA3AF.
    No Bootstrap / Tailwind / jQuery / frameworks — plain CSS + flex/grid.
    ========================================================================== */
 
@@ -53,13 +55,13 @@
   font-weight: 600;
   padding: 9px 16px;
   border-radius: 12px;
-  background: #fff;
-  color: #374151;
-  border: 1px solid #E5E7EB;
+  background: #F7ECE1;
+  color: #541A1A;
+  border: 1px solid #DCC3AA;
   cursor: pointer;
   transition: background-color .15s ease, border-color .15s ease;
 }
-.btn-export:hover { background: #F9FAFB; border-color: #D1D5DB; }
+.btn-export:hover { background: #F1E2D1; border-color: #810B38; }
 .btn-export svg { width: 13px; height: 13px; }
 .export-menu {
   position: absolute;
@@ -83,8 +85,8 @@
   text-align: left;
 }
 .export-menu-item svg { width: 14px; height: 14px; color: #9CA3AF; }
-.export-menu-item:hover { background: #FFF8F5; color: #F4917D; }
-.export-menu-item:hover svg { color: #F4917D; }
+.export-menu-item:hover { background: #F1E2D1; color: #810B38; }
+.export-menu-item:hover svg { color: #810B38; }
 
 /* ============ Summary cards ============ */
 .summary-grid {
@@ -97,20 +99,20 @@
 @media (max-width: 560px) { .summary-grid { grid-template-columns: 1fr; } }
 
 .summary-card {
-  background: #fff;
-  border: 1px solid #F3F4F6;
+  background: #F7ECE1;
+  border: 1px solid #DCC3AA;
   border-radius: 1.75rem;
   padding: 20px;
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  box-shadow: 0 1px 2px rgba(31,41,55,0.04);
+  box-shadow: 0 1px 2px rgba(84,26,26,0.06);
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 .summary-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 28px rgba(31,41,55,0.10);
-  border-color: #FED5CD;
+  box-shadow: 0 14px 28px rgba(84,26,26,0.14);
+  border-color: #810B38;
 }
 .summary-icon {
   width: 44px;
@@ -120,7 +122,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #FEB4A7;
+  background: #810B38;
   color: #fff;
 }
 .summary-icon svg { width: 20px; height: 20px; }
@@ -136,12 +138,12 @@
 
 /* ============ Filter bar ============ */
 .filter-card {
-  background: #fff;
-  border: 1px solid #F3F4F6;
+  background: #F7ECE1;
+  border: 1px solid #DCC3AA;
   border-radius: 1.75rem;
   padding: 18px 20px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 2px rgba(31,41,55,0.04);
+  box-shadow: 0 1px 2px rgba(84,26,26,0.06);
 }
 .filter-row {
   display: flex;
@@ -196,17 +198,17 @@
 .custom-select-trigger .cs-label { font-size: 13px; color: #1F2937; }
 .custom-select-trigger .cs-chevron { width: 13px; height: 13px; color: #9CA3AF; flex-shrink: 0; transition: transform .15s ease; }
 .custom-select-trigger[aria-expanded="true"] .cs-chevron { transform: rotate(180deg); }
-.custom-select-trigger:focus { outline: none; border-color: #FEB4A7; box-shadow: 0 0 0 3px rgba(254,180,167,0.25); }
+.custom-select-trigger:focus { outline: none; border-color: #541A1A; box-shadow: 0 0 0 3px rgba(84,26,26,0.2); }
 
 .custom-select-panel {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: #fff;
-  border: 1px solid #F1F1F1;
+  background: #F7ECE1;
+  border: 1px solid #DCC3AA;
   border-radius: 14px;
-  box-shadow: 0 12px 30px rgba(31,41,55,0.15);
+  box-shadow: 0 12px 30px rgba(84,26,26,0.15);
   padding: 6px;
   z-index: 50;
   max-height: 220px;
@@ -220,16 +222,16 @@
   cursor: pointer;
   transition: background-color .12s ease, color .12s ease;
 }
-.custom-select-option:hover { background: #FFF8F5; color: #F4917D; }
-.custom-select-option.selected { background: #FEB4A7; color: #fff; font-weight: 600; }
+.custom-select-option:hover { background: #F1E2D1; color: #810B38; }
+.custom-select-option.selected { background: #810B38; color: #fff; font-weight: 600; }
 
 /* ============ Table card wrapper ============ */
 .table-card {
-  background: #fff;
-  border: 1px solid #F3F4F6;
+  background: #F7ECE1;
+  border: 1px solid #DCC3AA;
   border-radius: 1.75rem;
   padding: 20px;
-  box-shadow: 0 1px 2px rgba(31,41,55,0.04);
+  box-shadow: 0 1px 2px rgba(84,26,26,0.06);
   margin-bottom: 20px;
 }
 .table-card-head {
@@ -244,7 +246,7 @@
 .table-card-head p { font-size: 11px; color: #9CA3AF; margin: 2px 0 0; }
 .table-scroll { width: 100%; overflow-x: auto; }
 .table-scroll .data-table { min-width: 980px; }
-.data-table thead th { position: sticky; top: 0; background: #fff; z-index: 2; cursor: default; }
+.data-table thead th { position: sticky; top: 0; background: #F7ECE1; z-index: 2; cursor: default; }
 
 /* ----------------------------------------------------------------
    IMPORTANT: dashboard.css defines .data-table th:nth-child(1..7)
@@ -281,7 +283,7 @@
 .pill-commercial { background: #E0F2FE; color: #0369A1; }
 .pill-industrial { background: #D1FAE5; color: #047857; }
 .pill-active { background: #D1FAE5; color: #047857; }
-.pill-inactive { background: #F3F4F6; color: #6B7280; }
+.pill-inactive { background: #F1E2D1; color: #6B7280; }
 
 .action-icon-btn.icon-quote:hover { color: #B45309; background: #FEF3C7; }
 .action-icon-btn.icon-delete:hover { color: #E11D48; background: #FFE4E6; }
@@ -312,17 +314,17 @@
 
 /* ============ History accordion ============ */
 .history-list { display: flex; flex-direction: column; gap: 10px; }
-.history-card { border: 1px solid #F3F4F6; border-radius: 16px; overflow: hidden; }
+.history-card { border: 1px solid #DCC3AA; border-radius: 16px; overflow: hidden; }
 .history-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
   cursor: pointer;
-  background: #fff;
+  background: #F7ECE1;
   transition: background-color .15s ease;
 }
-.history-card-head:hover { background: #FFF8F5; }
+.history-card-head:hover { background: #F1E2D1; }
 .history-card-name { font-size: 13px; font-weight: 600; color: #1F2937; }
 .history-card-sub { font-size: 11px; color: #9CA3AF; margin-top: 2px; }
 .history-chevron { width: 16px; height: 16px; color: #9CA3AF; transition: transform .2s ease; flex-shrink: 0; }
@@ -331,12 +333,12 @@
   max-height: 0;
   overflow: hidden;
   transition: max-height .25s ease;
-  background: #FFF8F5;
+  background: #F1E2D1;
 }
 .history-card.open .history-card-body { max-height: 320px; }
 .history-timeline { list-style: none; margin: 0; padding: 14px 20px 16px; display: flex; flex-direction: column; gap: 12px; }
 .history-timeline li { display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px; color: #374151; }
-.history-dot { width: 8px; height: 8px; border-radius: 50%; background: #FEB4A7; margin-top: 4px; flex-shrink: 0; }
+.history-dot { width: 8px; height: 8px; border-radius: 50%; background: #810B38; margin-top: 4px; flex-shrink: 0; }
 .history-timeline .h-when { color: #9CA3AF; font-size: 11px; display: block; margin-top: 1px; }
 
 /* ============ Follow-up section ============ */
