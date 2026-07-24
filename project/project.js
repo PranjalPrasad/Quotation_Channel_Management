@@ -1,16 +1,42 @@
 // ============================================================
-// Sidebar collapse / expand (same behaviour as dashboard.js)
+// Sidebar collapse / expand (same behaviour as dashboard.js,
+// including the mobile/tablet overlay drawer + backdrop)
 // ============================================================
 const sidebar = document.getElementById("sidebar");
 const sidebarToggle = document.getElementById("sidebarToggle");
 const toggleIcon = document.getElementById("toggleIcon");
+const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 let expanded = false;
 
-sidebarToggle?.addEventListener("click", () => {
-  expanded = !expanded;
+function isMobileOrTablet() {
+  return window.innerWidth < 1024;
+}
+
+function setSidebarExpanded(value) {
+  expanded = value;
   sidebar.classList.toggle("expanded", expanded);
   sidebar.classList.toggle("collapsed", !expanded);
   toggleIcon.style.transform = expanded ? "rotate(180deg)" : "rotate(0deg)";
+  if (isMobileOrTablet()) {
+    sidebarBackdrop.classList.toggle("visible", expanded);
+  }
+}
+
+// start collapsed, same as dashboard on first load
+sidebar.classList.add("collapsed");
+
+sidebarToggle?.addEventListener("click", () => {
+  setSidebarExpanded(!expanded);
+});
+
+sidebarBackdrop?.addEventListener("click", () => {
+  setSidebarExpanded(false);
+});
+
+window.addEventListener("resize", () => {
+  if (!isMobileOrTablet()) {
+    sidebarBackdrop.classList.remove("visible");
+  }
 });
 
 document.querySelectorAll(".nav-list .nav-item").forEach((item) => {

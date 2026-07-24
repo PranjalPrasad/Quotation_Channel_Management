@@ -151,3 +151,12 @@
 @media (max-width: 560px) {
   .project-details-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ============ Responsive tightening to match dashboard scale on small screens ============ */
+@media (max-width: 767px) {
+  .filter-input, .filter-reset-btn { height: 36px; font-size: 12px; }
+  .project-details-grid { gap: 10px; }
+}
+@media (max-width: 480px) {
+  .filter-select { min-width: 110px; }
+}

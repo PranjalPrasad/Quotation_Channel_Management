@@ -1,33 +1,55 @@
 // ============================================================
 // Sidebar collapse / expand
+// Below 1024px (phone + tablet) the expanded sidebar becomes an
+// overlay drawer with a backdrop, so it never squeezes the
+// dashboard content — matching CSS lives in the
+// "Mobile / tablet sidebar drawer" block in dashboard.css.
 // ============================================================
 const sidebar = document.getElementById("sidebar");
 const sidebarToggle = document.getElementById("sidebarToggle");
 const toggleIcon = document.getElementById("toggleIcon");
+const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 
 let expanded = false;
 
-sidebarToggle.addEventListener("click", () => {
-  expanded = !expanded;
+function setSidebarExpanded(next) {
+  expanded = next;
   sidebar.classList.toggle("expanded", expanded);
   sidebar.classList.toggle("collapsed", !expanded);
   toggleIcon.style.transform = expanded ? "rotate(180deg)" : "rotate(0deg)";
+
+  const isDrawerViewport = window.matchMedia("(max-width: 1023px)").matches;
+  sidebarBackdrop.classList.toggle("visible", expanded && isDrawerViewport);
+}
+
+sidebarToggle.addEventListener("click", () => setSidebarExpanded(!expanded));
+sidebarBackdrop.addEventListener("click", () => setSidebarExpanded(false));
+
+// collapse the drawer automatically when resizing up to desktop
+window.addEventListener("resize", () => {
+  if (!window.matchMedia("(max-width: 1023px)").matches) {
+    sidebarBackdrop.classList.remove("visible");
+  }
 });
 
-// ============================================================
-// Nav item active state
-// ============================================================
-const navItems = document.querySelectorAll(".nav-list .nav-item");
-navItems.forEach((item) => {
+// tapping a nav item closes the mobile drawer (it either navigates
+// away or is a no-op item, either way the drawer shouldn't linger)
+document.querySelectorAll(".nav-list .nav-item").forEach((item) => {
   item.addEventListener("click", () => {
-    navItems.forEach((i) => i.classList.remove("active"));
-    item.classList.add("active");
+    if (window.matchMedia("(max-width: 1023px)").matches) setSidebarExpanded(false);
   });
 });
 
 // ============================================================
+// Nav item active state
+// (Dashboard is marked active in the HTML since this is the
+// dashboard module — clicking another item navigates away, so
+// we don't need to move the active state around this page.)
+// ============================================================
+
+// ============================================================
 // Quotation Status Distribution + System Size Distribution
-// — Chart.js doughnut charts, recoloured to the Color Hunt
+// — Chart.js charts, recoloured to the Color Hunt
 // palette (#810B38 / #F1E2D1 / #DCC3AA / #541A1A)
 // ============================================================
 Chart.defaults.font.family = "'Poppins', sans-serif";
@@ -52,7 +74,7 @@ const donutTooltipOpts = {
   boxPadding: 4,
 };
 
-// ---- Chart 1: Quotation Status Distribution ----
+// ---- Chart 1: Quotation Status Distribution (doughnut) ----
 const statusCounts = { Pending: 58, Accepted: 156, Rejected: 34 };
 
 window.statusPieChart = new Chart(document.getElementById("chartStatusDistribution"), {
@@ -74,14 +96,14 @@ window.statusPieChart = new Chart(document.getElementById("chartStatusDistributi
     plugins: {
       legend: {
         position: "bottom",
-        labels: { color: "#6B7280", boxWidth: 10, boxHeight: 10, padding: 10, usePointStyle: true, pointStyle: "circle" }
+        labels: { color: "#6B7280", boxWidth: 8, boxHeight: 8, padding: 8, font: { size: 10 }, usePointStyle: true, pointStyle: "circle" }
       },
       tooltip: donutTooltipOpts,
     }
   }
 });
 
-// ---- Chart 2: Quotations by System Size Category ----
+// ---- Chart 2: Quotations by System Size Category — bar/histogram ----
 function sizeCategory(sizeStr) {
   const kw = parseFloat(sizeStr);
   if (kw <= 5) return "Small (≤5 kW)";
@@ -105,29 +127,40 @@ function quotationsForSizeChart() {
   ];
 }
 
-window.sizePieChart = new Chart(document.getElementById("chartSizeDistribution"), {
-  type: "doughnut",
+const sizeCategoryOrder = ["Small (≤5 kW)", "Medium (6–20 kW)", "Large (>20 kW)"];
+const sizeLabels = sizeCategoryOrder.filter((c) => c in sizeBuckets);
+const sizeValues = sizeLabels.map((c) => sizeBuckets[c]);
+
+window.sizeBarChart = new Chart(document.getElementById("chartSizeDistribution"), {
+  type: "bar",
   data: {
-    labels: Object.keys(sizeBuckets),
+    labels: sizeLabels,
     datasets: [{
-      data: Object.values(sizeBuckets),
+      label: "Quotations",
+      data: sizeValues,
       backgroundColor: [paletteBerry, paletteTan, paletteMaroon],
-      borderColor: "#F1E2D1",
-      borderWidth: 3,
-      hoverOffset: 6,
+      borderRadius: 8,
+      maxBarThickness: 46,
     }]
   },
   options: {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: "62%",
     plugins: {
-      legend: {
-        position: "bottom",
-        labels: { color: "#6B7280", boxWidth: 10, boxHeight: 10, padding: 10, usePointStyle: true, pointStyle: "circle" }
-      },
+      legend: { display: false },
       tooltip: donutTooltipOpts,
-    }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: "#6B7280" },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: "#6B7280", precision: 0 },
+        grid: { color: "#F0E4D6" },
+      },
+    },
   }
 });
 
@@ -524,6 +557,13 @@ function showToast(message) {
 /* ---------------- Init table ---------------- */
 renderTable();
 
+// ============================================================
+// New Quotation button — redirects to the Quotation Management module
+// ============================================================
+const newQuotationBtn = document.getElementById('newQuotationBtn');
+newQuotationBtn?.addEventListener('click', () => {
+  window.location.href = '../Quotation/quotation.html';
+});
 
 // ============================================================
 // Topbar: notification + profile dropdowns
@@ -556,7 +596,10 @@ profileBtn?.addEventListener("click", (e) => {
 
 document.addEventListener("click", () => closeAllTopbarDropdowns());
 
+// ============================================================
+// Logout — redirects to index.html
+// ============================================================
 profileLogoutBtn?.addEventListener("click", () => {
   showToast("Logged out");
-  // apna actual logout / redirect logic yaha daal dena
+  window.location.href = "../index.html";
 });

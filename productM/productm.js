@@ -1,5 +1,6 @@
 /* =========================================================
    Solar Quotation System — Product Management
+   Sidebar / topbar behaviour mirrors dashboard.js exactly.
    ========================================================= */
 
 (function () {
@@ -13,92 +14,109 @@
             if (typeof requireAuth === 'function') await requireAuth();
             if (typeof getAdminInfo === 'function') {
                 const admin = getAdminInfo();
-                const nameEl = document.querySelector('.user-name');
-                if (nameEl && admin?.name) nameEl.textContent = admin.name;
+                const profileBtn = document.getElementById('profileBtn');
+                if (profileBtn && admin?.name) profileBtn.textContent = admin.name.charAt(0).toUpperCase();
             }
         } catch (e) { /* auth.js not wired yet in this preview */ }
     })();
 
-    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
+    // ---------------------------------------------------
+    // 1. Sidebar (collapse / expand + mobile drawer) — identical to dashboard.js
+    // ---------------------------------------------------
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const toggleIcon = document.getElementById('toggleIcon');
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+    let sidebarExpanded = false;
+
+    function isMobile() {
+        return window.innerWidth < 1024;
+    }
+
+    function updateChevron() {
+        if (!toggleIcon) return;
+        toggleIcon.style.transform = sidebarExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    function openSidebar() {
+        sidebarExpanded = true;
+        sidebar?.classList.add('expanded');
+        sidebar?.classList.remove('collapsed');
+        if (isMobile()) {
+            sidebarBackdrop?.classList.remove('hidden');
+            sidebarBackdrop?.classList.add('visible');
+        }
+        updateChevron();
+    }
+
+    function closeSidebar() {
+        sidebarExpanded = false;
+        sidebar?.classList.remove('expanded');
+        sidebar?.classList.add('collapsed');
+        sidebarBackdrop?.classList.remove('visible');
+        sidebarBackdrop?.classList.add('hidden');
+        updateChevron();
+    }
+
+    sidebarToggle?.addEventListener('click', () => {
+        sidebarExpanded ? closeSidebar() : openSidebar();
+    });
+
+    sidebarBackdrop?.addEventListener('click', closeSidebar);
+
+    // Auto-close mobile drawer when a nav item is clicked / resized to desktop
+    document.querySelectorAll('.nav-item').forEach((item) => {
+        item.addEventListener('click', () => {
+            if (isMobile()) closeSidebar();
+        });
+    });
+
+    window.addEventListener('resize', () => {
+        if (!isMobile() && sidebarExpanded) {
+            // keep expanded state but drop the mobile-only backdrop
+            sidebarBackdrop?.classList.remove('visible');
+            sidebarBackdrop?.classList.add('hidden');
+        }
+    });
+
+    // Sidebar starts collapsed by default (icon rail), same as dashboard
+    closeSidebar();
+
+    // ---------------------------------------------------
+    // 2. Topbar dropdowns (notification / profile) — identical to dashboard.js
+    // ---------------------------------------------------
+    const notifBtn = document.getElementById('notifBtn');
+    const notifDropdown = document.getElementById('notifDropdown');
+    const profileBtn = document.getElementById('profileBtn');
+    const profileDropdown = document.getElementById('profileDropdown');
+    const profileLogoutBtn = document.getElementById('profileLogoutBtn');
+
+    notifBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        notifDropdown?.classList.toggle('hidden');
+        profileDropdown?.classList.add('hidden');
+    });
+
+    profileBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        profileDropdown?.classList.toggle('hidden');
+        notifDropdown?.classList.add('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!profileBtn?.contains(e.target) && !profileDropdown?.contains(e.target)) profileDropdown?.classList.add('hidden');
+        if (!notifBtn?.contains(e.target) && !notifDropdown?.contains(e.target)) notifDropdown?.classList.add('hidden');
+    });
+
+    profileLogoutBtn?.addEventListener('click', async (e) => {
         e.preventDefault();
         if (typeof logout === 'function') await logout();
         else window.location.href = '../index.html';
     });
 
     // ---------------------------------------------------
-    // 1. Sidebar / Topbar interactions (peach theme markup)
-    // ---------------------------------------------------
-    let isExpanded = false;
-    const sidebar = document.getElementById('sidebar');
-    const mainWrapper = document.getElementById('main-wrapper');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const toggleIcon = document.getElementById('toggleIcon');
-    const mobileToggle = document.getElementById('mobile-sidebar-toggle');
-    const overlay = document.getElementById('sidebar-overlay');
-
-    function updateChevron() {
-        if (!toggleIcon) return;
-        toggleIcon.style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
-    }
-
-    function openMobileSidebar() {
-        sidebar?.classList.add('sidebar-open');
-        overlay?.classList.remove('hidden');
-    }
-    function closeMobileSidebar() {
-        sidebar?.classList.remove('sidebar-open');
-        overlay?.classList.add('hidden');
-    }
-
-    sidebarToggle?.addEventListener('click', () => {
-        if (window.innerWidth < 1024) {
-            sidebar.classList.contains('sidebar-open') ? closeMobileSidebar() : openMobileSidebar();
-        } else {
-            isExpanded = !isExpanded;
-            sidebar.classList.toggle('sidebar-expanded', isExpanded);
-            sidebar.classList.toggle('sidebar-collapsed', !isExpanded);
-            mainWrapper.classList.toggle('main-expanded', isExpanded);
-        }
-        updateChevron();
-    });
-
-    mobileToggle?.addEventListener('click', openMobileSidebar);
-    overlay?.addEventListener('click', closeMobileSidebar);
-
-    window.addEventListener('resize', () => {
-        if (window.innerWidth >= 1024) closeMobileSidebar();
-    });
-
-    // Nav active state (in case future nav items are clicked without navigating away)
-    document.querySelectorAll('.nav-item').forEach((item) => {
-        item.addEventListener('click', () => {
-            if (window.innerWidth < 1024) closeMobileSidebar();
-        });
-    });
-
-    // Notification / user dropdowns
-    const notifBtn = document.getElementById('notif-btn');
-    const notifMenu = document.getElementById('notif-menu');
-    const userBtn = document.getElementById('user-menu-btn');
-    const userMenu = document.getElementById('user-menu');
-
-    notifBtn?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        notifMenu.classList.toggle('hidden');
-        userMenu?.classList.add('hidden');
-    });
-    userBtn?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        userMenu.classList.toggle('hidden');
-        notifMenu?.classList.add('hidden');
-    });
-    document.addEventListener('click', (e) => {
-        if (!userBtn?.contains(e.target) && !userMenu?.contains(e.target)) userMenu?.classList.add('hidden');
-        if (!notifBtn?.contains(e.target) && !notifMenu?.contains(e.target)) notifMenu?.classList.add('hidden');
-    });
-
-    // ---------------------------------------------------
-    // 2. Generic modal open/close
+    // 3. Generic modal open/close
     // ---------------------------------------------------
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
@@ -111,14 +129,15 @@
     });
 
     // ---------------------------------------------------
-    // 3. Toast helper
+    // 4. Toast helper
     // ---------------------------------------------------
     function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
         const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark';
+        const color = type === 'success' ? 'text-emerald-600' : 'text-rose-500';
         const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+        toast.className = 'toast-animate bg-cream border border-peach-300 rounded-xl px-3.5 py-2.5 text-xs text-gray-700 shadow-lg flex items-center gap-2';
+        toast.innerHTML = `<i class="fas ${icon} ${color}"></i><span>${message}</span>`;
         container.appendChild(toast);
         setTimeout(() => {
             toast.style.transition = 'opacity .25s ease';
@@ -128,7 +147,7 @@
     }
 
     // ---------------------------------------------------
-    // 4. Seed data (replace with API call to your backend)
+    // 5. Seed data (replace with API call to your backend)
     //    Pricing: mrp (₹), price = selling price (₹), discount (%)
     //    BOQ:     qtyPerKw = default quantity of this product required
     //             per 1 kW of system capacity (unit follows p.unit)
@@ -158,7 +177,7 @@
     ];
 
     // ---------------------------------------------------
-    // 4b. Stock Ledger — logs manual stock in / stock out entries
+    // 5b. Stock Ledger — logs manual stock in / stock out entries
     // ---------------------------------------------------
     let stockLedger = [
         { id: 'SL-1', productId: 'P-1001', type: 'in', qty: 100, reason: 'Initial stock', date: '2026-07-01' },
@@ -168,7 +187,7 @@
     let ledgerCounter = stockLedger.length;
 
     // ---------------------------------------------------
-    // 5. State
+    // 6. State
     // ---------------------------------------------------
     let state = {
         search: '',
@@ -231,7 +250,7 @@
     }
 
     // ---------------------------------------------------
-    // 6. Render
+    // 7. Render
     // ---------------------------------------------------
     const tbody = document.getElementById('product-tbody');
     const emptyState = document.getElementById('empty-state');
@@ -246,7 +265,6 @@
         document.getElementById('stat-total').textContent = products.length.toLocaleString('en-IN');
         document.getElementById('stat-active').textContent = products.filter(p => computeStatusLabel(p) === 'Active').length.toLocaleString('en-IN');
         document.getElementById('stat-low').textContent = products.filter(p => ['Low Stock', 'Out of Stock'].includes(computeStatusLabel(p))).length.toLocaleString('en-IN');
-        // Inventory value is based on selling price (price), not MRP
         const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
         document.getElementById('stat-value').textContent = formatINR(totalValue);
     }
@@ -280,47 +298,48 @@
             const hasDiscount = p.mrp && p.mrp > p.price;
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>
+                <td data-label="Product">
                     <div class="product-cell">
                         <div class="row-icon ${meta.cls}"><i class="fas ${meta.icon}"></i></div>
-                        <div>
+                        <div class="min-w-0">
                             <div class="product-name">${escapeHtml(p.name)}</div>
                             <div class="product-sub">${escapeHtml(p.brand)} · ${escapeHtml(p.sku || '—')}</div>
                         </div>
                     </div>
                 </td>
-                <td>${escapeHtml(p.category)}</td>
-                <td>${escapeHtml(p.brand)}</td>
-                <td>${escapeHtml(p.spec || '—')}</td>
-                <td>${formatQtyPerKw(p)}</td>
-                <td>
+                <td data-label="Category">${escapeHtml(p.category)}</td>
+                <td data-label="Brand">${escapeHtml(p.brand)}</td>
+                <td data-label="Specification">${escapeHtml(p.spec || '—')}</td>
+                <td data-label="Qty / kW">${formatQtyPerKw(p)}</td>
+                <td data-label="Selling Price">
                     <div class="price-cell">
                         ${hasDiscount ? `<span class="price-mrp">₹${p.mrp.toLocaleString('en-IN')}</span>` : ''}
                         <span class="price-selling">₹${p.price.toLocaleString('en-IN')}${hasDiscount ? `<span class="discount-badge">${p.discount || Math.round((p.mrp - p.price) / p.mrp * 100)}% OFF</span>` : ''}</span>
                     </div>
                 </td>
-                <td>${p.stock} ${escapeHtml(p.unit)}</td>
-                <td><span class="badge ${badgeClass(label)}">${label}</span></td>
-                <td>
-                    <div class="action-icons">
-                        <button class="icon-action-btn" data-action="view" data-id="${p.id}" title="View"><i class="fas fa-eye"></i></button>
-                        <button class="icon-action-btn" data-action="edit" data-id="${p.id}" title="Edit"><i class="fas fa-pen"></i></button>
-                        <button class="icon-action-btn" data-action="stock" data-id="${p.id}" title="Stock History"><i class="fas fa-clock-rotate-left"></i></button>
-                        <button class="icon-action-btn danger" data-action="delete" data-id="${p.id}" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                <td data-label="Stock">${p.stock} ${escapeHtml(p.unit)}</td>
+                <td data-label="Status"><span class="badge ${badgeClass(label)}">${label}</span></td>
+                <td data-label="Actions">
+                    <div class="row-actions">
+                        <button class="action-icon-btn icon-view" data-action="view" data-id="${p.id}" title="View"><i class="fas fa-eye"></i></button>
+                        <button class="action-icon-btn icon-edit" data-action="edit" data-id="${p.id}" title="Edit"><i class="fas fa-pen"></i></button>
+                        <button class="action-icon-btn icon-stock" data-action="stock" data-id="${p.id}" title="Stock History"><i class="fas fa-clock-rotate-left"></i></button>
+                        <button class="action-icon-btn danger" data-action="delete" data-id="${p.id}" title="Delete"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </td>
             `;
             tbody.appendChild(tr);
         });
 
-        renderPagination(totalPages, total, start, pageItems.length);
+        renderPagination(totalPages, total);
         renderStats();
     }
 
-    function renderPagination(totalPages, total, start, shown) {
+    function renderPagination(totalPages) {
         paginationEl.innerHTML = '';
 
         const prev = document.createElement('button');
+        prev.className = 'pagination-btn' + (state.page === 1 ? ' disabled' : '');
         prev.innerHTML = '<i class="fas fa-chevron-left" style="font-size:9px"></i>';
         prev.disabled = state.page === 1;
         prev.addEventListener('click', () => { state.page--; render(); });
@@ -333,13 +352,14 @@
 
         for (let i = startPage; i <= endPage; i++) {
             const btn = document.createElement('button');
+            btn.className = 'pagination-btn' + (i === state.page ? ' active' : '');
             btn.textContent = i;
-            if (i === state.page) btn.classList.add('active');
             btn.addEventListener('click', () => { state.page = i; render(); });
             paginationEl.appendChild(btn);
         }
 
         const next = document.createElement('button');
+        next.className = 'pagination-btn' + (state.page === totalPages ? ' disabled' : '');
         next.innerHTML = '<i class="fas fa-chevron-right" style="font-size:9px"></i>';
         next.disabled = state.page === totalPages;
         next.addEventListener('click', () => { state.page++; render(); });
@@ -347,7 +367,7 @@
     }
 
     // ---------------------------------------------------
-    // 7. Filters / search / sort / pagination wiring
+    // 8. Filters / search / sort / pagination wiring
     // ---------------------------------------------------
     let searchTimer;
     document.getElementById('search-input').addEventListener('input', (e) => {
@@ -386,13 +406,13 @@
                 state.sortKey = key;
                 state.sortDir = 'asc';
             }
-            document.querySelectorAll('.data-table thead th i').forEach(i => i.className = 'fas fa-sort');
-            th.querySelector('i').className = `fas fa-sort-${state.sortDir === 'asc' ? 'up' : 'down'}`;
+            document.querySelectorAll('.data-table thead th').forEach(h => h.classList.remove('sorted'));
+            th.classList.add('sorted');
             render();
         });
     });
 
-    // Row action buttons (View / Edit / Stock History / Delete) — inline, no dropdown
+    // Row action buttons (View / Edit / Stock History / Delete)
     tbody.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
@@ -408,7 +428,7 @@
     });
 
     // ---------------------------------------------------
-    // 8. Add / Edit modal + validation
+    // 9. Add / Edit modal + validation
     // ---------------------------------------------------
     const form = {
         id: document.getElementById('pf-id'),
@@ -498,7 +518,7 @@
     document.getElementById('btn-add-product').addEventListener('click', () => openProductModal(null));
 
     function clearErrors() {
-        document.querySelectorAll('#modal-product .form-field input, #modal-product .form-field select, #modal-product .form-field textarea')
+        document.querySelectorAll('#modal-product .field-input')
             .forEach(f => f.classList.remove('invalid'));
         document.querySelectorAll('#modal-product .field-error').forEach(e => e.textContent = '');
     }
@@ -589,7 +609,7 @@
     });
 
     // ---------------------------------------------------
-    // 9. View modal
+    // 10. View modal
     // ---------------------------------------------------
     const viewBody = document.getElementById('view-product-body');
 
@@ -621,7 +641,7 @@
     }
 
     // ---------------------------------------------------
-    // 9b. Stock History modal (ledger of stock in / out)
+    // 10b. Stock History modal (ledger of stock in / out)
     // ---------------------------------------------------
     let stockHistoryProduct = null;
     const stockLedgerBody = document.getElementById('stock-ledger-body');
@@ -701,7 +721,7 @@
     });
 
     // ---------------------------------------------------
-    // 10. Delete modal
+    // 11. Delete modal
     // ---------------------------------------------------
     let productToDelete = null;
 
@@ -722,12 +742,11 @@
     });
 
     // ---------------------------------------------------
-    // 11. Initial render
+    // 12. Initial render
     // ---------------------------------------------------
     render();
 
     // Expose product data for BOQ auto-generation logic elsewhere in the app
-    // (e.g. quotation.js can read window.SolarProducts to pull qtyPerKw ratios)
     window.SolarProducts = {
         getAll: () => products,
         getById: (id) => products.find(p => p.id === id),

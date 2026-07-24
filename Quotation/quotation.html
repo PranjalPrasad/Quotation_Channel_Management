@@ -1,576 +1,654 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quotation Management — Solar Admin</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/Quotation/quotation.css">
-    <!-- PDF generation (used to download the invoice as a PDF file) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Quotation Management — Solar Admin</title>
+
+<!-- Tailwind CDN (same config as Dashboard, so colors/fonts match exactly) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          peach: {
+            50:  "#FBF6EF",
+            100: "#F1E2D1",
+            200: "#E4CBAE",
+            300: "#DCC3AA",
+            400: "#A8446B",
+            500: "#810B38",
+            600: "#6B0930",
+            700: "#541A1A",
+          },
+          cream: "#F7ECE1",
+        },
+        fontFamily: {
+          sans: ["Poppins", "ui-sans-serif", "system-ui"],
+        },
+        borderRadius: {
+          "3xl": "1.75rem",
+          "4xl": "2rem",
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- PDF generation (used to download the invoice as a PDF file) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<link rel="stylesheet" href="/Quotation/quotation.css" />
 </head>
+<body class="bg-cream">
 
-<body>
+  <div class="app-shell w-full flex">
 
-<div class="app-shell">
+    <!-- backdrop shown only on phone/tablet when the sidebar drawer is expanded -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
 
-    <aside id="sidebar">
-    <button id="sidebar-toggle" aria-label="Toggle sidebar">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-    </button>
+    <!-- ===================== SIDEBAR (identical structure/behaviour to Dashboard) ===================== -->
+    <aside id="sidebar" class="sidebar app-sidebar relative flex flex-col items-center py-5 gap-6 bg-cream border-r border-peach-300 transition-all duration-300 ease-in-out w-20 shrink-0">
+      <!-- collapse toggle -->
+      <button id="sidebarToggle" aria-label="Toggle sidebar" class="absolute -right-3 top-8 w-6 h-6 rounded-full bg-cream shadow-md border border-peach-300 flex items-center justify-center text-peach-500 hover:scale-110 transition-transform">
+        <svg id="toggleIcon" class="w-3.5 h-3.5 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
 
-    <div class="sidebar-logo">
-        <img src="/img/logo.webp" alt="Logo" />
-    </div>
+      <div class="flex items-center justify-center shrink-0">
+        <img
+          src="/img/logo.webp"
+          alt="Company Logo"
+          class="w-auto h-10 object-contain"
+        />
+      </div>
 
-    <nav class="nav-list">
-        <a href="../Dashboard/dashboard.html" class="nav-item" data-label="Dashboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
-            <span class="nav-label">Dashboard</span>
-        </a>
-        <a href="quotation.html" class="nav-item nav-active" data-label="Quotation Management">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>
-            <span class="nav-label">Quotation Management</span>
-        </a>
-        <a href="../product/product.html" class="nav-item" data-label="Product Management">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
-            <span class="nav-label">Product Management</span>
-        </a>
-        <a href="../vendor/vendor.html" class="nav-item" data-label="Customer Management">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><circle cx="9" cy="11" r="3"></circle><path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path><path d="M16 9l2 2 4-4"></path></svg>
-            <span class="nav-label">Customer Management</span>
-        </a>
-        <a href="../reports/reports.html" class="nav-item" data-label="Reports Management">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
-            <span class="nav-label">Reports Management</span>
-        </a>
-    </nav>
+      <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
+        <button class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='../Dashboard/dashboard.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item active" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='quotation.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
+          <span>Quotation Management</span>
+        </button>
+        <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../product/product.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
+          <span>Product Management</span>
+        </button>
+        <button class="nav-item" data-label="Customer Management" aria-label="Customer Management" onclick="window.location.href='../vendor/vendor.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+            <circle cx="9" cy="11" r="3"></circle>
+            <path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path>
+            <path d="M16 9l2 2 4-4"></path>
+          </svg>
+          <span>Customer Management</span>
+        </button>
+        <button class="nav-item" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
+          <span>Reports Management</span>
+        </button>
 
-</aside>
+        <button class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='../Dashboard/project.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <span>Project Management</span>
+        </button>
 
+        <button class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='../Dashboard/user.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span>User Management</span>
+        </button>
 
-    <div id="sidebar-overlay" class="hidden lg-hidden"></div>
+        <button class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='../Dashboard/calc.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
+          <span>Cost Calculator</span>
+        </button>
 
-    <!-- ============ MAIN ============ -->
-    <div id="main-wrapper" class="main-wrapper">
+        <button class="nav-item" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='../Dashboard/approval.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+          <span>Approval Management</span>
+        </button>
+      </nav>
+    </aside>
 
-        <header class="topbar">
-            <div class="topbar-left">
-              
+    <!-- ===================== MAIN ===================== -->
+    <main class="app-main flex-1 bg-cream px-4 sm:px-5 md:px-6 py-4 min-w-0">
+
+      <!-- top bar : title + notification + profile, same pattern as Dashboard -->
+      <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <div>
+          <h1 class="text-sm font-semibold text-gray-800 m-0">Quotation Management</h1>
+          <p class="text-[11px] text-gray-400 m-0 mt-0.5">Create, track and manage solar quotations</p>
+        </div>
+
+        <div class="flex items-center gap-2.5 relative">
+          <!-- Notification Icon -->
+          <div class="relative">
+            <button id="notifBtn" aria-label="Notifications" class="w-8 h-8 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+            </button>
+
+            <div id="notifDropdown" class="topbar-dropdown hidden">
+              <p class="topbar-dropdown-title">Notifications <span class="text-peach-500">3 new</span></p>
+              <div class="topbar-notif-item">
+                <div class="topbar-notif-icon" style="background:#D97706;"><i class="fas fa-hourglass-half"></i></div>
                 <div>
-                    <h1 class="page-title">Quotation Management</h1>
-                    <p class="page-sub">Create, track and manage solar quotations</p>
+                  <p>Quotation SQ-1004 pending 3 days</p>
+                  <span>40 minutes ago</span>
                 </div>
+              </div>
+              <div class="topbar-notif-item">
+                <div class="topbar-notif-icon" style="background:#059669;"><i class="fas fa-circle-check"></i></div>
+                <div>
+                  <p>SQ-1002 accepted by customer</p>
+                  <span>2 hours ago</span>
+                </div>
+              </div>
+              <div class="topbar-notif-item">
+                <div class="topbar-notif-icon" style="background:#E11D48;"><i class="fas fa-circle-xmark"></i></div>
+                <div>
+                  <p>SQ-0998 rejected</p>
+                  <span>Yesterday</span>
+                </div>
+              </div>
             </div>
-            <div class="topbar-right">
-                <div class="dropdown-wrap">
-                    <button id="notif-btn" class="icon-btn relative">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-    <span class="notif-badge"></span>
-</button>
-                    <div id="notif-menu" class="dropdown-menu notif-menu hidden">
-                        <div class="dropdown-head">
-                            <span>Notifications</span>
-                            <span class="pill">3 new</span>
-                        </div>
-                        <div class="notif-item">
-                            <div class="notif-icon bg-amber"><i class="fas fa-hourglass-half"></i></div>
-                            <div>
-                                <div class="notif-title">Quotation SQ-1004 pending 3 days</div>
-                                <div class="notif-time">40 minutes ago</div>
-                            </div>
-                        </div>
-                        <div class="notif-item">
-                            <div class="notif-icon bg-emerald"><i class="fas fa-circle-check"></i></div>
-                            <div>
-                                <div class="notif-title">SQ-1002 accepted by customer</div>
-                                <div class="notif-time">2 hours ago</div>
-                            </div>
-                        </div>
-                        <div class="notif-item">
-                            <div class="notif-icon bg-red"><i class="fas fa-circle-xmark"></i></div>
-                            <div>
-                                <div class="notif-title">SQ-0998 rejected</div>
-                                <div class="notif-time">Yesterday</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="dropdown-wrap">
-                    <button id="user-menu-btn" class="user-btn">
-                        <div class="avatar">AD</div>
-                    </button>
-                    <div id="user-menu" class="dropdown-menu user-menu hidden">
-                        <a href="../index.html" class="dropdown-link danger">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-    Logout
-</a>
-                    </div>
-                </div>
+          </div>
+
+          <!-- Profile Icon -->
+          <div class="relative">
+            <button id="profileBtn" aria-label="Profile" class="w-8 h-8 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+              AD
+            </button>
+
+            <div id="profileDropdown" class="topbar-dropdown hidden">
+              <a href="../index.html" id="profileLogoutBtn" class="topbar-logout-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Logout
+              </a>
             </div>
-        </header>
+          </div>
+        </div>
+      </div>
 
-        <main class="content">
-
-            <!-- Stat cards -->
-            <div class="stat-grid">
-                <div class="widget-card">
-                    <div class="widget-body">
-                        <div class="widget-value" id="stat-total">0</div>
-                        <div class="widget-label">Total Quotations</div>
-                    </div>
-                    <div class="widget-icon bg-navy"><i class="fas fa-file-invoice"></i></div>
-                </div>
-                <div class="widget-card">
-                    <div class="widget-body">
-                        <div class="widget-value" id="stat-today">0</div>
-                        <div class="widget-label">Today's Quotations</div>
-                    </div>
-                    <div class="widget-icon bg-slate"><i class="fas fa-calendar-day"></i></div>
-                </div>
-                <div class="widget-card">
-                    <div class="widget-body">
-                        <div class="widget-value" id="stat-value">₹0</div>
-                        <div class="widget-label">Total Quotation Value</div>
-                    </div>
-                    <div class="widget-icon bg-emerald"><i class="fas fa-rupee-sign"></i></div>
-                </div>
-                <div class="widget-card">
-                    <div class="widget-body">
-                        <div class="widget-value" id="stat-accepted">0</div>
-                        <div class="widget-label">Accepted</div>
-                    </div>
-                    <div class="widget-icon bg-emerald"><i class="fas fa-circle-check"></i></div>
-                </div>
-                <div class="widget-card">
-                    <div class="widget-body">
-                        <div class="widget-value" id="stat-rejected">0</div>
-                        <div class="widget-label">Rejected</div>
-                    </div>
-                    <div class="widget-icon bg-red"><i class="fas fa-circle-xmark"></i></div>
-                </div>
-                <div class="widget-card">
-                    <div class="widget-body">
-                        <div class="widget-value" id="stat-pending">0</div>
-                        <div class="widget-label">Pending</div>
-                    </div>
-                    <div class="widget-icon bg-amber"><i class="fas fa-hourglass-half"></i></div>
-                </div>
-            </div>
-
-            <!-- Filters + table -->
-            <div class="chart-card">
-                <div class="table-toolbar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input id="search-input" type="text" placeholder="Search by customer, quote ID or number...">
-                    </div>
-                    <div class="filter-group">
-                        <select id="filter-status" class="select-input">
-                            <option value="">All Status</option>
-                            <option value="Pending">Pending</option>
-                            <option value="Accepted">Accepted</option>
-                            <option value="Rejected">Rejected</option>
-                        </select>
-                        <select id="filter-size" class="select-input">
-                            <option value="">All Sizes</option>
-                        </select>
-                        <button class="btn-primary" id="btn-new-quotation">
-                            <i class="fas fa-plus"></i> New Quotation
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-scroll">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th data-sort="quoteNo">Quotation No. <i class="fas fa-sort"></i></th>
-                                <th data-sort="customer">Customer <i class="fas fa-sort"></i></th>
-                                <th data-sort="size">System Size <i class="fas fa-sort"></i></th>
-                                <th data-sort="amount">Amount <i class="fas fa-sort"></i></th>
-                                <th data-sort="status">Status <i class="fas fa-sort"></i></th>
-                                <th data-sort="date">Date <i class="fas fa-sort"></i></th>
-                                <th class="text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="quotation-tbody"></tbody>
-                    </table>
-                </div>
-
-                <div class="table-footer">
-                    <div class="rows-per-page">
-                        Rows per page:
-                        <select id="rows-per-page" class="select-input small">
-                            <option value="10">10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                        </select>
-                        <span class="table-range" id="table-range"></span>
-                    </div>
-                    <div class="pagination" id="pagination"></div>
-                </div>
-            </div>
-        </main>
-    </div>
-</div>
-
-<!-- ================= MODAL: NEW / EDIT QUOTATION WIZARD ================= -->
-<div id="modal-wizard" class="modal-overlay hidden">
-    <div class="modal-box modal-wide">
-        <div class="modal-head">
-            <div class="modal-title"><i class="fas fa-file-invoice-dollar"></i> New Quotation</div>
-            <button class="modal-close" data-close="modal-wizard"><i class="fas fa-xmark"></i></button>
+      <!-- ============ Stat cards: small chunked sections, exactly like Dashboard's 4-card row ============ -->
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 mb-2.5">
+        <div class="bg-cream rounded-xl p-3 shadow-sm border border-peach-300 stat-card-sm">
+          <div class="stat-icon" style="background:#F1E2D1;">
+            <svg class="w-4 h-4" style="color:#810B38;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          </div>
+          <div>
+            <p class="stat-value" id="stat-total">0</p>
+            <p class="stat-label">Total Quotations</p>
+          </div>
         </div>
 
-        <div class="modal-body">
-            <!-- Stepper -->
-            <div class="stepper" id="stepper">
-                <div class="step active" data-step="1"><div class="step-circle">1</div><div class="step-label">Customer</div></div>
-                <div class="step" data-step="2"><div class="step-circle">2</div><div class="step-label">Products</div></div>
-                <div class="step" data-step="3"><div class="step-circle">3</div><div class="step-label">Cost</div></div>
-                <div class="step" data-step="4"><div class="step-circle">4</div><div class="step-label">GST & Discount</div></div>
-                <div class="step" data-step="5"><div class="step-circle">5</div><div class="step-label">Subsidy & Savings</div></div>
-                <div class="step" data-step="6"><div class="step-circle">6</div><div class="step-label">Generate</div></div>
-            </div>
-
-            <!-- Step 1: Customer Details -->
-            <div class="step-panel active" data-panel="1">
-                <div class="panel-title">Customer Details</div>
-                <div class="form-grid">
-                    <div class="form-field">
-                        <label>Customer Name <span class="req">*</span></label>
-                        <input type="text" id="f-customerName" placeholder="e.g. Amit Sharma">
-                        <span class="field-error" id="err-customerName"></span>
-                    </div>
-                    <div class="form-field">
-                        <label>Company Name</label>
-                        <input type="text" id="f-companyName" placeholder="Optional">
-                    </div>
-                    <div class="form-field">
-                        <label>Mobile Number <span class="req">*</span></label>
-                        <input type="tel" id="f-mobile" maxlength="10" placeholder="10-digit mobile number">
-                        <span class="field-error" id="err-mobile"></span>
-                    </div>
-                    <div class="form-field">
-                        <label>Email Address <span class="req">*</span></label>
-                        <input type="email" id="f-email" placeholder="name@example.com">
-                        <span class="field-error" id="err-email"></span>
-                    </div>
-                    <div class="form-field span-2">
-                        <label>Installation Address <span class="req">*</span></label>
-                        <textarea id="f-address" rows="2" placeholder="Full installation address"></textarea>
-                        <span class="field-error" id="err-address"></span>
-                    </div>
-                    <div class="form-field">
-                        <label>City</label>
-                        <input type="text" id="f-city" placeholder="City">
-                    </div>
-                    <div class="form-field">
-                        <label>State <span class="req">*</span></label>
-                        <select id="f-state" class="select-input">
-                            <option value="">Select State</option>
-                            <option>Maharashtra</option>
-                            <option>Gujarat</option>
-                            <option>Karnataka</option>
-                            <option>Tamil Nadu</option>
-                            <option>Rajasthan</option>
-                            <option>Delhi</option>
-                        </select>
-                        <span class="field-error" id="err-state"></span>
-                    </div>
-                    <div class="form-field">
-                        <label>Pincode <span class="req">*</span></label>
-                        <input type="text" id="f-pincode" maxlength="6" placeholder="6-digit pincode">
-                        <span class="field-error" id="err-pincode"></span>
-                    </div>
-                    <div class="form-field">
-                        <label>Electricity Consumer No.</label>
-                        <input type="text" id="f-consumerNo" placeholder="Optional">
-                    </div>
-                    <div class="form-field span-2">
-                        <label>Consumer Category <span class="req">*</span></label>
-                        <select id="f-consumerCategory" class="select-input">
-                            <option value="Residential" selected>Residential</option>
-                            <option value="GHS">Group Housing Society / RWA</option>
-                            <option value="Commercial">Commercial / Institutional</option>
-                        </select>
-                        <span class="field-error" id="err-consumerCategory"></span>
-                    </div>
-                    <div class="form-field span-2 hidden" id="gst-field">
-                        <label>GST Number <span class="req">*</span></label>
-                        <input type="text" id="f-gst" maxlength="15" placeholder="15-character GSTIN">
-                        <span class="field-error" id="err-gst"></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 2: Product & Size Selection (multi-product, multi-size) -->
-            <div class="step-panel" data-panel="2">
-                <div class="panel-title">Product Selection</div>
-
-                <div class="sub-section">
-                    <div class="sub-title"><i class="fas fa-bolt-lightning"></i> System Size</div>
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label>System Size <span class="req">*</span></label>
-                            <select id="f-systemSize" class="select-input">
-                                <option value="1">1 kW</option>
-                                <option value="2">2 kW</option>
-                                <option value="3" selected>3 kW</option>
-                                <option value="5">5 kW</option>
-                                <option value="10">10 kW</option>
-                                <option value="15">15 kW</option>
-                                <option value="20">20 kW</option>
-                                <option value="50">50 kW</option>
-                                <option value="100">100 kW</option>
-                                <option value="__other__">Other (add custom)</option>
-                            </select>
-                        </div>
-                        <div class="form-field hidden" id="other-size-wrap">
-                            <label>Custom System Size</label>
-                            <div class="inline-add">
-                                <input type="text" id="f-otherSize" placeholder="e.g. 7.5 kW">
-                                <button type="button" class="btn-outline small" id="btn-add-size"><i class="fas fa-plus"></i> Add</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="hint-box"><i class="fas fa-lightbulb"></i> This size is used for the quotation header and the savings/subsidy estimate. Add the matching products for it below.</div>
-                </div>
-
-                <div class="sub-section">
-                    <div class="sub-title"><i class="fas fa-boxes-stacked"></i> Products & Items</div>
-                    <div class="hint-box"><i class="fas fa-circle-info"></i> Pick a product from your Product Management catalog, set the quantity, then add it — repeat to add as many products as this quotation needs. Prefer something not in the catalog? Use "Custom Item" instead. Every row below stays fully editable.</div>
-
-                    <div class="quick-add-row" id="quick-add-row">
-                        <select id="product-catalog-select" class="select-input" style="flex:2; min-width:240px;">
-                            <option value="">Loading products…</option>
-                        </select>
-                        <input type="number" id="product-picker-qty" class="select-input" style="width:90px;" min="0.01" step="any" value="1" placeholder="Qty">
-                        <button type="button" class="btn-outline small" id="btn-add-catalog-product"><i class="fas fa-plus"></i> Add Product</button>
-                        <button type="button" class="chip-btn" id="chip-custom"><i class="fas fa-plus"></i> Custom Item</button>
-                    </div>
-
-                    <div class="items-table-wrap">
-                        <table class="items-table">
-                            <thead>
-                                <tr>
-                                    <th style="width:26px;">#</th>
-                                    <th>Item</th>
-                                    <th>Type / Model</th>
-                                    <th style="width:80px;">Qty / Size</th>
-                                    <th style="width:80px;">Unit</th>
-                                    <th style="width:100px;">Rate (₹)</th>
-                                    <th style="width:110px;">Amount</th>
-                                    <th style="width:36px;"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="items-tbody"></tbody>
-                            <tfoot>
-                                <tr class="items-footer-row">
-                                    <td colspan="6" class="text-right">Items Subtotal</td>
-                                    <td class="item-amount-cell" id="items-subtotal">₹0</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    <span class="field-error" id="err-items"></span>
-                </div>
-
-                <div class="sub-section">
-                    <div class="sub-title"><i class="fas fa-warehouse"></i> Mounting Type</div>
-                    <div class="radio-card-group" id="mount-group">
-                        <label class="radio-card active"><input type="radio" name="mount" checked><span>RCC Roof</span></label>
-                        <label class="radio-card"><input type="radio" name="mount"><span>Tin Shed</span></label>
-                        <label class="radio-card"><input type="radio" name="mount"><span>Ground Mount</span></label>
-                        <label class="radio-card"><input type="radio" name="mount"><span>Elevated Structure</span></label>
-                    </div>
-                    <div class="hint-box"><i class="fas fa-lightbulb"></i> Used as the "Type" label if you quick-add a Mounting Structure item above.</div>
-                </div>
-            </div>
-
-            <!-- Step 3: Cost Calculation -->
-            <div class="step-panel" data-panel="3">
-                <div class="panel-title">Cost Calculation</div>
-                <div class="table-scroll">
-                    <table class="data-table cost-table">
-                        <thead><tr><th>Cost Head</th><th class="text-right">Amount (₹)</th></tr></thead>
-                        <tbody>
-                            <tr><td>Items Subtotal <span class="auto-tag">from Products step</span></td><td class="text-right" id="cost-items">0</td></tr>
-                            <tr><td>Installation Charges</td><td class="text-right"><input type="number" class="cost-input" id="cost-installation" value="8000"></td></tr>
-                            <tr><td>Transportation Charges</td><td class="text-right"><input type="number" class="cost-input" id="cost-transport" value="2500"></td></tr>
-                            <tr>
-                                <td><input type="text" class="cost-label-input" id="cost-other-label" placeholder="Other charges label" value="Other Charges"></td>
-                                <td class="text-right"><input type="number" class="cost-input" id="cost-other" value="0"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Step 4: GST & Discount -->
-            <div class="step-panel" data-panel="4">
-                <div class="panel-title">GST & Discount</div>
-                <div class="form-grid">
-                    <div class="form-field">
-                        <label>GST %</label>
-                        <select id="f-gstPercent" class="select-input">
-                            <option value="5">5%</option>
-                            <option value="12">12%</option>
-                            <option value="18" selected>18%</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label>Discount Type</label>
-                        <select id="f-discountType" class="select-input">
-                            <option value="percent">Percentage (%)</option>
-                            <option value="flat">Flat Amount (₹)</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label>Discount Value</label>
-                        <input type="number" id="f-discountValue" value="0">
-                    </div>
-                </div>
-                <div class="summary-box" id="summary-gst"></div>
-            </div>
-
-            <!-- Step 5: Subsidy & Savings -->
-            <div class="step-panel" data-panel="5">
-                <div class="panel-title">PM Surya Ghar Subsidy Calculator</div>
-                <div class="hint-box" id="subsidy-category-note"></div>
-                <div class="summary-box" id="summary-subsidy"></div>
-
-                <div class="panel-title" style="margin-top:6px;">Savings Calculator</div>
-                <div class="form-grid">
-                    <div class="form-field">
-                        <label>Electricity Tariff (₹/unit)</label>
-                        <input type="number" id="f-tariff" value="8" step="0.1">
-                    </div>
-                    <div class="form-field">
-                        <label>Annual Tariff Escalation (%)</label>
-                        <input type="number" id="f-escalation" value="3" step="0.1">
-                    </div>
-                </div>
-                <div class="summary-box" id="summary-savings"></div>
-            </div>
-
-            <!-- Step 6: Generate -->
-            <div class="step-panel" data-panel="6">
-                <div class="panel-title">Generate Quotation</div>
-                <div class="invoice-preview" id="invoice-preview"></div>
-                <div class="share-grid hidden" id="share-grid">
-                    <button class="btn-outline" id="btn-download-pdf"><i class="fas fa-download"></i> Download PDF</button>
-                    <button class="btn-outline" id="btn-share-email"><i class="fas fa-envelope"></i> Share via Email</button>
-                    <button class="btn-outline" id="btn-share-whatsapp"><i class="fab fa-whatsapp"></i> Share via WhatsApp</button>
-                </div>
-            </div>
+        <div class="bg-cream rounded-xl p-3 shadow-sm border border-peach-300 stat-card-sm">
+          <div class="stat-icon" style="background:#F1E2D1;">
+            <svg class="w-4 h-4" style="color:#810B38;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </div>
+          <div>
+            <p class="stat-value" id="stat-today">0</p>
+            <p class="stat-label">Today's Quotations</p>
+          </div>
         </div>
 
-        <div class="modal-foot" id="wizard-nav">
-            <button class="btn-outline" id="btn-prev" disabled><i class="fas fa-arrow-left"></i> Back</button>
-            <button class="btn-primary" id="btn-next">Next <i class="fas fa-arrow-right"></i></button>
-            <button class="btn-primary hidden" id="btn-generate"><i class="fas fa-file-invoice"></i> Generate Quotation</button>
+        <div class="bg-cream rounded-xl p-3 shadow-sm border border-peach-300 stat-card-sm">
+          <div class="stat-icon" style="background:#DCC3AA;">
+            <i class="fas fa-rupee-sign text-sm" style="color:#541A1A;"></i>
+          </div>
+          <div>
+            <p class="stat-value" id="stat-value">₹0</p>
+            <p class="stat-label">Total Quotation Value</p>
+          </div>
         </div>
-    </div>
-</div>
 
-<!-- ================= MODAL: VIEW QUOTATION (READ-ONLY) ================= -->
-<div id="modal-view" class="modal-overlay hidden">
-    <div class="modal-box modal-wide">
-        <div class="modal-head">
-            <div class="modal-title"><i class="fas fa-eye"></i> View Quotation</div>
-            <button class="modal-close" data-close="modal-view"><i class="fas fa-xmark"></i></button>
+        <div class="bg-cream rounded-xl p-3 shadow-sm border border-peach-300 stat-card-sm">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+          <div>
+            <p class="stat-value" id="stat-accepted">0</p>
+            <p class="stat-label">Accepted</p>
+          </div>
         </div>
-        <div class="modal-body">
-            <div class="invoice-preview" id="view-invoice-preview"></div>
-        </div>
-        <div class="modal-foot">
-            <button class="btn-outline" id="btn-view-download-pdf"><i class="fas fa-download"></i> Download PDF</button>
-            <button class="btn-outline" data-close="modal-view">Close</button>
-        </div>
-    </div>
-</div>
 
-<!-- ================= MODAL: EDIT QUOTATION (ESSENTIAL FIELDS) ================= -->
-<div id="modal-edit" class="modal-overlay hidden">
-    <div class="modal-box">
-        <div class="modal-head">
-            <div class="modal-title"><i class="fas fa-pen"></i> Edit Quotation — <span id="edit-quoteno"></span></div>
-            <button class="modal-close" data-close="modal-edit"><i class="fas fa-xmark"></i></button>
+        <div class="bg-cream rounded-xl p-3 shadow-sm border border-peach-300 stat-card-sm">
+          <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          </div>
+          <div>
+            <p class="stat-value" id="stat-rejected">0</p>
+            <p class="stat-label">Rejected</p>
+          </div>
         </div>
-        <div class="modal-body">
-            <div class="form-grid">
-                <div class="form-field">
-                    <label>Customer Name <span class="req">*</span></label>
-                    <input type="text" id="edit-customerName">
-                    <span class="field-error" id="err-edit-customerName"></span>
-                </div>
-                <div class="form-field">
-                    <label>Mobile Number <span class="req">*</span></label>
-                    <input type="tel" id="edit-mobile" maxlength="10">
-                    <span class="field-error" id="err-edit-mobile"></span>
-                </div>
-                <div class="form-field span-2">
-                    <label>Email Address <span class="req">*</span></label>
-                    <input type="email" id="edit-email">
-                    <span class="field-error" id="err-edit-email"></span>
-                </div>
-                <div class="form-field">
-                    <label>Installation Charges (₹)</label>
-                    <input type="number" id="edit-installation">
-                </div>
-                <div class="form-field">
-                    <label>Transportation Charges (₹)</label>
-                    <input type="number" id="edit-transport">
-                </div>
-                <div class="form-field">
-                    <label>Discount Value</label>
-                    <input type="number" id="edit-discountValue">
-                </div>
-                <div class="form-field">
-                    <label>Status</label>
-                    <select id="edit-status" class="select-input">
-                        <option>Pending</option>
-                        <option>Accepted</option>
-                        <option>Rejected</option>
-                    </select>
-                </div>
-            </div>
-            <div class="summary-box" id="edit-summary"></div>
-        </div>
-        <div class="modal-foot">
-            <button class="btn-outline" data-close="modal-edit">Cancel</button>
-            <button class="btn-primary" id="btn-save-edit"><i class="fas fa-check"></i> Save Changes</button>
-        </div>
-    </div>
-</div>
 
-<!-- ================= MODAL: DELETE CONFIRMATION ================= -->
-<div id="modal-delete" class="modal-overlay hidden">
-    <div class="modal-box modal-small">
-        <div class="modal-head">
-            <div class="modal-title"><i class="fas fa-triangle-exclamation"></i> Delete Quotation</div>
-            <button class="modal-close" data-close="modal-delete"><i class="fas fa-xmark"></i></button>
+        <div class="bg-cream rounded-xl p-3 shadow-sm border border-peach-300 stat-card-sm">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <div>
+            <p class="stat-value" id="stat-pending">0</p>
+            <p class="stat-label">Pending</p>
+          </div>
         </div>
-        <div class="modal-body">
-            <p class="confirm-text">Are you sure you want to delete <b id="delete-quoteno"></b>? This action cannot be undone.</p>
+      </div>
+
+      <!-- ============ Filters + Quotation table (own small card, like Dashboard's "Recent Quotations" card) ============ -->
+      <div class="bg-cream rounded-xl p-3.5 shadow-sm border border-peach-300 mb-3">
+        <div class="table-toolbar flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div class="search-box">
+            <i class="fas fa-search text-xs"></i>
+            <input id="search-input" type="text" placeholder="Search by customer, quote ID or number...">
+          </div>
+          <div class="filter-group flex gap-2 flex-wrap items-center">
+            <select id="filter-status" class="select-input">
+              <option value="">All Status</option>
+              <option value="Pending">Pending</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+            <select id="filter-size" class="select-input">
+              <option value="">All Sizes</option>
+            </select>
+            <button class="btn-primary" id="btn-new-quotation">
+              <i class="fas fa-plus"></i> New Quotation
+            </button>
+          </div>
         </div>
-        <div class="modal-foot">
-            <button class="btn-outline" data-close="modal-delete">Cancel</button>
-            <button class="btn-danger" id="btn-confirm-delete"><i class="fas fa-trash"></i> Delete</button>
+
+        <div class="table-scope overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th data-sort="quoteNo">Quotation No. <i class="fas fa-sort"></i></th>
+                <th data-sort="customer">Customer <i class="fas fa-sort"></i></th>
+                <th data-sort="size">System Size <i class="fas fa-sort"></i></th>
+                <th data-sort="amount">Amount <i class="fas fa-sort"></i></th>
+                <th data-sort="status">Status <i class="fas fa-sort"></i></th>
+                <th data-sort="date">Date <i class="fas fa-sort"></i></th>
+                <th class="actions-th text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="quotation-tbody"></tbody>
+          </table>
         </div>
-    </div>
-</div>
 
+        <div class="flex items-center justify-between mt-3 flex-wrap gap-2 table-footer">
+          <div class="flex items-center gap-2 text-[10.5px] text-gray-400 rows-per-page">
+            <span>Rows per page</span>
+            <select id="rows-per-page" class="rows-select select-input small">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+            <span id="table-range" class="table-range"></span>
+          </div>
+          <div id="pagination" class="pagination flex items-center gap-1 flex-wrap"></div>
+        </div>
+      </div>
+    </main>
+  </div>
 
-<!-- Toast Container -->
-<div id="toast-container" class="toast-container"></div>
+  <!-- ================= MODAL: NEW / EDIT QUOTATION WIZARD ================= -->
+  <div id="modal-wizard" class="modal-overlay hidden">
+      <div class="modal-box modal-wide">
+          <div class="modal-head">
+              <div class="modal-title"><i class="fas fa-file-invoice-dollar"></i> New Quotation</div>
+              <button class="modal-close" data-close="modal-wizard"><i class="fas fa-xmark"></i></button>
+          </div>
 
-<script src="/Quotation/quotation.js"></script>
+          <div class="modal-body">
+              <!-- Stepper -->
+              <div class="stepper" id="stepper">
+                  <div class="step active" data-step="1"><div class="step-circle">1</div><div class="step-label">Customer</div></div>
+                  <div class="step" data-step="2"><div class="step-circle">2</div><div class="step-label">Products</div></div>
+                  <div class="step" data-step="3"><div class="step-circle">3</div><div class="step-label">Cost</div></div>
+                  <div class="step" data-step="4"><div class="step-circle">4</div><div class="step-label">GST & Discount</div></div>
+                  <div class="step" data-step="5"><div class="step-circle">5</div><div class="step-label">Subsidy & Savings</div></div>
+                  <div class="step" data-step="6"><div class="step-circle">6</div><div class="step-label">Generate</div></div>
+              </div>
+
+              <!-- Step 1: Customer Details -->
+              <div class="step-panel active" data-panel="1">
+                  <div class="panel-title">Customer Details</div>
+                  <div class="form-grid">
+                      <div class="form-field">
+                          <label>Customer Name <span class="req">*</span></label>
+                          <input type="text" id="f-customerName" placeholder="e.g. Amit Sharma">
+                          <span class="field-error" id="err-customerName"></span>
+                      </div>
+                      <div class="form-field">
+                          <label>Company Name</label>
+                          <input type="text" id="f-companyName" placeholder="Optional">
+                      </div>
+                      <div class="form-field">
+                          <label>Mobile Number <span class="req">*</span></label>
+                          <input type="tel" id="f-mobile" maxlength="10" placeholder="10-digit mobile number">
+                          <span class="field-error" id="err-mobile"></span>
+                      </div>
+                      <div class="form-field">
+                          <label>Email Address <span class="req">*</span></label>
+                          <input type="email" id="f-email" placeholder="name@example.com">
+                          <span class="field-error" id="err-email"></span>
+                      </div>
+                      <div class="form-field span-2">
+                          <label>Installation Address <span class="req">*</span></label>
+                          <textarea id="f-address" rows="2" placeholder="Full installation address"></textarea>
+                          <span class="field-error" id="err-address"></span>
+                      </div>
+                      <div class="form-field">
+                          <label>City</label>
+                          <input type="text" id="f-city" placeholder="City">
+                      </div>
+                      <div class="form-field">
+                          <label>State <span class="req">*</span></label>
+                          <select id="f-state" class="select-input">
+                              <option value="">Select State</option>
+                              <option>Maharashtra</option>
+                              <option>Gujarat</option>
+                              <option>Karnataka</option>
+                              <option>Tamil Nadu</option>
+                              <option>Rajasthan</option>
+                              <option>Delhi</option>
+                          </select>
+                          <span class="field-error" id="err-state"></span>
+                      </div>
+                      <div class="form-field">
+                          <label>Pincode <span class="req">*</span></label>
+                          <input type="text" id="f-pincode" maxlength="6" placeholder="6-digit pincode">
+                          <span class="field-error" id="err-pincode"></span>
+                      </div>
+                      <div class="form-field">
+                          <label>Electricity Consumer No.</label>
+                          <input type="text" id="f-consumerNo" placeholder="Optional">
+                      </div>
+                      <div class="form-field span-2">
+                          <label>Consumer Category <span class="req">*</span></label>
+                          <select id="f-consumerCategory" class="select-input">
+                              <option value="Residential" selected>Residential</option>
+                              <option value="GHS">Group Housing Society / RWA</option>
+                              <option value="Commercial">Commercial / Institutional</option>
+                          </select>
+                          <span class="field-error" id="err-consumerCategory"></span>
+                      </div>
+                      <div class="form-field span-2 hidden" id="gst-field">
+                          <label>GST Number <span class="req">*</span></label>
+                          <input type="text" id="f-gst" maxlength="15" placeholder="15-character GSTIN">
+                          <span class="field-error" id="err-gst"></span>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Step 2: Product & Size Selection -->
+              <div class="step-panel" data-panel="2">
+                  <div class="panel-title">Product Selection</div>
+
+                  <div class="sub-section">
+                      <div class="sub-title"><i class="fas fa-bolt-lightning"></i> System Size</div>
+                      <div class="form-grid">
+                          <div class="form-field">
+                              <label>System Size <span class="req">*</span></label>
+                              <select id="f-systemSize" class="select-input">
+                                  <option value="1">1 kW</option>
+                                  <option value="2">2 kW</option>
+                                  <option value="3" selected>3 kW</option>
+                                  <option value="5">5 kW</option>
+                                  <option value="10">10 kW</option>
+                                  <option value="15">15 kW</option>
+                                  <option value="20">20 kW</option>
+                                  <option value="50">50 kW</option>
+                                  <option value="100">100 kW</option>
+                                  <option value="__other__">Other (add custom)</option>
+                              </select>
+                          </div>
+                          <div class="form-field hidden" id="other-size-wrap">
+                              <label>Custom System Size</label>
+                              <div class="inline-add">
+                                  <input type="text" id="f-otherSize" placeholder="e.g. 7.5 kW">
+                                  <button type="button" class="btn-outline small" id="btn-add-size"><i class="fas fa-plus"></i> Add</button>
+                              </div>
+                          </div>
+                      </div>
+                      <div class="hint-box"><i class="fas fa-lightbulb"></i> This size is used for the quotation header and the savings/subsidy estimate. Add the matching products for it below.</div>
+                  </div>
+
+                  <div class="sub-section">
+                      <div class="sub-title"><i class="fas fa-boxes-stacked"></i> Products & Items</div>
+                      <div class="hint-box"><i class="fas fa-circle-info"></i> Pick a product from your Product Management catalog, set the quantity, then add it — repeat to add as many products as this quotation needs. Prefer something not in the catalog? Use "Custom Item" instead. Every row below stays fully editable.</div>
+
+                      <div class="quick-add-row" id="quick-add-row">
+                          <select id="product-catalog-select" class="select-input" style="flex:2; min-width:240px;">
+                              <option value="">Loading products…</option>
+                          </select>
+                          <input type="number" id="product-picker-qty" class="select-input" style="width:90px;" min="0.01" step="any" value="1" placeholder="Qty">
+                          <button type="button" class="btn-outline small" id="btn-add-catalog-product"><i class="fas fa-plus"></i> Add Product</button>
+                          <button type="button" class="chip-btn" id="chip-custom"><i class="fas fa-plus"></i> Custom Item</button>
+                      </div>
+
+                      <div class="items-table-wrap">
+                          <table class="items-table">
+                              <thead>
+                                  <tr>
+                                      <th style="width:26px;">#</th>
+                                      <th>Item</th>
+                                      <th>Type / Model</th>
+                                      <th style="width:80px;">Qty / Size</th>
+                                      <th style="width:80px;">Unit</th>
+                                      <th style="width:100px;">Rate (₹)</th>
+                                      <th style="width:110px;">Amount</th>
+                                      <th style="width:36px;"></th>
+                                  </tr>
+                              </thead>
+                              <tbody id="items-tbody"></tbody>
+                              <tfoot>
+                                  <tr class="items-footer-row">
+                                      <td colspan="6" class="text-right">Items Subtotal</td>
+                                      <td class="item-amount-cell" id="items-subtotal">₹0</td>
+                                      <td></td>
+                                  </tr>
+                              </tfoot>
+                          </table>
+                      </div>
+                      <span class="field-error" id="err-items"></span>
+                  </div>
+
+                  <div class="sub-section">
+                      <div class="sub-title"><i class="fas fa-warehouse"></i> Mounting Type</div>
+                      <div class="radio-card-group" id="mount-group">
+                          <label class="radio-card active"><input type="radio" name="mount" checked><span>RCC Roof</span></label>
+                          <label class="radio-card"><input type="radio" name="mount"><span>Tin Shed</span></label>
+                          <label class="radio-card"><input type="radio" name="mount"><span>Ground Mount</span></label>
+                          <label class="radio-card"><input type="radio" name="mount"><span>Elevated Structure</span></label>
+                      </div>
+                      <div class="hint-box"><i class="fas fa-lightbulb"></i> Used as the "Type" label if you quick-add a Mounting Structure item above.</div>
+                  </div>
+              </div>
+
+              <!-- Step 3: Cost Calculation -->
+              <div class="step-panel" data-panel="3">
+                  <div class="panel-title">Cost Calculation</div>
+                  <div class="table-scope overflow-x-auto">
+                      <table class="data-table cost-table">
+                          <thead><tr><th>Cost Head</th><th class="text-right">Amount (₹)</th></tr></thead>
+                          <tbody>
+                              <tr><td>Items Subtotal <span class="auto-tag">from Products step</span></td><td class="text-right" id="cost-items">0</td></tr>
+                              <tr><td>Installation Charges</td><td class="text-right"><input type="number" class="cost-input" id="cost-installation" value="8000"></td></tr>
+                              <tr><td>Transportation Charges</td><td class="text-right"><input type="number" class="cost-input" id="cost-transport" value="2500"></td></tr>
+                              <tr>
+                                  <td><input type="text" class="cost-label-input" id="cost-other-label" placeholder="Other charges label" value="Other Charges"></td>
+                                  <td class="text-right"><input type="number" class="cost-input" id="cost-other" value="0"></td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+
+              <!-- Step 4: GST & Discount -->
+              <div class="step-panel" data-panel="4">
+                  <div class="panel-title">GST & Discount</div>
+                  <div class="form-grid">
+                      <div class="form-field">
+                          <label>GST %</label>
+                          <select id="f-gstPercent" class="select-input">
+                              <option value="5">5%</option>
+                              <option value="12">12%</option>
+                              <option value="18" selected>18%</option>
+                          </select>
+                      </div>
+                      <div class="form-field">
+                          <label>Discount Type</label>
+                          <select id="f-discountType" class="select-input">
+                              <option value="percent">Percentage (%)</option>
+                              <option value="flat">Flat Amount (₹)</option>
+                          </select>
+                      </div>
+                      <div class="form-field">
+                          <label>Discount Value</label>
+                          <input type="number" id="f-discountValue" value="0">
+                      </div>
+                  </div>
+                  <div class="summary-box" id="summary-gst"></div>
+              </div>
+
+              <!-- Step 5: Subsidy & Savings -->
+              <div class="step-panel" data-panel="5">
+                  <div class="panel-title">PM Surya Ghar Subsidy Calculator</div>
+                  <div class="hint-box" id="subsidy-category-note"></div>
+                  <div class="summary-box" id="summary-subsidy"></div>
+
+                  <div class="panel-title" style="margin-top:6px;">Savings Calculator</div>
+                  <div class="form-grid">
+                      <div class="form-field">
+                          <label>Electricity Tariff (₹/unit)</label>
+                          <input type="number" id="f-tariff" value="8" step="0.1">
+                      </div>
+                      <div class="form-field">
+                          <label>Annual Tariff Escalation (%)</label>
+                          <input type="number" id="f-escalation" value="3" step="0.1">
+                      </div>
+                  </div>
+                  <div class="summary-box" id="summary-savings"></div>
+              </div>
+
+              <!-- Step 6: Generate -->
+              <div class="step-panel" data-panel="6">
+                  <div class="panel-title">Generate Quotation</div>
+                  <div class="invoice-preview" id="invoice-preview"></div>
+                  <div class="share-grid hidden" id="share-grid">
+                      <button class="btn-outline" id="btn-download-pdf"><i class="fas fa-download"></i> Download PDF</button>
+                      <button class="btn-outline" id="btn-share-email"><i class="fas fa-envelope"></i> Share via Email</button>
+                      <button class="btn-outline" id="btn-share-whatsapp"><i class="fab fa-whatsapp"></i> Share via WhatsApp</button>
+                  </div>
+              </div>
+          </div>
+
+          <div class="modal-foot" id="wizard-nav">
+              <button class="btn-outline" id="btn-prev" disabled><i class="fas fa-arrow-left"></i> Back</button>
+              <button class="btn-primary" id="btn-next">Next <i class="fas fa-arrow-right"></i></button>
+              <button class="btn-primary hidden" id="btn-generate"><i class="fas fa-file-invoice"></i> Generate Quotation</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- ================= MODAL: VIEW QUOTATION (READ-ONLY) ================= -->
+  <div id="modal-view" class="modal-overlay hidden">
+      <div class="modal-box modal-wide">
+          <div class="modal-head">
+              <div class="modal-title"><i class="fas fa-eye"></i> View Quotation</div>
+              <button class="modal-close" data-close="modal-view"><i class="fas fa-xmark"></i></button>
+          </div>
+          <div class="modal-body">
+              <div class="invoice-preview" id="view-invoice-preview"></div>
+          </div>
+          <div class="modal-foot">
+              <button class="btn-outline" id="btn-view-download-pdf"><i class="fas fa-download"></i> Download PDF</button>
+              <button class="btn-outline" data-close="modal-view">Close</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- ================= MODAL: EDIT QUOTATION (ESSENTIAL FIELDS) ================= -->
+  <div id="modal-edit" class="modal-overlay hidden">
+      <div class="modal-box">
+          <div class="modal-head">
+              <div class="modal-title"><i class="fas fa-pen"></i> Edit Quotation — <span id="edit-quoteno"></span></div>
+              <button class="modal-close" data-close="modal-edit"><i class="fas fa-xmark"></i></button>
+          </div>
+          <div class="modal-body">
+              <div class="form-grid">
+                  <div class="form-field">
+                      <label>Customer Name <span class="req">*</span></label>
+                      <input type="text" id="edit-customerName">
+                      <span class="field-error" id="err-edit-customerName"></span>
+                  </div>
+                  <div class="form-field">
+                      <label>Mobile Number <span class="req">*</span></label>
+                      <input type="tel" id="edit-mobile" maxlength="10">
+                      <span class="field-error" id="err-edit-mobile"></span>
+                  </div>
+                  <div class="form-field span-2">
+                      <label>Email Address <span class="req">*</span></label>
+                      <input type="email" id="edit-email">
+                      <span class="field-error" id="err-edit-email"></span>
+                  </div>
+                  <div class="form-field">
+                      <label>Installation Charges (₹)</label>
+                      <input type="number" id="edit-installation">
+                  </div>
+                  <div class="form-field">
+                      <label>Transportation Charges (₹)</label>
+                      <input type="number" id="edit-transport">
+                  </div>
+                  <div class="form-field">
+                      <label>Discount Value</label>
+                      <input type="number" id="edit-discountValue">
+                  </div>
+                  <div class="form-field">
+                      <label>Status</label>
+                      <select id="edit-status" class="select-input">
+                          <option>Pending</option>
+                          <option>Accepted</option>
+                          <option>Rejected</option>
+                      </select>
+                  </div>
+              </div>
+              <div class="summary-box" id="edit-summary"></div>
+          </div>
+          <div class="modal-foot">
+              <button class="btn-outline" data-close="modal-edit">Cancel</button>
+              <button class="btn-primary" id="btn-save-edit"><i class="fas fa-check"></i> Save Changes</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- ================= MODAL: DELETE CONFIRMATION ================= -->
+  <div id="modal-delete" class="modal-overlay hidden">
+      <div class="modal-box modal-small">
+          <div class="modal-head">
+              <div class="modal-title"><i class="fas fa-triangle-exclamation"></i> Delete Quotation</div>
+              <button class="modal-close" data-close="modal-delete"><i class="fas fa-xmark"></i></button>
+          </div>
+          <div class="modal-body">
+              <p class="confirm-text">Are you sure you want to delete <b id="delete-quoteno"></b>? This action cannot be undone.</p>
+          </div>
+          <div class="modal-foot">
+              <button class="btn-outline" data-close="modal-delete">Cancel</button>
+              <button class="btn-danger" id="btn-confirm-delete"><i class="fas fa-trash"></i> Delete</button>
+          </div>
+      </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/Quotation/quotation.js"></script>
 </body>
 </html>

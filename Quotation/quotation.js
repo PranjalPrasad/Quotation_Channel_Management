@@ -68,52 +68,76 @@ function computeMultiYearSavings(annualUnitsYear1, tariff, escalationPct) {
     return { totalSavings, totalUnits };
 }
 
-/* ---------------- Sidebar / Topbar chrome (icon-rail, collapsible) ---------------- */
+/* =====================================================================
+   SIDEBAR / TOPBAR CHROME
+   This block is written to match the Dashboard page 1:1 — same element
+   ids (sidebar, sidebarToggle, toggleIcon, sidebarBackdrop, notifBtn,
+   notifDropdown, profileBtn, profileDropdown) and the same CSS classes
+   (.sidebar.expanded / .sidebar-backdrop.visible / .topbar-dropdown).
+   Previously this file referenced ids that don't exist in this page's
+   HTML (sidebar-toggle, sidebar-overlay, mobile-menu-btn, notif-btn,
+   notif-menu, user-menu-btn, user-menu, .dropdown-menu) — which is why
+   the sidebar toggle and dropdowns did nothing and the page didn't
+   behave like the Dashboard on load. Fixed below.
+   ===================================================================== */
 const sidebar = document.getElementById('sidebar');
-const sidebarToggle = document.getElementById('sidebar-toggle');
-const overlay = document.getElementById('sidebar-overlay');
-const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const toggleIcon = document.getElementById('toggleIcon');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 
-let isExpanded = false;
+let sidebarExpanded = false;
 
-function openMobileSidebar() {
-    sidebar?.classList.add('sidebar-open');
-    overlay?.classList.remove('hidden');
-}
-function closeMobileSidebar() {
-    sidebar?.classList.remove('sidebar-open');
-    overlay?.classList.add('hidden');
+function isDrawerBreakpoint() {
+    return window.innerWidth < 1024; // matches the CSS's @media (max-width: 1023px) drawer rule
 }
 
-sidebarToggle?.addEventListener('click', () => {
-    if (window.innerWidth < 1024) {
-        sidebar.classList.contains('sidebar-open') ? closeMobileSidebar() : openMobileSidebar();
+function setSidebarExpanded(expand) {
+    sidebarExpanded = expand;
+    sidebar?.classList.toggle('expanded', expand);
+    sidebar?.classList.toggle('collapsed', !expand);
+    toggleIcon?.classList.toggle('rotate-180', expand);
+    // The backdrop only makes sense on phone/tablet, where the sidebar
+    // opens as an overlay drawer instead of pushing the layout.
+    if (isDrawerBreakpoint()) {
+        sidebarBackdrop?.classList.toggle('visible', expand);
     } else {
-        isExpanded = !isExpanded;
-        sidebar.classList.toggle('sidebar-expanded', isExpanded);
+        sidebarBackdrop?.classList.remove('visible');
     }
+}
+
+// Start collapsed (icon rail), same as the Dashboard's default state
+setSidebarExpanded(false);
+
+sidebarToggle?.addEventListener('click', () => setSidebarExpanded(!sidebarExpanded));
+sidebarBackdrop?.addEventListener('click', () => setSidebarExpanded(false));
+
+// Tapping a nav item on phone/tablet should close the drawer behind it
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        if (isDrawerBreakpoint() && sidebarExpanded) setSidebarExpanded(false);
+    });
 });
 
-mobileMenuBtn?.addEventListener('click', openMobileSidebar);
-overlay?.addEventListener('click', closeMobileSidebar);
-
+// If the viewport grows past the drawer breakpoint while the drawer is
+// open, drop the backdrop/overlay behaviour so it doesn't get stuck.
 window.addEventListener('resize', () => {
-    if (window.innerWidth >= 1024) closeMobileSidebar();
+    if (!isDrawerBreakpoint()) sidebarBackdrop?.classList.remove('visible');
 });
 
+/* ---------------- Topbar dropdowns (notification / profile) ---------------- */
 function setupDropdown(btnId, menuId) {
     const btn = document.getElementById(btnId);
     const menu = document.getElementById(menuId);
     btn?.addEventListener('click', (e) => {
         e.stopPropagation();
-        document.querySelectorAll('.dropdown-menu').forEach(m => { if (m !== menu) m.classList.add('hidden'); });
-        menu.classList.toggle('hidden');
+        document.querySelectorAll('.topbar-dropdown').forEach(m => { if (m !== menu) m.classList.add('hidden'); });
+        menu?.classList.toggle('hidden');
     });
 }
-setupDropdown('notif-btn', 'notif-menu');
-setupDropdown('user-menu-btn', 'user-menu');
+setupDropdown('notifBtn', 'notifDropdown');
+setupDropdown('profileBtn', 'profileDropdown');
 document.addEventListener('click', () => {
-    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+    document.querySelectorAll('.topbar-dropdown').forEach(m => m.classList.add('hidden'));
 });
 
 /* ---------------- Generic modal open/close ---------------- */
@@ -513,13 +537,13 @@ function renderTable() {
     const tbody = document.getElementById('quotation-tbody');
     tbody.innerHTML = pageRows.map(row => `
         <tr>
-            <td><b>${row.quoteNo}</b></td>
-            <td>${row.customer.name || '—'}</td>
-            <td>${row.systemSizeLabel}</td>
-            <td>${formatINR(row.amount)}</td>
-            <td><span class="badge ${badgeClass(row.status)}">${row.status}</span></td>
-            <td>${new Date(row.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</td>
-            <td class="text-right">
+            <td data-label="Quotation No."><b>${row.quoteNo}</b></td>
+            <td data-label="Customer">${row.customer.name || '—'}</td>
+            <td data-label="System Size">${row.systemSizeLabel}</td>
+            <td data-label="Amount">${formatINR(row.amount)}</td>
+            <td data-label="Status"><span class="badge ${badgeClass(row.status)}">${row.status}</span></td>
+            <td data-label="Date">${new Date(row.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</td>
+            <td data-label="Actions" class="text-right">
                 <div class="action-icons">
                     <button class="icon-action-btn" title="View" data-action="view" data-quote="${row.quoteNo}"><i class="fas fa-eye"></i></button>
                     <button class="icon-action-btn" title="Edit" data-action="edit" data-quote="${row.quoteNo}"><i class="fas fa-pen"></i></button>
