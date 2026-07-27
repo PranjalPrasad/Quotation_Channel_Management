@@ -4,11 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Supply Management Admin</title>
+    <title>Login - Solar CRM</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* --- base & reset --- */
         * {
             margin: 0;
             padding: 0;
@@ -31,7 +32,6 @@
             min-height: 100vh;
             padding: 20px;
             width: 100%;
-            
         }
 
         .login-card {
@@ -42,10 +42,10 @@
             display: flex;
             overflow: hidden;
             box-shadow: 0 20px 40px -12px rgba(84, 26, 26, 0.18);
-             border: 1.5px solid #DCC3AA;
+            border: 1.5px solid #DCC3AA;
         }
 
-        /* Left Side - Branding */
+        /* --- left side (brand) --- */
         .brand-side {
             flex: 1;
             background-image: url('/img/solar.jpg');
@@ -62,17 +62,14 @@
             min-height: 480px;
         }
 
-        /* Dark overlay so text is readable on top of image */
         .brand-side::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(
-                to bottom,
-                rgba(84, 26, 26, 0.15) 0%,
-                rgba(84, 26, 26, 0.55) 60%,
-                rgba(84, 26, 26, 0.8) 100%
-            );
+            background: linear-gradient(to bottom,
+                    rgba(84, 26, 26, 0.15) 0%,
+                    rgba(84, 26, 26, 0.55) 60%,
+                    rgba(84, 26, 26, 0.8) 100%);
             pointer-events: none;
             z-index: 0;
         }
@@ -114,7 +111,7 @@
             max-width: 260px;
         }
 
-        /* Right Side - Form */
+        /* --- right side (form) --- */
         .form-side {
             flex: 1;
             padding: 45px 35px;
@@ -237,6 +234,7 @@
             color: #810B38;
             text-decoration: none;
             transition: color 0.3s;
+            cursor: pointer;
         }
 
         .forgot-link:hover {
@@ -276,9 +274,15 @@
         }
 
         @keyframes btnBounce {
-            0%   { transform: scale(0.97); }
-            50%  { transform: scale(1.02); }
-            100% { transform: scale(1); }
+            0% {
+                transform: scale(0.97);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+            100% {
+                transform: scale(1);
+            }
         }
 
         .alert {
@@ -311,8 +315,12 @@
         }
 
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         @media (max-width: 768px) {
@@ -325,35 +333,163 @@
                 padding: 24px;
                 justify-content: flex-end;
             }
-            .brand-title { font-size: 20px; }
-            .form-side { padding: 30px; }
+            .brand-title {
+                font-size: 20px;
+            }
+            .form-side {
+                padding: 30px;
+            }
         }
 
         @keyframes slide-in {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
 
-.animate-slide-in {
-    animation: slide-in 0.3s ease-out;
-}
+        .animate-slide-in {
+            animation: slide-in 0.3s ease-out;
+        }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
 
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-}
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
 
-@keyframes slideUp {
-    from { transform: translateY(30px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
 
+        /* --- forgot password modal (overlay) --- */
+        .forgot-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(84, 26, 26, 0.55);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.25s ease;
+            font-family: 'Roboto', sans-serif;
+            padding: 16px;
+        }
 
+        .forgot-modal {
+            background: white;
+            border-radius: 20px;
+            max-width: 420px;
+            width: 100%;
+            padding: 32px 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border-top: 4px solid #541A1A;
+        }
+
+        .forgot-modal h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #541A1A;
+            margin-bottom: 6px;
+        }
+
+        .forgot-modal .sub-text {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        .forgot-modal .form-group {
+            margin-bottom: 18px;
+        }
+
+        .forgot-modal .input-wrapper i {
+            color: #B9997C;
+        }
+
+        .forgot-modal .btn-primary {
+            background: #541A1A;
+        }
+
+        .forgot-modal .btn-primary:hover {
+            background: #810B38;
+        }
+
+        .forgot-modal .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .forgot-modal .btn-secondary {
+            background: transparent;
+            border: 1px solid #DCC3AA;
+            color: #541A1A;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .forgot-modal .btn-secondary:hover {
+            background: #F7ECE1;
+        }
+
+        .forgot-modal .btn-primary.small {
+            padding: 8px 20px;
+            font-size: 13px;
+        }
+
+        .forgot-modal .alert {
+            margin-top: 10px;
+            margin-bottom: 0;
+        }
+
+        /* --- company logo placeholder --- */
+        .brand-logo-area {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .brand-logo-area img {
+            max-height: 48px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        /* hide default error container when modal is open */
+        .form-side .alert-error {
+            margin-top: 0;
+        }
     </style>
 </head>
 
@@ -375,6 +511,11 @@
 
             <!-- Right Side - Login Form -->
             <div class="form-side">
+                <!-- BRANDING / LOGO AREA (dynamic placeholder) -->
+                <div class="brand-logo-area">
+                    <img id="companyLogo" src="img/logo.webp" alt="Company Logo" onerror="this.style.display='none'">
+                </div>
+
                 <h2>Welcome Back</h2>
                 <div class="welcome-text">Please login to your admin account</div>
 
@@ -385,13 +526,8 @@
                         </label>
                         <div class="input-wrapper">
                             <i class="fas fa-envelope"></i>
-                            <input
-                                type="text"
-                                id="email"
-                                class="form-control"
-                                required
-                                placeholder="Admin"
-                            >
+                            <input type="text" id="email" class="form-control" required placeholder="Admin"
+                                value="admin@gmail.com">
                         </div>
                     </div>
 
@@ -401,14 +537,8 @@
                         </label>
                         <div class="password-wrapper">
                             <i class="fas fa-lock" style="left:12px;position:absolute;top:50%;transform:translateY(-50%);z-index:1;color:#B9997C;font-size:13px;"></i>
-                            <input
-                                type="password"
-                                id="password"
-                                class="form-control"
-                                required
-                                placeholder="Enter your password"
-                                style="padding-right: 38px;"
-                            >
+                            <input type="password" id="password" class="form-control" required
+                                placeholder="Enter your password" style="padding-right: 38px;" value="admin@1234">
                             <i class="fas fa-eye password-toggle" id="togglePassword"></i>
                         </div>
                     </div>
@@ -418,7 +548,7 @@
                             <input type="checkbox" id="rememberMe">
                             <i class="fas fa-check-circle"></i> Remember me
                         </label>
-                        <a href="#" class="forgot-link" id="forgotLink">
+                        <a class="forgot-link" id="forgotLink">
                             <i class="fas fa-question-circle"></i> Forgot password?
                         </a>
                     </div>
@@ -437,38 +567,130 @@
         </div>
     </div>
 
+    <!-- ======== FORGOT PASSWORD MODAL (built in JS) ======== -->
+    <div id="forgotModalContainer"></div>
+
     <script>
-        // ---- Dummy credentials (frontend-only auth) ----
-        const DUMMY_EMAIL    = 'admin@gmail.com';
+        // ---- DUMMY CREDENTIALS (frontend only) ----
+        const DUMMY_EMAIL = 'admin@gmail.com';
         const DUMMY_PASSWORD = 'admin@1234';
 
-        // Password toggle
-        document.getElementById('togglePassword').addEventListener('click', function () {
-            const input = document.getElementById('password');
+        // ---- DOM refs ----
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const rememberCheckbox = document.getElementById('rememberMe');
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+        const errorMessage = document.getElementById('errorMessage');
+        const forgotLink = document.getElementById('forgotLink');
+        const togglePassword = document.getElementById('togglePassword');
+
+        // ---- remember me prefill ----
+        if (localStorage.getItem('rememberedEmail')) {
+            emailInput.value = localStorage.getItem('rememberedEmail');
+            rememberCheckbox.checked = true;
+        }
+
+        // ---- password toggle ----
+        togglePassword.addEventListener('click', function() {
+            const input = passwordInput;
             input.type = input.type === 'password' ? 'text' : 'password';
             this.classList.toggle('fa-eye-slash');
         });
 
-        // Remember me – prefill email
-        const emailInput       = document.getElementById('email');
-        const rememberCheckbox = document.getElementById('rememberMe');
-
-        if (localStorage.getItem('rememberedEmail')) {
-            emailInput.value         = localStorage.getItem('rememberedEmail');
-            rememberCheckbox.checked = true;
+        // ---- show login error helper ----
+        function showLoginError(msg) {
+            errorMessage.textContent = msg;
+            loginError.style.display = 'flex';
+            setTimeout(() => { loginError.style.display = 'none'; }, 4000);
         }
 
-       
+        // ---- overlay message (success / error) ----
+        function showOverlayMessage(message, type) {
+            const existing = document.querySelector('.message-overlay');
+            if (existing) existing.remove();
 
-        // Login submit
-        const loginForm = document.getElementById('loginForm');
-        const loginBtn  = document.getElementById('loginBtn');
+            const overlay = document.createElement('div');
+            overlay.className = 'message-overlay';
+            overlay.style.cssText = `
+                    position: fixed; top:0; left:0; width:100%; height:100%;
+                    background: rgba(84,26,26,0.55); backdrop-filter: blur(4px);
+                    display: flex; align-items: center; justify-content: center;
+                    z-index: 9999; animation: fadeIn 0.3s ease;
+                    font-family: 'Roboto', sans-serif;
+                `;
 
+            if (type === 'success') {
+                overlay.innerHTML = `
+                        <div class="message-card success-card" style="background:white; border-radius:16px; padding:32px 40px; max-width:400px; width:90%; text-align:center; animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 20px 40px rgba(84,26,26,0.3); border-top:4px solid #047857;">
+                            <div style="width:70px; height:70px; border-radius:50%; background:#D1FAE5; color:#047857; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:32px;">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <h3 style="font-size:20px; font-weight:700; margin-bottom:12px; color:#541A1A;">Authentication Successful</h3>
+                            <p style="font-size:13px; color:#6b7280; line-height:1.5; margin-bottom:20px;">Welcome back, Administrator! You have successfully logged into the Solar Management.</p>
+                            <div style="font-size:11px; color:#9CA3AF; display:flex; align-items:center; justify-content:center; gap:6px; margin-top:16px; padding-top:16px; border-top:1px solid #E9D9C6;">
+                                <i class="fas fa-clock"></i> Redirecting to dashboard...
+                            </div>
+                            <div style="width:100%; height:3px; background:#E9D9C6; border-radius:3px; overflow:hidden; margin-top:20px;">
+                                <div style="width:100%; height:100%; background:#047857; animation: progressShrink 1.5s linear forwards;"></div>
+                            </div>
+                        </div>
+                    `;
+            } else {
+                overlay.innerHTML = `
+                        <div class="message-card error-card" style="background:white; border-radius:16px; padding:32px 40px; max-width:400px; width:90%; text-align:center; animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 20px 40px rgba(84,26,26,0.3); border-top:4px solid #E11D48;">
+                            <div style="width:70px; height:70px; border-radius:50%; background:#FFE4E6; color:#E11D48; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:32px;">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <h3 style="font-size:20px; font-weight:700; margin-bottom:12px; color:#541A1A;">Authentication Failed</h3>
+                            <p style="font-size:13px; color:#6b7280; line-height:1.5; margin-bottom:20px;">The email address or password you entered is incorrect. Please verify your credentials and try again.</p>
+                            <div style="background:#FEF3C7; border-radius:8px; padding:12px; margin:16px 0; text-align:left; font-size:11px; color:#B45309;">
+                                <div style="margin:6px 0; display:flex; gap:8px;"><i class="fas fa-envelope"></i> Use registered admin email</div>
+                                <div style="margin:6px 0; display:flex; gap:8px;"><i class="fas fa-key"></i> Check for case-sensitive password</div>
+                            </div>
+                            <div style="font-size:11px; color:#9CA3AF; display:flex; align-items:center; justify-content:center; gap:6px; margin-top:16px; padding-top:16px; border-top:1px solid #E9D9C6;">
+                                <i class="fas fa-exclamation-triangle"></i> Attempt remaining: Unlimited
+                            </div>
+                            <button id="tryAgainBtn" style="background:#541A1A; color:white; border:none; padding:8px 20px; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer; margin-top:16px; transition:all 0.2s;">Try Again</button>
+                        </div>
+                    `;
+            }
+
+            document.body.appendChild(overlay);
+
+            // inject keyframe for progress shrink if not present
+            if (!document.getElementById('progressKeyframes')) {
+                const style = document.createElement('style');
+                style.id = 'progressKeyframes';
+                style.textContent = `
+                        @keyframes progressShrink { from { width:100%; } to { width:0%; } }
+                        @keyframes fadeOut { from { opacity:1; } to { opacity:0; } }
+                    `;
+                document.head.appendChild(style);
+            }
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    overlay.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => overlay.remove(), 300);
+                }, 3000);
+            } else {
+                const tryBtn = overlay.querySelector('#tryAgainBtn');
+                if (tryBtn) {
+                    tryBtn.onmouseover = () => tryBtn.style.background = '#810B38';
+                    tryBtn.onmouseout = () => tryBtn.style.background = '#541A1A';
+                    tryBtn.onclick = () => overlay.remove();
+                }
+            }
+        }
+
+        // ---- LOGIN submit ----
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            const email    = emailInput.value.trim();
-            const password = document.getElementById('password').value.trim();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
 
             if (!email || !password) {
                 showLoginError('Please enter both email and password');
@@ -477,231 +699,141 @@
 
             loginBtn.classList.add('loading');
             loginBtn.innerHTML = '<i class="fas fa-spinner"></i> Logging in...';
-            document.getElementById('loginError').style.display = 'none';
+            loginError.style.display = 'none';
 
-            // Simulate a short loading delay
             setTimeout(() => {
                 if (email === DUMMY_EMAIL && password === DUMMY_PASSWORD) {
-    // Remove all localStorage saves
-    localStorage.removeItem('rememberedEmail');
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('adminName');
-    localStorage.removeItem('adminEmail');
-    localStorage.removeItem('adminRole');
-    localStorage.removeItem('adminId');
-    
-    // Show professional success overlay
-    showOverlayMessage('', 'success');
-    
-    setTimeout(() => {
-        window.location.href = './dashboard/dashboard.html';
-    }, 3000);
-}
-                else {
-    showOverlayMessage('', 'error');
-    loginBtn.classList.remove('loading');
-    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login to Dashboard';
-    document.getElementById('password').value = ''; // Clear password field
-}
+                    // clear any previous storage
+                    localStorage.removeItem('rememberedEmail');
+                    localStorage.removeItem('isLoggedIn');
+                    localStorage.removeItem('adminName');
+                    localStorage.removeItem('adminEmail');
+                    localStorage.removeItem('adminRole');
+                    localStorage.removeItem('adminId');
+
+                    // === ROLE CHECK PLACEHOLDER ===
+                    // currently hardcoded, but structure ready for future backend response
+                    // if backend sends "CHANNEL_PARTNER_SALES" we can adjust dashboard KPIs
+                    // For now we just store a dummy role (admin) but the logic is ready.
+                    // In future: const role = response.role; if(role === 'CHANNEL_PARTNER_SALES') { /* show less KPIs */ }
+                    // For demonstration we set a default role
+                    localStorage.setItem('adminRole', 'ADMIN'); // change to 'CHANNEL_PARTNER_SALES' to test
+
+                    showOverlayMessage('', 'success');
+                    setTimeout(() => {
+                        window.location.href = './dashboard/dashboard.html';
+                    }, 3000);
+                } else {
+                    showOverlayMessage('', 'error');
+                    loginBtn.classList.remove('loading');
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login to Dashboard';
+                    passwordInput.value = '';
+                }
             }, 600);
         });
 
-        function showLoginError(message) {
-            const errorEl = document.getElementById('loginError');
-            document.getElementById('errorMessage').textContent = message;
-            errorEl.style.display = 'flex';
-            setTimeout(() => errorEl.style.display = 'none', 4000);
-        }
-        function showOverlayMessage(message, type) {
-    // Remove existing overlay if any
-    const existingOverlay = document.querySelector('.message-overlay');
-    if (existingOverlay) existingOverlay.remove();
-    
-    // Create overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'message-overlay';
-    
-    if (type === 'success') {
-        overlay.innerHTML = `
-            <div class="message-card success-card">
-                <div class="message-icon success-icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <h3 class="message-title">Authentication Successful</h3>
-                <p class="message-detail">Welcome back, Administrator! You have successfully logged into the Solar Management .</p>
-                <div class="message-meta">
-                    <i class="fas fa-clock"></i> Redirecting to dashboard...
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill"></div>
-                </div>
-            </div>
-        `;
-    } else {
-        overlay.innerHTML = `
-            <div class="message-card error-card">
-                <div class="message-icon error-icon">
-                    <i class="fas fa-lock"></i>
-                </div>
-                <h3 class="message-title">Authentication Failed</h3>
-                <p class="message-detail">The email address or password you entered is incorrect. Please verify your credentials and try again.</p>
-                <div class="error-suggestions">
-                    <div><i class="fas fa-envelope"></i> Use registered admin email</div>
-                    <div><i class="fas fa-key"></i> Check for case-sensitive password</div>
-                </div>
-                <div class="message-meta">
-                    <i class="fas fa-exclamation-triangle"></i> Attempt remaining: Unlimited
-                </div>
-            </div>
-        `;
-    }
-    
-    // Add styles
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(84, 26, 26, 0.55);
-        backdrop-filter: blur(4px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        animation: fadeIn 0.3s ease;
-        font-family: 'Roboto', sans-serif;
-    `;
-    
-    document.body.appendChild(overlay);
-    
-    // Add card styles dynamically
-    const style = document.createElement('style');
-    style.textContent = `
-        .message-card {
-            background: white;
-            border-radius: 16px;
-            padding: 32px 40px;
-            max-width: 400px;
-            width: 90%;
-            text-align: center;
-            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 20px 40px rgba(84, 26, 26, 0.3);
-        }
-        .success-card { border-top: 4px solid #047857; }
-        .error-card { border-top: 4px solid #E11D48; }
-        .message-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            font-size: 32px;
-        }
-        .success-icon {
-            background: #D1FAE5;
-            color: #047857;
-        }
-        .error-icon {
-            background: #FFE4E6;
-            color: #E11D48;
-        }
-        .message-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: #541A1A;
-        }
-        .message-detail {
-            font-size: 13px;
-            color: #6b7280;
-            line-height: 1.5;
-            margin-bottom: 20px;
-        }
-        .message-meta {
-            font-size: 11px;
-            color: #9CA3AF;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #E9D9C6;
-        }
-        .error-suggestions {
-            background: #FEF3C7;
-            border-radius: 8px;
-            padding: 12px;
-            margin: 16px 0;
-            text-align: left;
-            font-size: 11px;
-            color: #B45309;
-        }
-        .error-suggestions div {
-            margin: 6px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 3px;
-            background: #E9D9C6;
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 20px;
-        }
-        .progress-fill {
-            width: 100%;
-            height: 100%;
-            background: #047857;
-            animation: progressShrink 1.5s linear forwards;
-        }
-        @keyframes progressShrink {
-            from { width: 100%; }
-            to { width: 0%; }
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Auto remove after 3 seconds for success, manual close for error
-    if (type === 'success') {
-        setTimeout(() => {
-            overlay.style.animation = 'fadeOut 0.3s ease';
-            setTimeout(() => overlay.remove(), 300);
-        }, 3000);
-    } else {
-        // Add close button for error message
-        const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = 'Try Again';
-        closeBtn.style.cssText = `
-            background: #541A1A;
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            margin-top: 16px;
-            transition: all 0.2s;
-        `;
-        closeBtn.onmouseover = () => closeBtn.style.background = '#810B38';
-        closeBtn.onmouseout = () => closeBtn.style.background = '#541A1A';
-        closeBtn.onclick = () => overlay.remove();
-        
-        const card = overlay.querySelector('.message-card');
-        card.appendChild(closeBtn);
-    }
-}
+        // ---- FORGOT PASSWORD : open modal ----
+        function openForgotModal() {
+            // remove any existing modal
+            const container = document.getElementById('forgotModalContainer');
+            container.innerHTML = '';
 
-        document.getElementById('forgotLink').addEventListener('click', (e) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'forgot-overlay';
+            overlay.id = 'forgotOverlay';
+
+            overlay.innerHTML = `
+                    <div class="forgot-modal">
+                        <h3><i class="fas fa-key" style="color:#810B38; margin-right:8px;"></i>Reset Password</h3>
+                        <p class="sub-text">Enter your email or username and we'll send you a reset link.</p>
+                        <div class="form-group">
+                            <label for="resetEmail"><i class="fas fa-envelope"></i> Email / Username</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-user"></i>
+                                <input type="text" id="resetEmail" class="form-control" placeholder="Enter your email" value="admin@gmail.com">
+                            </div>
+                        </div>
+                        <div id="resetError" class="alert alert-error" style="display:none;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span id="resetErrorMsg"></span>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn-secondary" id="cancelResetBtn">Cancel</button>
+                            <button class="btn-primary small" id="sendResetBtn"><i class="fas fa-paper-plane"></i> Send Reset Link</button>
+                        </div>
+                    </div>
+                `;
+
+            container.appendChild(overlay);
+
+            // ---- modal logic ----
+            const resetEmail = document.getElementById('resetEmail');
+            const resetError = document.getElementById('resetError');
+            const resetErrorMsg = document.getElementById('resetErrorMsg');
+            const sendBtn = document.getElementById('sendResetBtn');
+            const cancelBtn = document.getElementById('cancelResetBtn');
+
+            function showResetError(msg) {
+                resetErrorMsg.textContent = msg;
+                resetError.style.display = 'flex';
+                setTimeout(() => { resetError.style.display = 'none'; }, 4000);
+            }
+
+            sendBtn.addEventListener('click', () => {
+                const val = resetEmail.value.trim();
+                if (!val) {
+                    showResetError('Please enter your email or username.');
+                    return;
+                }
+                // simple email format validation (basic)
+                if (!val.includes('@') || !val.includes('.')) {
+                    showResetError('Please enter a valid email address.');
+                    return;
+                }
+                // success: show temporary message and close
+                resetError.style.display = 'none';
+                // UI feedback
+                sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+                sendBtn.disabled = true;
+                setTimeout(() => {
+                    // close modal
+                    closeForgotModal();
+                    // show a small success toast (using loginError as temporary)
+                    showLoginError('✅ Reset link sent! Check your email (demo).');
+                }, 800);
+            });
+
+            cancelBtn.addEventListener('click', closeForgotModal);
+
+            // close on overlay click (but not on modal click)
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeForgotModal();
+            });
+
+            // close on Escape key
+            document.addEventListener('keydown', function escHandler(e) {
+                if (e.key === 'Escape') {
+                    closeForgotModal();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            });
+        }
+
+        function closeForgotModal() {
+            const container = document.getElementById('forgotModalContainer');
+            container.innerHTML = '';
+        }
+
+        // ---- attach forgot link ----
+        forgotLink.addEventListener('click', (e) => {
             e.preventDefault();
-            showLoginError('Contact super admin to reset password');
+            openForgotModal();
         });
+
+        // ---- (optional) if user clicks on forgot link in modal, it's already handled
+        console.log('Solar CRM login ready – role-based redirect placeholder active.');
+        console.log('CHANNEL_PARTNER_SALES role will show less KPIs (structure ready).');
     </script>
 </body>
+
 </html>

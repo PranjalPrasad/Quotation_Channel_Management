@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/quotations
+
 // ============================================================
 // Quotation Management — single-module client-side logic (demo data only)
 // ============================================================
@@ -10,7 +12,15 @@ const COMPANY = {
     email: 'sales@solartechrenewables.in',
     gstin: '27ABCDE1234F1Z5',
     state: 'Maharashtra',
-    logo: '../img/logo.png'
+    logo: '../img/logo.png',
+    // Bank Details (will be auto-fetched from Settings later)
+    bank: {
+        accountName: 'SolarTech Renewables Pvt. Ltd.',
+        bankName: 'State Bank of India',
+        accountNumber: '123456789012345',
+        ifscCode: 'SBIN0001234',
+        branch: 'Pune Main Branch'
+    }
 };
 
 /* =====================================================================
@@ -170,6 +180,72 @@ function showToast(message, type = 'success') {
 
 function formatINR(n) {
     return '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
+}
+
+/* =====================================================================
+   REFERRAL FUNCTIONS
+   ===================================================================== */
+
+// Mock data for referrers (customers and channel partners)
+// In production, this would come from an API
+const REFERRER_DATA = {
+    customers: [
+        { id: 'CUST-001', name: 'Amit Sharma', type: 'Existing Customer' },
+        { id: 'CUST-002', name: 'Priya Nair', type: 'Existing Customer' },
+        { id: 'CUST-003', name: 'Ramesh Traders', type: 'Existing Customer' },
+        { id: 'CUST-004', name: 'Suresh Patel', type: 'Existing Customer' },
+        { id: 'CUST-005', name: 'Neha Gupta', type: 'Existing Customer' },
+        { id: 'CUST-006', name: 'Vikas Enterprises', type: 'Existing Customer' },
+        { id: 'CUST-007', name: 'Anjali Deshmukh', type: 'Existing Customer' },
+        { id: 'CUST-008', name: 'Rohit Verma', type: 'Existing Customer' },
+        { id: 'CUST-009', name: 'Sneha Kulkarni', type: 'Existing Customer' },
+        { id: 'CUST-010', name: 'Manoj Yadav', type: 'Existing Customer' },
+    ],
+    channelPartners: [
+        { id: 'CP-001', name: 'Green Energy Solutions', type: 'Channel Partner' },
+        { id: 'CP-002', name: 'Solar Hub India', type: 'Channel Partner' },
+        { id: 'CP-003', name: 'Eco Power Systems', type: 'Channel Partner' },
+        { id: 'CP-004', name: 'Sunrise Renewables', type: 'Channel Partner' },
+    ]
+};
+
+// Populate the referrer datalist
+function populateReferrerList() {
+    const datalist = document.getElementById('referrerList');
+    if (!datalist) return;
+    
+    const allReferrers = [
+        ...REFERRER_DATA.customers.map(c => ({ ...c, display: `${c.name} (${c.type})` })),
+        ...REFERRER_DATA.channelPartners.map(c => ({ ...c, display: `${c.name} (${c.type})` }))
+    ];
+    
+    datalist.innerHTML = allReferrers.map(r => 
+        `<option value="${r.name}">${r.display}</option>`
+    ).join('');
+}
+
+// Get referrer details by name
+function getReferrerDetails(name) {
+    if (!name) return null;
+    const all = [
+        ...REFERRER_DATA.customers,
+        ...REFERRER_DATA.channelPartners
+    ];
+    return all.find(r => r.name.toLowerCase() === name.toLowerCase()) || null;
+}
+
+// Generate referral code based on referrer name
+function generateReferralCode(referrerName) {
+    if (!referrerName) return '';
+    const parts = referrerName.split(' ');
+    const prefix = parts.map(p => p[0]).join('').toUpperCase().slice(0, 3);
+    const random = Math.floor(1000 + Math.random() * 9000);
+    return `${prefix}${random}`;
+}
+
+// Calculate referral amount
+function calculateReferralAmount(grandTotal, referralPercent) {
+    return grandTotal * (referralPercent / 100);
 }
 
 /* =====================================================================
@@ -341,6 +417,72 @@ function escapeAttr(str) {
 }
 
 /* =====================================================================
+   REFERRAL UI FUNCTIONS
+   ===================================================================== */
+
+// Toggle referral section visibility
+function toggleReferralSection() {
+    const isChecked = document.getElementById('f-isReferred').checked;
+    const fields = ['referredByField', 'referrerTypeField', 'referralCodeField', 'referralPercentField', 'referralHint'];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isChecked ? '' : 'none';
+    });
+    if (!isChecked) {
+        document.getElementById('f-referredBy').value = '';
+        document.getElementById('f-referrerType').value = '';
+        document.getElementById('f-referralCode').value = '';
+        document.getElementById('f-referralPercent').value = 5;
+        document.getElementById('referralHintText').textContent = 'Referral details will be used for commission calculation. Final payout approval happens in Channel Partner module.';
+    }
+}
+
+// Handle referrer selection
+function handleReferrerSelection() {
+    const name = document.getElementById('f-referredBy').value.trim();
+    if (!name) {
+        document.getElementById('f-referralCode').value = '';
+        document.getElementById('f-referrerType').value = '';
+        return;
+    }
+    const details = getReferrerDetails(name);
+    if (details) {
+        document.getElementById('f-referrerType').value = details.type;
+        document.getElementById('f-referralCode').value = generateReferralCode(name);
+        document.getElementById('referralHintText').textContent = `Referrer: ${details.name} (${details.type}) — Referral code generated.`;
+    } else {
+        // Manual entry - keep the name but let user select type
+        document.getElementById('f-referralCode').value = generateReferralCode(name);
+        document.getElementById('referralHintText').textContent = 'Manual referrer entry. Please select the referrer type.';
+    }
+}
+
+// Update referral amount in summary
+function updateReferralAmountInSummary(grandTotal) {
+    const referralPercent = parseFloat(document.getElementById('f-referralPercent').value) || 0;
+    const isReferred = document.getElementById('f-isReferred').checked;
+    const referralAmount = isReferred ? calculateReferralAmount(grandTotal, referralPercent) : 0;
+    
+    const summaryEl = document.getElementById('summary-gst');
+    if (!summaryEl) return;
+    
+    // Check if referral row already exists
+    let referralRow = summaryEl.querySelector('.referral-row');
+    if (isReferred && referralPercent > 0) {
+        if (referralRow) {
+            referralRow.innerHTML = `<span>Referral Amount (Estimated)</span><b>${formatINR(referralAmount)}</b>`;
+        } else {
+            const row = document.createElement('div');
+            row.className = 'row referral-row';
+            row.innerHTML = `<span>Referral Amount (Estimated)</span><b>${formatINR(referralAmount)}</b>`;
+            summaryEl.appendChild(row);
+        }
+    } else {
+        if (referralRow) referralRow.remove();
+    }
+}
+
+/* =====================================================================
    QUOTATION DATA MODEL
    ===================================================================== */
 function computeTotals(itemsTotal, costs, gstPercent, discountType, discountValue) {
@@ -395,12 +537,29 @@ function makeQuotation(overrides = {}) {
         discountValue: 0,
         tariff: 8,
         escalation: 3,
-        advance: 0
+        advance: 0,
+        // New fields for quotation form additions
+        bank: { ...COMPANY.bank },
+        terms: `1. Prices are valid for 15 days from the date of quotation.\n2. 50% advance payment is required to confirm the order.\n3. Delivery and installation will be completed within 3–4 weeks of receiving the advance payment.\n4. All government subsidies and incentives will be processed as per applicable schemes.\n5. Warranty terms apply as per manufacturer's guidelines.\n6. Any additional civil work or structural changes will be charged extra.\n7. Taxes and duties as applicable at the time of billing.`,
+        paymentTerms: { advance: 50, material: 25, installation: 15, balance: 10 },
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        // Referral fields
+        referral: {
+            isReferred: false,
+            referredBy: '',
+            referrerType: '',
+            referralCode: '',
+            referralPercent: 5,
+            referralAmount: 0
+        }
     };
-    const merged = { ...base, ...overrides };
-    merged.customer = { ...base.customer, ...(overrides.customer || {}) };
-    merged.costs = { ...base.costs, ...(overrides.costs || {}) };
-    if (overrides.items) merged.items = overrides.items;
+    const merged = { ...base, ...(overrides || {}) };
+    merged.customer = { ...base.customer, ...(overrides?.customer || {}) };
+    merged.costs = { ...base.costs, ...(overrides?.costs || {}) };
+    if (overrides?.items) merged.items = overrides.items;
+    if (overrides?.bank) merged.bank = { ...base.bank, ...(overrides.bank || {}) };
+    if (overrides?.paymentTerms) merged.paymentTerms = { ...base.paymentTerms, ...(overrides.paymentTerms || {}) };
+    if (overrides?.referral) merged.referral = { ...base.referral, ...(overrides.referral || {}) };
 
     const itTotal = itemsSubtotal(merged.items);
     const totals = computeTotals(itTotal, merged.costs, merged.gstPercent, merged.discountType, merged.discountValue);
@@ -408,6 +567,14 @@ function makeQuotation(overrides = {}) {
     merged.itemsTotal = itTotal;
     merged.amount = Math.round(totals.total);
     merged.balance = Math.round(totals.total - merged.advance);
+    
+    // Calculate referral amount
+    if (merged.referral.isReferred && merged.referral.referralPercent > 0) {
+        merged.referral.referralAmount = calculateReferralAmount(totals.total, merged.referral.referralPercent);
+    } else {
+        merged.referral.referralAmount = 0;
+    }
+    
     return attachSubsidyAndSavings(merged);
 }
 
@@ -444,9 +611,9 @@ function itemsForSize(sizeKw) {
 
 let quotations = [
     makeQuotation({ customer: { name: 'Amit Sharma', mobile: '9876543210', email: 'amit.sharma@example.com', address: 'Plot 12, Kothrud', city: 'Pune', state: 'Maharashtra', pincode: '411038' }, status: 'Pending', date: '2026-07-15' }),
-    makeQuotation({ customer: { name: 'Ramesh Traders', company: 'Ramesh Traders', mobile: '9876500001', email: 'ramesh.traders@example.com', address: 'MG Road', city: 'Ahmedabad', state: 'Gujarat', pincode: '380001', commercial: true, gst: '24ABCDE5678F1Z2' }, systemSizeKw: 5, systemSizeLabel: '5 kW', items: itemsForSize(5), status: 'Accepted', date: '2026-07-14' }),
+    makeQuotation({ customer: { name: 'Ramesh Traders', company: 'Ramesh Traders', mobile: '9876500001', email: 'ramesh.traders@example.com', address: 'MG Road', city: 'Ahmedabad', state: 'Gujarat', pincode: '380001', commercial: true, gst: '24ABCDE5678F1Z2' }, systemSizeKw: 5, systemSizeLabel: '5 kW', items: itemsForSize(5), status: 'Accepted', date: '2026-07-14', referral: { isReferred: true, referredBy: 'Priya Nair', referrerType: 'Existing Customer', referralCode: 'PN1234', referralPercent: 5, referralAmount: 0 } }),
     makeQuotation({ customer: { name: 'Priya Nair', mobile: '9876500002', email: 'priya.nair@example.com', address: 'Marine Drive', city: 'Kochi', state: 'Karnataka', pincode: '682001' }, systemSizeKw: 2, systemSizeLabel: '2 kW', items: itemsForSize(2), status: 'Rejected', date: '2026-07-13' }),
-    makeQuotation({ customer: { name: 'Suresh Patel', mobile: '9876500003', email: 'suresh.patel@example.com', address: 'Ring Road', city: 'Rajkot', state: 'Gujarat', pincode: '360001' }, systemSizeKw: 10, systemSizeLabel: '10 kW', items: itemsForSize(10), status: 'Pending', date: '2026-07-12' }),
+    makeQuotation({ customer: { name: 'Suresh Patel', mobile: '9876500003', email: 'suresh.patel@example.com', address: 'Ring Road', city: 'Rajkot', state: 'Gujarat', pincode: '360001' }, systemSizeKw: 10, systemSizeLabel: '10 kW', items: itemsForSize(10), status: 'Pending', date: '2026-07-12', referral: { isReferred: true, referredBy: 'Green Energy Solutions', referrerType: 'Channel Partner', referralCode: 'GES5678', referralPercent: 5, referralAmount: 0 } }),
     makeQuotation({ customer: { name: 'Neha Gupta', mobile: '9876500004', email: 'neha.gupta@example.com', address: 'Civil Lines', city: 'Jaipur', state: 'Rajasthan', pincode: '302001' }, systemSizeKw: 1, systemSizeLabel: '1 kW', items: itemsForSize(1), status: 'Accepted', date: '2026-07-11' }),
     makeQuotation({ customer: { name: 'Vikas Enterprises', company: 'Vikas Enterprises', mobile: '9876500005', email: 'vikas.ent@example.com', address: 'Industrial Area', city: 'Delhi', state: 'Delhi', pincode: '110001', commercial: true, gst: '07ABCDE1111F1Z9' }, systemSizeKw: 20, systemSizeLabel: '20 kW', items: itemsForSize(20), status: 'Pending', date: '2026-07-10' }),
     makeQuotation({ customer: { name: 'Anjali Deshmukh', mobile: '9876500006', email: 'anjali.d@example.com', address: 'FC Road', city: 'Pune', state: 'Maharashtra', pincode: '411005' }, status: 'Accepted', date: '2026-07-09' }),
@@ -474,6 +641,14 @@ function badgeClass(status) {
     return 'badge-pending';
 }
 
+function referralBadgeClass(isReferred) {
+    return isReferred ? 'badge-referred' : 'badge-direct';
+}
+
+function referralBadgeText(isReferred) {
+    return isReferred ? 'Referred' : 'Direct';
+}
+
 function getFiltered() {
     const q = document.getElementById('search-input').value.trim().toLowerCase();
     const status = document.getElementById('filter-status').value;
@@ -486,8 +661,8 @@ function getFiltered() {
     });
     if (sortKey) {
         list = [...list].sort((a, b) => {
-            const map = { quoteNo: a.quoteNo, customer: a.customer.name, size: a.systemSizeLabel, amount: a.amount, status: a.status, date: a.date };
-            const mapB = { quoteNo: b.quoteNo, customer: b.customer.name, size: b.systemSizeLabel, amount: b.amount, status: b.status, date: b.date };
+            const map = { quoteNo: a.quoteNo, customer: a.customer.name, size: a.systemSizeLabel, amount: a.amount, status: a.status, date: a.date, referral: a.referral?.isReferred ? 1 : 0 };
+            const mapB = { quoteNo: b.quoteNo, customer: b.customer.name, size: b.systemSizeLabel, amount: b.amount, status: b.status, date: b.date, referral: b.referral?.isReferred ? 1 : 0 };
             let va = map[sortKey], vb = mapB[sortKey];
             if (sortKey === 'amount') { va = Number(va); vb = Number(vb); }
             if (va < vb) return -1 * sortDir;
@@ -535,23 +710,27 @@ function renderTable() {
     const pageRows = filtered.slice(start, start + rowsPerPage);
 
     const tbody = document.getElementById('quotation-tbody');
-    tbody.innerHTML = pageRows.map(row => `
+    tbody.innerHTML = pageRows.map(row => {
+        const isReferred = row.referral?.isReferred || false;
+        return `
         <tr>
             <td data-label="Quotation No."><b>${row.quoteNo}</b></td>
             <td data-label="Customer">${row.customer.name || '—'}</td>
             <td data-label="System Size">${row.systemSizeLabel}</td>
             <td data-label="Amount">${formatINR(row.amount)}</td>
             <td data-label="Status"><span class="badge ${badgeClass(row.status)}">${row.status}</span></td>
+            <td data-label="Referral"><span class="badge ${referralBadgeClass(isReferred)}">${referralBadgeText(isReferred)}</span></td>
             <td data-label="Date">${new Date(row.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</td>
             <td data-label="Actions" class="text-right">
                 <div class="action-icons">
                     <button class="icon-action-btn" title="View" data-action="view" data-quote="${row.quoteNo}"><i class="fas fa-eye"></i></button>
                     <button class="icon-action-btn" title="Edit" data-action="edit" data-quote="${row.quoteNo}"><i class="fas fa-pen"></i></button>
+                    ${row.status === 'Accepted' ? `<button class="icon-action-btn success" title="Convert to Order" data-action="convert" data-quote="${row.quoteNo}"><i class="fas fa-clipboard-list"></i></button>` : ''}
                     <button class="icon-action-btn danger" title="Delete" data-action="delete" data-quote="${row.quoteNo}"><i class="fas fa-trash"></i></button>
                 </div>
             </td>
         </tr>
-    `).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">No quotations match your filters.</td></tr>`;
+    `}).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">No quotations match your filters.</td></tr>`;
 
     // Range text ("Showing 1-10 of 34")
     const rangeEl = document.getElementById('table-range');
@@ -581,6 +760,7 @@ function renderTable() {
             if (btn.dataset.action === 'view') openViewModal(quote);
             if (btn.dataset.action === 'edit') openEditModal(quote);
             if (btn.dataset.action === 'delete') openDeleteModal(quote);
+            if (btn.dataset.action === 'convert') openConvertModal(quote);
         });
     });
 }
@@ -624,6 +804,23 @@ function buildInvoiceMarkup(q) {
     `).join('');
 
     const badgeCls = badgeClass(q.status);
+    const bank = q.bank || COMPANY.bank;
+    const paymentTerms = q.paymentTerms || { advance: 50, material: 25, installation: 15, balance: 10 };
+    const referral = q.referral || { isReferred: false, referredBy: '', referrerType: '', referralCode: '', referralPercent: 5, referralAmount: 0 };
+
+    // Referral info HTML (only show if referred)
+    const referralHtml = referral.isReferred ? `
+        <div class="inv-referral-info">
+            <div class="inv-label">Referral Information:</div>
+            <table>
+                <tr><td>Referred By</td><td>${referral.referredBy || '—'}</td></tr>
+                <tr><td>Referrer Type</td><td>${referral.referrerType || '—'}</td></tr>
+                <tr><td>Referral Code</td><td>${referral.referralCode || '—'}</td></tr>
+                <tr><td>Referral %</td><td>${referral.referralPercent || 0}%</td></tr>
+                <tr class="total-row"><td>Referral Amount</td><td>${formatINR(referral.referralAmount || 0)}</td></tr>
+            </table>
+        </div>
+    ` : '';
 
     return `
         <div class="inv-header">
@@ -652,6 +849,7 @@ function buildInvoiceMarkup(q) {
                 <div><span>Quotation No.:</span> <b>${q.quoteNo}</b></div>
                 <div><span>Quotation Date:</span> <b>${new Date(q.date).toLocaleDateString('en-GB')}</b></div>
                 <div><span>System Size:</span> <b>${q.systemSizeLabel}</b></div>
+                <div><span>Valid Until:</span> <b>${q.validUntil ? new Date(q.validUntil).toLocaleDateString('en-GB') : '—'}</b></div>
             </div>
         </div>
         <table class="inv-items-table">
@@ -662,9 +860,37 @@ function buildInvoiceMarkup(q) {
             <div class="inv-words">
                 <div class="inv-label">Amount in Words:</div>
                 <div>${numberToWordsIndian(q.total)}</div>
+
+                <!-- Bank Details -->
+                <div class="inv-bank-details">
+                    <div class="inv-label">Bank Details:</div>
+                    <table>
+                        <tr><td>Account Name</td><td>${bank.accountName || '—'}</td></tr>
+                        <tr><td>Bank Name</td><td>${bank.bankName || '—'}</td></tr>
+                        <tr><td>Account Number</td><td>${bank.accountNumber || '—'}</td></tr>
+                        <tr><td>IFSC Code</td><td>${bank.ifscCode || '—'}</td></tr>
+                        <tr><td>Branch</td><td>${bank.branch || '—'}</td></tr>
+                    </table>
+                </div>
+
+                <!-- Payment Terms -->
+                <div class="inv-payment-terms">
+                    <div class="inv-label">Payment Terms:</div>
+                    <table>
+                        <tr><td>Advance</td><td>${paymentTerms.advance || 0}%</td></tr>
+                        <tr><td>On Material Delivery</td><td>${paymentTerms.material || 0}%</td></tr>
+                        <tr><td>On Installation Completion</td><td>${paymentTerms.installation || 0}%</td></tr>
+                        <tr><td>Balance</td><td>${paymentTerms.balance || 0}%</td></tr>
+                    </table>
+                </div>
+
+                <!-- Referral Info -->
+                ${referralHtml}
+
+                <!-- Terms & Conditions -->
                 <div class="inv-terms">
                     <div class="inv-label">Terms & Conditions</div>
-                    <div class="terms-text">1. Prices valid for 15 days. 2. 50% advance required to confirm order. 3. Delivery within 3–4 weeks of advance payment.</div>
+                    <div class="terms-text">${(q.terms || '').replace(/\n/g, '<br>')}</div>
                 </div>
             </div>
             <table class="inv-totals-table">
@@ -673,6 +899,7 @@ function buildInvoiceMarkup(q) {
                 <tr><td>SGST</td><td>${formatINR(q.sgst)}</td></tr>
                 <tr><td>CGST</td><td>${formatINR(q.cgst)}</td></tr>
                 <tr class="total-row"><td>Total</td><td>${formatINR(q.total)}</td></tr>
+                ${referral.isReferred && referral.referralAmount > 0 ? `<tr class="referral-row"><td>Referral Amount</td><td>${formatINR(referral.referralAmount)}</td></tr>` : ''}
                 <tr><td>Advance</td><td>${formatINR(q.advance)}</td></tr>
                 <tr><td>Balance</td><td>${formatINR(q.total - q.advance)}</td></tr>
             </table>
@@ -808,6 +1035,11 @@ document.getElementById('btn-save-edit').addEventListener('click', () => {
     Object.assign(q, totals);
     q.amount = Math.round(totals.total);
     q.balance = Math.round(totals.total - q.advance);
+    
+    // Recalculate referral amount
+    if (q.referral?.isReferred && q.referral.referralPercent > 0) {
+        q.referral.referralAmount = calculateReferralAmount(totals.total, q.referral.referralPercent);
+    }
 
     closeModal('modal-edit');
     renderTable();
@@ -833,10 +1065,61 @@ document.getElementById('btn-confirm-delete').addEventListener('click', () => {
 });
 
 /* =====================================================================
+   CONVERT TO ORDER MODAL
+   ===================================================================== */
+let convertingQuoteNo = null;
+
+function openConvertModal(q) {
+    if (q.status !== 'Accepted') {
+        showToast('Only Accepted quotations can be converted to orders.', 'error');
+        return;
+    }
+    convertingQuoteNo = q.quoteNo;
+    document.getElementById('convert-quoteno').textContent = q.quoteNo;
+    openModal('modal-convert-order');
+}
+
+document.getElementById('btn-confirm-convert').addEventListener('click', () => {
+    const q = quotations.find(q => q.quoteNo === convertingQuoteNo);
+    if (!q) return;
+
+    // Placeholder: In production, this would call an API to create an order
+    showToast(`Order created from ${q.quoteNo} successfully! (Backend integration pending)`, 'success');
+    closeModal('modal-convert-order');
+    convertingQuoteNo = null;
+});
+
+/* =====================================================================
    NEW QUOTATION WIZARD (inside modal-wizard)
    ===================================================================== */
 let currentStep = 1;
 const totalWizardSteps = 6;
+
+// Payment terms validation
+function validatePaymentTerms() {
+    const advance = parseFloat(document.getElementById('f-payment-advance').value) || 0;
+    const material = parseFloat(document.getElementById('f-payment-material').value) || 0;
+    const installation = parseFloat(document.getElementById('f-payment-installation').value) || 0;
+    const balance = parseFloat(document.getElementById('f-payment-balance').value) || 0;
+    const total = advance + material + installation + balance;
+    document.getElementById('payment-total').textContent = total;
+    const errEl = document.getElementById('err-payment');
+    if (Math.abs(total - 100) > 0.01) {
+        errEl.textContent = `Total must equal 100% (current: ${total}%)`;
+        return false;
+    } else {
+        errEl.textContent = '';
+        return true;
+    }
+}
+
+// Set default validity date to 30 days from now
+function setDefaultValidity() {
+    const dateInput = document.getElementById('f-validUntil');
+    const date = new Date();
+    date.setDate(date.getDate() + 30);
+    dateInput.value = date.toISOString().slice(0, 10);
+}
 
 function resetWizardForm() {
     document.getElementById('f-customerName').value = '';
@@ -851,8 +1134,34 @@ function resetWizardForm() {
     document.getElementById('f-consumerCategory').value = 'Residential';
     document.getElementById('f-gst').value = '';
     document.getElementById('gst-field').classList.add('hidden');
-    document.getElementById('f-systemSize').value = '3';
-    document.getElementById('other-size-wrap').classList.add('hidden');
+
+    // Reset referral fields
+    document.getElementById('f-isReferred').checked = false;
+    document.getElementById('f-referredBy').value = '';
+    document.getElementById('f-referrerType').value = '';
+    document.getElementById('f-referralCode').value = '';
+    document.getElementById('f-referralPercent').value = 5;
+    toggleReferralSection();
+
+    // Reset bank details to company defaults
+    document.getElementById('f-accountName').value = COMPANY.bank.accountName || '';
+    document.getElementById('f-bankName').value = COMPANY.bank.bankName || '';
+    document.getElementById('f-accountNumber').value = COMPANY.bank.accountNumber || '';
+    document.getElementById('f-ifscCode').value = COMPANY.bank.ifscCode || '';
+    document.getElementById('f-branch').value = COMPANY.bank.branch || '';
+
+    // Reset payment terms
+    document.getElementById('f-payment-advance').value = 50;
+    document.getElementById('f-payment-material').value = 25;
+    document.getElementById('f-payment-installation').value = 15;
+    document.getElementById('f-payment-balance').value = 10;
+    validatePaymentTerms();
+
+    // Set default validity
+    setDefaultValidity();
+
+    // Reset editable terms
+    document.getElementById('edit-terms').value = `1. Prices are valid for 15 days from the date of quotation.\n2. 50% advance payment is required to confirm the order.\n3. Delivery and installation will be completed within 3–4 weeks of receiving the advance payment.\n4. All government subsidies and incentives will be processed as per applicable schemes.\n5. Warranty terms apply as per manufacturer's guidelines.\n6. Any additional civil work or structural changes will be charged extra.\n7. Taxes and duties as applicable at the time of billing.`;
 
     // Reset mounting radio to default
     document.querySelectorAll('#mount-group .radio-card').forEach((card, i) => card.classList.toggle('active', i === 0));
@@ -865,6 +1174,7 @@ function resetWizardForm() {
     // Refresh the product picker from Product Management every time the
     // wizard opens, so newly added/edited products show up immediately.
     populateProductPicker();
+    populateReferrerList();
     document.getElementById('product-picker-qty').value = 1;
 
     document.getElementById('cost-installation').value = 8000;
@@ -914,6 +1224,13 @@ function goToStep(step) {
 document.getElementById('btn-next').addEventListener('click', () => {
     if (currentStep === 1 && !validateStep1()) return;
     if (currentStep === 2 && !validateStep2()) return;
+    if (currentStep === 6) {
+        // Validate payment terms before proceeding to generate
+        if (!validatePaymentTerms()) {
+            showToast('Payment terms must total 100%.', 'error');
+            return;
+        }
+    }
     goToStep(Math.min(currentStep + 1, totalWizardSteps));
 });
 document.getElementById('btn-prev').addEventListener('click', () => goToStep(Math.max(currentStep - 1, 1)));
@@ -956,6 +1273,27 @@ function validateStep1() {
         ok = markError('f-gst', 'err-gst', /^[0-9A-Z]{15}$/i.test(gst) ? '' : 'Enter a valid 15-character GSTIN') && ok;
     }
 
+    // Validate referral fields if referred
+    const isReferred = document.getElementById('f-isReferred').checked;
+    if (isReferred) {
+        const referredBy = document.getElementById('f-referredBy').value.trim();
+        const referrerType = document.getElementById('f-referrerType').value;
+        const referralPercent = parseFloat(document.getElementById('f-referralPercent').value) || 0;
+        
+        if (!referredBy) {
+            showToast('Please enter who referred this customer.', 'error');
+            ok = false;
+        }
+        if (!referrerType) {
+            showToast('Please select the referrer type.', 'error');
+            ok = false;
+        }
+        if (referralPercent < 0 || referralPercent > 100) {
+            showToast('Referral percentage must be between 0 and 100.', 'error');
+            ok = false;
+        }
+    }
+
     if (!ok) showToast('Please fix the highlighted fields.', 'error');
     return ok;
 }
@@ -984,6 +1322,27 @@ function validateStep2() {
 document.getElementById('f-consumerCategory').addEventListener('change', (e) => {
     document.getElementById('gst-field').classList.toggle('hidden', e.target.value !== 'Commercial');
     if (currentStep === 5) computeSavings();
+});
+
+// Payment terms validation on input
+['f-payment-advance', 'f-payment-material', 'f-payment-installation', 'f-payment-balance'].forEach(id => {
+    document.getElementById(id).addEventListener('input', validatePaymentTerms);
+});
+
+// Referral UI events
+document.getElementById('f-isReferred')?.addEventListener('change', toggleReferralSection);
+document.getElementById('f-referredBy')?.addEventListener('input', handleReferrerSelection);
+document.getElementById('f-referralPercent')?.addEventListener('input', () => {
+    if (currentStep === 4) computeGstSummary();
+});
+
+// Collapsible referral section toggle
+document.getElementById('referralToggle')?.addEventListener('click', () => {
+    const body = document.getElementById('referralBody');
+    const chevron = document.getElementById('referralChevron');
+    body.classList.toggle('collapsed');
+    chevron.classList.toggle('fa-chevron-down');
+    chevron.classList.toggle('fa-chevron-up');
 });
 
 /* ---------------- System Size dropdown with custom "Other" add ---------------- */
@@ -1080,15 +1439,21 @@ function computeGstSummary() {
     const discountValue = parseFloat(document.getElementById('f-discountValue').value) || 0;
     const totals = computeTotals(itTotal, costs, gstPercent, discountType, discountValue);
 
+    let referralHtml = '';
+    const isReferred = document.getElementById('f-isReferred').checked;
+    const referralPercent = parseFloat(document.getElementById('f-referralPercent').value) || 0;
+    const referralAmount = isReferred ? calculateReferralAmount(totals.total, referralPercent) : 0;
+
     document.getElementById('summary-gst').innerHTML = `
         <div class="row"><span>Items Subtotal</span><b>${formatINR(itTotal)}</b></div>
         <div class="row"><span>Additional Charges</span><b>${formatINR(costs.installation + costs.transport + costs.other)}</b></div>
         <div class="row"><span>Discount</span><b>- ${formatINR(totals.discountAmount)}</b></div>
         <div class="row"><span>SGST (${(gstPercent / 2).toFixed(1)}%)</span><b>${formatINR(totals.sgst)}</b></div>
         <div class="row"><span>CGST (${(gstPercent / 2).toFixed(1)}%)</span><b>${formatINR(totals.cgst)}</b></div>
-        <div class="row total"><span>Total</span><b>${formatINR(totals.total)}</b></div>
+        ${isReferred && referralPercent > 0 ? `<div class="row referral-row"><span>Referral Amount (Estimated)</span><b>${formatINR(referralAmount)}</b></div>` : ''}
+        <div class="row total"><span>Grand Total</span><b>${formatINR(totals.total)}</b></div>
     `;
-    return { ...totals, gstPercent, costs, itemsTotal: itTotal };
+    return { ...totals, gstPercent, costs, itemsTotal: itTotal, referralAmount };
 }
 ['f-gstPercent', 'f-discountType', 'f-discountValue'].forEach(id => document.getElementById(id).addEventListener('input', computeGstSummary));
 
@@ -1156,6 +1521,37 @@ function collectWizardRecord(quoteNo) {
     const discountValue = parseFloat(document.getElementById('f-discountValue').value) || 0;
     const totals = computeTotals(itTotal, costs, gstPercent, discountType, discountValue);
 
+    // Collect bank details
+    const bank = {
+        accountName: document.getElementById('f-accountName').value.trim() || COMPANY.bank.accountName,
+        bankName: document.getElementById('f-bankName').value.trim() || COMPANY.bank.bankName,
+        accountNumber: document.getElementById('f-accountNumber').value.trim() || COMPANY.bank.accountNumber,
+        ifscCode: document.getElementById('f-ifscCode').value.trim() || COMPANY.bank.ifscCode,
+        branch: document.getElementById('f-branch').value.trim() || COMPANY.bank.branch
+    };
+
+    // Collect payment terms
+    const paymentTerms = {
+        advance: parseFloat(document.getElementById('f-payment-advance').value) || 0,
+        material: parseFloat(document.getElementById('f-payment-material').value) || 0,
+        installation: parseFloat(document.getElementById('f-payment-installation').value) || 0,
+        balance: parseFloat(document.getElementById('f-payment-balance').value) || 0
+    };
+
+    // Collect editable terms
+    const terms = document.getElementById('edit-terms').value.trim() || '';
+
+    // Collect validity date
+    const validUntil = document.getElementById('f-validUntil').value || '';
+
+    // Collect referral details
+    const isReferred = document.getElementById('f-isReferred').checked;
+    const referredBy = document.getElementById('f-referredBy').value.trim() || '';
+    const referrerType = document.getElementById('f-referrerType').value || '';
+    const referralCode = document.getElementById('f-referralCode').value.trim() || '';
+    const referralPercent = parseFloat(document.getElementById('f-referralPercent').value) || 0;
+    const referralAmount = isReferred ? calculateReferralAmount(totals.total, referralPercent) : 0;
+
     return {
         quoteNo,
         date: new Date().toISOString().slice(0, 10),
@@ -1186,7 +1582,21 @@ function collectWizardRecord(quoteNo) {
         advance: 0,
         ...totals,
         amount: Math.round(totals.total),
-        balance: Math.round(totals.total)
+        balance: Math.round(totals.total),
+        // New fields
+        bank: bank,
+        paymentTerms: paymentTerms,
+        terms: terms,
+        validUntil: validUntil,
+        // Referral fields
+        referral: {
+            isReferred: isReferred,
+            referredBy: referredBy,
+            referrerType: referrerType,
+            referralCode: referralCode,
+            referralPercent: referralPercent,
+            referralAmount: referralAmount
+        }
     };
 }
 
@@ -1261,6 +1671,107 @@ document.getElementById('btn-generate').addEventListener('click', () => {
     }, 1200);
 });
 
+/* =====================================================================
+   EXPORT FUNCTIONS (Excel/CSV/PDF/Print)
+   ===================================================================== */
+
+// Export to CSV
+function exportToCSV() {
+    const filtered = getFiltered();
+    const headers = ['Quotation No.', 'Customer', 'Company', 'Mobile', 'Email', 'System Size', 'Amount', 'Status', 'Referral', 'Date'];
+    const rows = filtered.map(q => [
+        q.quoteNo,
+        q.customer.name || '',
+        q.customer.company || '',
+        q.customer.mobile || '',
+        q.customer.email || '',
+        q.systemSizeLabel || '',
+        q.amount || 0,
+        q.status || '',
+        q.referral?.isReferred ? 'Referred' : 'Direct',
+        q.date || ''
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `quotations_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    showToast('CSV exported successfully', 'success');
+}
+
+// Export to Excel (using CSV with Excel-compatible format)
+function exportToExcel() {
+    const filtered = getFiltered();
+    const headers = ['Quotation No.', 'Customer', 'Company', 'Mobile', 'Email', 'System Size', 'Amount', 'Status', 'Referral', 'Date'];
+    const rows = filtered.map(q => [
+        q.quoteNo,
+        q.customer.name || '',
+        q.customer.company || '',
+        q.customer.mobile || '',
+        q.customer.email || '',
+        q.systemSizeLabel || '',
+        q.amount || 0,
+        q.status || '',
+        q.referral?.isReferred ? 'Referred' : 'Direct',
+        q.date || ''
+    ]);
+    // Excel-compatible CSV with BOM
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `quotations_${new Date().toISOString().slice(0, 10)}.xls`;
+    link.click();
+    showToast('Excel exported successfully', 'success');
+}
+
+// Export to PDF (full table)
+function exportToPDF() {
+    const table = document.querySelector('.data-table');
+    if (!table || typeof html2pdf === 'undefined') {
+        showToast('PDF library failed to load.', 'error');
+        return;
+    }
+    const printArea = document.createElement('div');
+    printArea.style.padding = '20px';
+    printArea.style.background = '#fff';
+    printArea.innerHTML = `
+        <h2 style="font-family: Poppins, sans-serif; margin-bottom: 20px;">Quotation List</h2>
+        <p style="font-family: Poppins, sans-serif; color: #666; margin-bottom: 15px;">Generated: ${new Date().toLocaleString()}</p>
+        ${table.outerHTML}
+    `;
+    document.body.appendChild(printArea);
+    const opt = {
+        margin: 10,
+        filename: `quotations_${new Date().toISOString().slice(0, 10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(printArea).save().then(() => {
+        document.body.removeChild(printArea);
+        showToast('PDF exported successfully', 'success');
+    }).catch(() => {
+        document.body.removeChild(printArea);
+        showToast('PDF export failed', 'error');
+    });
+}
+
+// Print
+function printQuotations() {
+    window.print();
+}
+
+// Export buttons
+document.getElementById('btn-export-excel').addEventListener('click', exportToExcel);
+document.getElementById('btn-export-csv').addEventListener('click', exportToCSV);
+document.getElementById('btn-export-pdf').addEventListener('click', exportToPDF);
+document.getElementById('btn-print').addEventListener('click', printQuotations);
+
 /* ---------------- Init ---------------- */
 populateProductPicker();
+populateReferrerList();
+// Initialize referral section (hidden by default)
+toggleReferralSection();
 renderTable();

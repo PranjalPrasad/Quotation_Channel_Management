@@ -1,0 +1,207 @@
+/* ============================================================
+   channel-partner.css
+   Module-specific additions only — base look (sidebar, topbar,
+   data-table, modal, pill, pagination, etc.) is inherited from
+   the shared /dashboard/dashboard.css design system so every
+   module stays visually consistent.
+   ============================================================ */
+
+/* ---- Wider modal variant for the View Partner / View Team dialogs,
+        which need room for the stat grid + mini table ---- */
+.modal-panel--wide {
+  max-width: 560px;
+}
+
+/* the view/team modals don't use the 2-col form grid — stack instead */
+.modal-body--block {
+  display: block;
+}
+
+/* ---- Read-only partner info block inside the View Partner modal ---- */
+.partner-view-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.partner-view-value {
+  font-size: 12.5px;
+  color: #1F2937;
+  font-weight: 500;
+  padding: 7px 9px;
+  background: #F1E2D1;
+  border-radius: 9px;
+  border: 1px solid #E9D9C6;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  word-break: break-word;
+}
+@media (max-width: 480px) {
+  .partner-view-info { grid-template-columns: 1fr; }
+}
+
+.partner-view-section-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 8px;
+}
+
+/* ---- KPI-style stat cards inside the View Partner modal ---- */
+.partner-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 9px;
+}
+@media (min-width: 420px) {
+  .partner-stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.partner-stat-card {
+  background: linear-gradient(135deg, #810B38, #541A1A);
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(84,26,26,0.14);
+}
+.partner-stat-value {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.partner-stat-label {
+  font-size: 9.5px;
+  color: rgba(255,255,255,0.85);
+  margin-top: 2px;
+}
+
+/* ---- View Team empty state ---- */
+.team-empty-state {
+  text-align: center;
+  font-size: 11.5px;
+  color: #9CA3AF;
+  padding: 24px 8px 8px;
+}
+
+/* ---- Partner code shown as a soft badge in the table ---- */
+.partner-code-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #541A1A;
+  background: #F1E2D1;
+  padding: 2px 8px;
+  border-radius: 7px;
+  letter-spacing: .01em;
+}
+
+/* ---- Status toggle icon (activate / deactivate) tint ---- */
+.action-icon-btn.icon-deactivate:hover { color: #E11D48; background: #FFE4E6; }
+.action-icon-btn.icon-activate:hover { color: #047857; background: #D1FAE5; }
+.action-icon-btn.icon-team:hover { color: #0369A1; background: #E0F2FE; }
+
+/* ============================================================
+   Referral additions
+   ============================================================ */
+
+/* ---- Referral Code field + "Generate Code" button (partner form) ---- */
+.referral-code-row {
+  display: flex;
+  gap: 6px;
+}
+.referral-code-row .field-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.btn-generate-code {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1px solid #DCC3AA;
+  background: #F1E2D1;
+  color: #541A1A;
+  cursor: pointer;
+  transition: background-color .15s ease, opacity .15s ease;
+}
+.btn-generate-code:hover { background: #E9D9C6; }
+
+/* ---- Extra-wide modal variant for the View Partner modal, which now
+        carries the Referral Activity table alongside partner stats ---- */
+.modal-panel--xwide {
+  max-width: 680px;
+}
+
+.partner-view-section-title--spaced {
+  margin-top: 18px;
+}
+
+/* ---- Referral KPI mini-cards inside View Partner modal ---- */
+.referral-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 9px;
+  margin-bottom: 12px;
+}
+@media (min-width: 480px) {
+  .referral-kpi-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.referral-kpi-card {
+  background: #F1E2D1;
+  border: 1px solid #E9D9C6;
+  border-radius: 12px;
+  padding: 9px 10px;
+}
+.referral-kpi-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #541A1A;
+  line-height: 1.2;
+}
+.referral-kpi-label {
+  font-size: 9.5px;
+  color: #8A7460;
+  margin-top: 2px;
+}
+
+.referral-table-wrap {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #E9D9C6;
+  border-radius: 10px;
+}
+.referral-table-wrap .data-table thead th {
+  position: sticky;
+  top: 0;
+  background: #F7ECE1;
+  z-index: 1;
+}
+
+/* ---- Referral status pills reuse the same pill/pill-* look ---- */
+.pill-approved { background: #DBEAFE; color: #1D4ED8; }
+
+/* ---- Small "Mark as Paid" action button inside the referral table ---- */
+.btn-mark-paid {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 7px;
+  border: none;
+  background: #541A1A;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .15s ease;
+}
+.btn-mark-paid:hover { opacity: .85; }
+.btn-mark-paid:disabled {
+  background: #DCC3AA;
+  color: #fff;
+  cursor: not-allowed;
+  opacity: .7;
+}

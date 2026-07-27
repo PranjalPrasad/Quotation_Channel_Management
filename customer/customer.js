@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/customer
+
 /* ============================================================
    customer.js — Customer Management module
    Vanilla JS only. No frameworks, no jQuery.
@@ -124,16 +126,16 @@ function showToast(message) {
    Dummy data
    ============================================================ */
 let customers = [
-  { id: 'CUST-1001', name: 'Amit Sharma', mobile: '9876543210', email: 'amit.sharma@example.com', address: '12 Lake View Road', city: 'Pune', state: 'Maharashtra', gst: '', type: 'Residential', project: 'Rooftop 3kW, Kothrud', status: 'Active', created: '2026-06-02' },
-  { id: 'CUST-1002', name: 'Priya Enterprises', mobile: '9822011122', email: 'contact@priyaent.com', address: 'Plot 4, MIDC', city: 'Pune', state: 'Maharashtra', gst: '27ABCPE1234F1Z5', type: 'Commercial', project: '10kW Office Rooftop, Hinjewadi', status: 'Active', created: '2026-06-05' },
-  { id: 'CUST-1003', name: 'Ravi Constructions', mobile: '9765432109', email: 'ravi.constructions@example.com', address: 'Site Office, Wagholi', city: 'Pune', state: 'Maharashtra', gst: '', type: 'Commercial', project: '5kW Site Office, Wagholi', status: 'Inactive', created: '2026-06-08' },
-  { id: 'CUST-1004', name: 'Meena Textiles', mobile: '9911223344', email: 'info@meenatextiles.com', address: 'Textile Park, Ichalkaranji', city: 'Kolhapur', state: 'Maharashtra', gst: '27MEENA5678G1Z2', type: 'Industrial', project: '25kW Factory Roof, Ichalkaranji', status: 'Active', created: '2026-06-10' },
-  { id: 'CUST-1005', name: 'Suresh Patel', mobile: '9898989898', email: 'suresh.patel@example.com', address: '45 Sardar Nagar', city: 'Ahmedabad', state: 'Gujarat', gst: '', type: 'Residential', project: '4kW Rooftop, Sardar Nagar', status: 'Active', created: '2026-06-11' },
-  { id: 'CUST-1006', name: 'Global Foods Pvt Ltd', mobile: '9012345678', email: 'ops@globalfoods.com', address: 'Industrial Area Phase 2', city: 'Nashik', state: 'Maharashtra', gst: '27GLOBF9999H1Z8', type: 'Industrial', project: '50kW Cold Storage, Nashik', status: 'Active', created: '2026-06-12' },
-  { id: 'CUST-1007', name: 'Anita Deshmukh', mobile: '9765011223', email: 'anita.deshmukh@example.com', address: '9 Rose Villa', city: 'Nagpur', state: 'Maharashtra', gst: '', type: 'Residential', project: '3kW Rooftop, Nagpur', status: 'Inactive', created: '2026-06-13' },
-  { id: 'CUST-1008', name: 'Rajesh Traders', mobile: '9822334455', email: 'rajesh.traders@example.com', address: 'Market Yard', city: 'Solapur', state: 'Maharashtra', gst: '', type: 'Commercial', project: '7kW Shop Roof, Solapur', status: 'Active', created: '2026-06-14' },
-  { id: 'CUST-1009', name: 'Sunrise Apartments', mobile: '9765098765', email: 'admin@sunriseapts.com', address: 'Baner Road', city: 'Pune', state: 'Maharashtra', gst: '27SUNRA4321J1Z6', type: 'Residential', project: '15kW Society Terrace, Baner', status: 'Active', created: '2026-06-16' },
-  { id: 'CUST-1010', name: 'Vikram Industries', mobile: '9911001122', email: 'vikram.ind@example.com', address: 'MIDC Chakan', city: 'Pune', state: 'Maharashtra', gst: '27VIKRI8765K1Z1', type: 'Industrial', project: '30kW Plant Roof, Chakan', status: 'Active', created: '2026-06-18' },
+  { id: 'CUST-1001', name: 'Amit Sharma', mobile: '9876543210', email: 'amit.sharma@example.com', address: '12 Lake View Road', city: 'Pune', state: 'Maharashtra', gst: '', type: 'Residential', project: 'Rooftop 3kW, Kothrud', status: 'Active', created: '2026-06-02', channelPartner: 'CP-0001' },
+  { id: 'CUST-1002', name: 'Priya Enterprises', mobile: '9822011122', email: 'contact@priyaent.com', address: 'Plot 4, MIDC', city: 'Pune', state: 'Maharashtra', gst: '27ABCPE1234F1Z5', type: 'Commercial', project: '10kW Office Rooftop, Hinjewadi', status: 'Active', created: '2026-06-05', channelPartner: 'CP-0002' },
+  { id: 'CUST-1003', name: 'Ravi Constructions', mobile: '9765432109', email: 'ravi.constructions@example.com', address: 'Site Office, Wagholi', city: 'Pune', state: 'Maharashtra', gst: '', type: 'Commercial', project: '5kW Site Office, Wagholi', status: 'Inactive', created: '2026-06-08', channelPartner: 'CP-0001' },
+  { id: 'CUST-1004', name: 'Meena Textiles', mobile: '9911223344', email: 'info@meenatextiles.com', address: 'Textile Park, Ichalkaranji', city: 'Kolhapur', state: 'Maharashtra', gst: '27MEENA5678G1Z2', type: 'Industrial', project: '25kW Factory Roof, Ichalkaranji', status: 'Active', created: '2026-06-10', channelPartner: 'CP-0003' },
+  { id: 'CUST-1005', name: 'Suresh Patel', mobile: '9898989898', email: 'suresh.patel@example.com', address: '45 Sardar Nagar', city: 'Ahmedabad', state: 'Gujarat', gst: '', type: 'Residential', project: '4kW Rooftop, Sardar Nagar', status: 'Active', created: '2026-06-11', channelPartner: 'CP-0002' },
+  { id: 'CUST-1006', name: 'Global Foods Pvt Ltd', mobile: '9012345678', email: 'ops@globalfoods.com', address: 'Industrial Area Phase 2', city: 'Nashik', state: 'Maharashtra', gst: '27GLOBF9999H1Z8', type: 'Industrial', project: '50kW Cold Storage, Nashik', status: 'Active', created: '2026-06-12', channelPartner: 'CP-0001' },
+  { id: 'CUST-1007', name: 'Anita Deshmukh', mobile: '9765011223', email: 'anita.deshmukh@example.com', address: '9 Rose Villa', city: 'Nagpur', state: 'Maharashtra', gst: '', type: 'Residential', project: '3kW Rooftop, Nagpur', status: 'Inactive', created: '2026-06-13', channelPartner: 'CP-0003' },
+  { id: 'CUST-1008', name: 'Rajesh Traders', mobile: '9822334455', email: 'rajesh.traders@example.com', address: 'Market Yard', city: 'Solapur', state: 'Maharashtra', gst: '', type: 'Commercial', project: '7kW Shop Roof, Solapur', status: 'Active', created: '2026-06-14', channelPartner: 'CP-0002' },
+  { id: 'CUST-1009', name: 'Sunrise Apartments', mobile: '9765098765', email: 'admin@sunriseapts.com', address: 'Baner Road', city: 'Pune', state: 'Maharashtra', gst: '27SUNRA4321J1Z6', type: 'Residential', project: '15kW Society Terrace, Baner', status: 'Active', created: '2026-06-16', channelPartner: 'CP-0001' },
+  { id: 'CUST-1010', name: 'Vikram Industries', mobile: '9911001122', email: 'vikram.ind@example.com', address: 'MIDC Chakan', city: 'Pune', state: 'Maharashtra', gst: '27VIKRI8765K1Z1', type: 'Industrial', project: '30kW Plant Roof, Chakan', status: 'Active', created: '2026-06-18', channelPartner: 'CP-0002' },
 ];
 
 let followups = [
@@ -261,20 +263,33 @@ function renderTable() {
   tableWrap.classList.remove('hidden');
   tableFooter.classList.remove('hidden');
 
-  tbody.innerHTML = pageRows.map(c => `
-    <tr data-id="${c.id}">
-      <td data-label="Customer ID" class="font-medium">${c.id}</td>
-      <td data-label="Customer Name">${c.name}</td>
-      <td data-label="Mobile Number">${c.mobile}</td>
-      <td data-label="Email">${c.email || '—'}</td>
-      <td data-label="City">${c.city || '—'}</td>
-      <td data-label="Customer Type"><span class="pill ${typePillClass[c.type]}">${c.type}</span></td>
-      <td data-label="Project Location">${c.project || '—'}</td>
-      <td data-label="Status"><span class="pill ${statusPillClass[c.status]}">${c.status}</span></td>
-      <td data-label="Created Date">${formatDateDisplay(c.created)}</td>
-      <td data-label="Actions">${actionIconsHtml(c.id)}</td>
-    </tr>
-  `).join('');
+  // Determine if we should show Channel Partner column
+  const showChannelPartner = window.currentUserRole === 'SUPER_ADMIN';
+
+  tbody.innerHTML = pageRows.map(c => {
+    // Build row with conditional Channel Partner column
+    const channelPartnerCell = showChannelPartner ? `<td data-label="Channel Partner">${c.channelPartner || '—'}</td>` : '';
+    return `
+      <tr data-id="${c.id}">
+        <td data-label="Customer ID" class="font-medium">${c.id}</td>
+        <td data-label="Customer Name">${c.name}</td>
+        <td data-label="Mobile Number">${c.mobile}</td>
+        <td data-label="Email">${c.email || '—'}</td>
+        <td data-label="City">${c.city || '—'}</td>
+        <td data-label="Customer Type"><span class="pill ${typePillClass[c.type]}">${c.type}</span></td>
+        <td data-label="Project Location">${c.project || '—'}</td>
+        ${channelPartnerCell}
+        <td data-label="Status"><span class="pill ${statusPillClass[c.status]}">${c.status}</span></td>
+        <td data-label="Created Date">${formatDateDisplay(c.created)}</td>
+        <td data-label="Actions">${actionIconsHtml(c.id)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Hide Channel Partner header if not Super Admin
+  document.querySelectorAll('#customerTable thead th[data-role="SUPER_ADMIN"]').forEach(th => {
+    th.style.display = showChannelPartner ? '' : 'none';
+  });
 
   document.getElementById('rowsRangeLabel').textContent = `${start + 1}–${Math.min(start + rowsPerPage, totalRows)} of ${totalRows}`;
   renderPagination(totalPages);
@@ -438,7 +453,7 @@ const customerFormModal = document.getElementById('customerFormModal');
 const customerForm = document.getElementById('customerForm');
 let formMode = 'add';
 
-const FORM_FIELDS = ['fldName', 'fldMobile', 'fldEmail', 'fldAddress', 'fldCity', 'fldState', 'fldGst', 'fldType', 'fldProject', 'fldStatus'];
+const FORM_FIELDS = ['fldName', 'fldMobile', 'fldEmail', 'fldAddress', 'fldCity', 'fldState', 'fldGst', 'fldType', 'fldProject', 'fldStatus', 'fldChannelPartner'];
 
 function openCustomerForm(mode, customer) {
   formMode = mode;
@@ -460,6 +475,20 @@ function openCustomerForm(mode, customer) {
   document.getElementById('fldProject').value = customer ? customer.project : '';
   document.getElementById('fldStatus').value = customer ? customer.status : 'Active';
   fldStatusCtrl?.setValue(customer ? customer.status : 'Active');
+  
+  // NEW: Auto-fill Channel Partner from session
+  const channelPartnerField = document.getElementById('fldChannelPartner');
+  if (window.currentUserRole === 'SUPER_ADMIN') {
+    // For Super Admin, field is editable (for now, read-only but can be made editable later)
+    channelPartnerField.value = customer ? customer.channelPartner || '' : '';
+    channelPartnerField.readOnly = false;
+    channelPartnerField.placeholder = 'Select Channel Partner (dropdown coming soon)';
+  } else {
+    // For Channel Partner, field is read-only and auto-filled
+    const partnerName = window.currentUserPartnerName || 'CP-0001'; // fallback
+    channelPartnerField.value = partnerName;
+    channelPartnerField.readOnly = true;
+  }
 
   customerFormModal.classList.remove('hidden');
 }
@@ -520,6 +549,7 @@ document.getElementById('customerFormSaveBtn')?.addEventListener('click', () => 
     type: document.getElementById('fldType').value,
     project: document.getElementById('fldProject').value.trim(),
     status: document.getElementById('fldStatus').value,
+    channelPartner: document.getElementById('fldChannelPartner').value.trim() || (window.currentUserPartnerName || 'CP-0001'),
   };
 
   if (formMode === 'add') {
@@ -557,6 +587,7 @@ function openViewCustomer(customer) {
     <div class="detail-item"><span class="d-label">State</span><span class="d-value">${customer.state || '—'}</span></div>
     <div class="detail-item"><span class="d-label">GST Number</span><span class="d-value">${customer.gst || '—'}</span></div>
     <div class="detail-item"><span class="d-label">Customer Type</span><span class="d-value">${customer.type}</span></div>
+    <div class="detail-item"><span class="d-label">Channel Partner</span><span class="d-value">${customer.channelPartner || '—'}</span></div>
     <div class="detail-item"><span class="d-label">Status</span><span class="d-value">${customer.status}</span></div>
     <div class="detail-item full"><span class="d-label">Address</span><span class="d-value">${customer.address || '—'}</span></div>
     <div class="detail-item full"><span class="d-label">Project Location</span><span class="d-value">${customer.project || '—'}</span></div>
@@ -719,8 +750,14 @@ document.getElementById('followupSaveBtn')?.addEventListener('click', () => {
    Export / Print
    ============================================================ */
 function customersToCsvRows() {
+  const showChannelPartner = window.currentUserRole === 'SUPER_ADMIN';
   const header = ['Customer ID', 'Name', 'Mobile', 'Email', 'City', 'Type', 'Project Location', 'Status', 'Created Date'];
-  const rows = filteredCustomers().map(c => [c.id, c.name, c.mobile, c.email, c.city, c.type, c.project, c.status, c.created]);
+  if (showChannelPartner) header.push('Channel Partner');
+  const rows = filteredCustomers().map(c => {
+    const row = [c.id, c.name, c.mobile, c.email, c.city, c.type, c.project, c.status, c.created];
+    if (showChannelPartner) row.push(c.channelPartner || '');
+    return row;
+  });
   return [header, ...rows];
 }
 function downloadDelimited(filename, mime) {
@@ -733,6 +770,13 @@ function downloadDelimited(filename, mime) {
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
+
+// NEW: Export PDF placeholder function
+function exportCustomersPDF() {
+  // TODO: backend call for PDF generation
+  showToast('PDF export will be available soon');
+}
+
 document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
   downloadDelimited('customers.csv', 'text/csv');
   showToast('Exported customers.csv');
@@ -741,6 +785,7 @@ document.getElementById('exportExcelBtn')?.addEventListener('click', () => {
   downloadDelimited('customers.xls', 'application/vnd.ms-excel');
   showToast('Exported customers.xls');
 });
+document.getElementById('exportPdfBtn')?.addEventListener('click', exportCustomersPDF);
 document.getElementById('printBtn')?.addEventListener('click', () => {
   window.print();
 });
@@ -749,6 +794,10 @@ document.getElementById('printBtn')?.addEventListener('click', () => {
    Render all
    ============================================================ */
 function renderAll() {
+  // Set current user role from session
+  window.currentUserRole = window.currentUserRole || 'SUPER_ADMIN';
+  window.currentUserPartnerName = window.currentUserPartnerName || 'CP-0001';
+  
   renderSummary();
   renderTable();
   renderHistory();

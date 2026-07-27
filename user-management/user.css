@@ -43,14 +43,15 @@
 /* ============ Users table extras ============ */
 #usersTable th:nth-child(1), #usersTable td:nth-child(1) { width: 8%; }
 #usersTable th.photo-th, #usersTable td:nth-child(2) { width: 7%; }
-#usersTable th:nth-child(3), #usersTable td:nth-child(3) { width: 13%; }
-#usersTable th:nth-child(4), #usersTable td:nth-child(4) { width: 16%; }
+#usersTable th:nth-child(3), #usersTable td:nth-child(3) { width: 12%; }
+#usersTable th:nth-child(4), #usersTable td:nth-child(4) { width: 14%; }
 #usersTable th:nth-child(5), #usersTable td:nth-child(5) { width: 10%; }
-#usersTable th:nth-child(6), #usersTable td:nth-child(6) { width: 10%; }
-#usersTable th:nth-child(7), #usersTable td:nth-child(7) { width: 11%; }
-#usersTable th:nth-child(8), #usersTable td:nth-child(8) { width: 8%; }
-#usersTable th:nth-child(9), #usersTable td:nth-child(9) { width: 9%; }
-#usersTable th:nth-child(10), #usersTable td:nth-child(10) { width: 12%; }
+#usersTable th:nth-child(6), #usersTable td:nth-child(6) { width: 12%; }
+#usersTable th:nth-child(7), #usersTable td:nth-child(7) { width: 12%; }
+#usersTable th:nth-child(8), #usersTable td:nth-child(8) { width: 9%; }
+#usersTable th:nth-child(9), #usersTable td:nth-child(9) { width: 8%; }
+#usersTable th:nth-child(10), #usersTable td:nth-child(10) { width: 8%; }
+#usersTable th:nth-child(11), #usersTable td:nth-child(11) { width: 11%; }
 
 .table-avatar {
   width: 30px;
@@ -72,11 +73,12 @@
   background: #810B38;
 }
 
-/* role pills */
+/* role pills - updated for new roles */
 .role-pill { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; display: inline-block; white-space: nowrap; }
-.role-pill-admin { background: #F1E2D1; color: #541A1A; }
-.role-pill-manager { background: #E0F2FE; color: #0369A1; }
-.role-pill-sales { background: #EDE9FE; color: #6D28D9; }
+.role-pill-super-admin { background: #541A1A; color: #fff; }
+.role-pill-partner-admin { background: #E0F2FE; color: #0369A1; }
+.role-pill-partner-sales { background: #EDE9FE; color: #6D28D9; }
+.role-pill-default { background: #F1E2D1; color: #541A1A; }
 
 /* status pills (reuse pill-pending style naming for compatibility) */
 .pill-active { background: #D1FAE5; color: #047857; }

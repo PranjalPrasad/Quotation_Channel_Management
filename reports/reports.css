@@ -246,6 +246,10 @@ body {
 .report-tab:hover { background: #F1E2D1; color: #541A1A; }
 .report-tab.active { background: #541A1A; color: #fff; }
 
+/* ---- Tab content containers ---- */
+.tab-content.hidden { display: none; }
+.tab-content { display: block; }
+
 /* ---- KPI widget cards ---- */
 .widget-card {
     background: #F7ECE1;

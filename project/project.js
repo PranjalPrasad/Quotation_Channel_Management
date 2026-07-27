@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/projects
+
 // ============================================================
 // Sidebar collapse / expand (identical behaviour to dashboard.js,
 // including the mobile/tablet overlay drawer + backdrop)
@@ -55,9 +57,11 @@ const notifDropdown = document.getElementById("notifDropdown");
 const profileBtn = document.getElementById("profileBtn");
 const profileDropdown = document.getElementById("profileDropdown");
 const profileLogoutBtn = document.getElementById("profileLogoutBtn");
+const exportBtn = document.getElementById("exportBtn");
+const exportMenu = document.getElementById("exportMenu");
 
 function closeAllTopbarDropdowns(except) {
-  [notifDropdown, profileDropdown].forEach((dd) => {
+  [notifDropdown, profileDropdown, exportMenu].forEach((dd) => {
     if (dd && dd !== except) dd.classList.add("hidden");
   });
 }
@@ -72,6 +76,12 @@ profileBtn?.addEventListener("click", (e) => {
   const willOpen = profileDropdown.classList.contains("hidden");
   closeAllTopbarDropdowns();
   profileDropdown.classList.toggle("hidden", !willOpen);
+});
+exportBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const willOpen = exportMenu.classList.contains("hidden");
+  closeAllTopbarDropdowns();
+  exportMenu.classList.toggle("hidden", !willOpen);
 });
 document.addEventListener("click", () => closeAllTopbarDropdowns());
 profileLogoutBtn?.addEventListener("click", () => showToast("Logged out"));
@@ -99,21 +109,21 @@ function formatINR(n) {
 // Dummy project data — no backend
 // ============================================================
 let projects = [
-  { id: 'PRJ-1001', name: 'Sharma Residence Rooftop', customer: 'Amit Sharma', type: 'Residential', capacity: 5, roofType: 'RCC', monthlyConsumption: 450, location: 'Pune, Maharashtra', roofArea: 400, estimatedGeneration: 600, installationType: 'Rooftop', status: 'In Progress', createdDate: '2026-07-15', remarks: 'Customer prefers black panels.' },
-  { id: 'PRJ-1000', name: 'Priya Enterprises Office', customer: 'Priya Enterprises', type: 'Commercial', capacity: 10, roofType: 'Metal Sheet', monthlyConsumption: 1200, location: 'Nashik, Maharashtra', roofArea: 900, estimatedGeneration: 1300, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-14', remarks: 'Net metering already approved.' },
-  { id: 'PRJ-0999', name: 'Ravi Constructions Site Office', customer: 'Ravi Constructions', type: 'Commercial', capacity: 5, roofType: 'Tin Shed', monthlyConsumption: 520, location: 'Nagpur, Maharashtra', roofArea: 420, estimatedGeneration: 610, installationType: 'Rooftop', status: 'On Hold', createdDate: '2026-07-14', remarks: 'Waiting on customer approval for financing.' },
-  { id: 'PRJ-0998', name: 'Meena Textiles Unit 2', customer: 'Meena Textiles', type: 'Industrial', capacity: 25, roofType: 'Metal Sheet', monthlyConsumption: 3200, location: 'Aurangabad, Maharashtra', roofArea: 2100, estimatedGeneration: 3300, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-13', remarks: '' },
-  { id: 'PRJ-0997', name: 'Suresh Patel Bungalow', customer: 'Suresh Patel', type: 'Residential', capacity: 4, roofType: 'RCC', monthlyConsumption: 380, location: 'Pune, Maharashtra', roofArea: 320, estimatedGeneration: 480, installationType: 'Rooftop', status: 'Planning', createdDate: '2026-07-12', remarks: 'Site survey scheduled next week.' },
-  { id: 'PRJ-0996', name: 'Global Foods Cold Storage', customer: 'Global Foods Pvt Ltd', type: 'Industrial', capacity: 50, roofType: 'Metal Sheet', monthlyConsumption: 6800, location: 'Kolhapur, Maharashtra', roofArea: 4200, estimatedGeneration: 6500, installationType: 'Ground Mounted', status: 'Completed', createdDate: '2026-07-12', remarks: 'Includes battery backup for cold room.' },
-  { id: 'PRJ-0995', name: 'Anita Deshmukh Villa', customer: 'Anita Deshmukh', type: 'Residential', capacity: 3, roofType: 'Tile', monthlyConsumption: 310, location: 'Satara, Maharashtra', roofArea: 260, estimatedGeneration: 360, installationType: 'Rooftop', status: 'On Hold', createdDate: '2026-07-11', remarks: 'Roof reinforcement needed before install.' },
-  { id: 'PRJ-0994', name: 'Rajesh Traders Warehouse', customer: 'Rajesh Traders', type: 'Commercial', capacity: 7, roofType: 'Metal Sheet', monthlyConsumption: 780, location: 'Pune, Maharashtra', roofArea: 560, estimatedGeneration: 860, installationType: 'Rooftop', status: 'In Progress', createdDate: '2026-07-11', remarks: '' },
-  { id: 'PRJ-0993', name: 'Sunrise Apartments Common Area', customer: 'Sunrise Apartments', type: 'Commercial', capacity: 15, roofType: 'RCC', monthlyConsumption: 1900, location: 'Mumbai, Maharashtra', roofArea: 1200, estimatedGeneration: 1950, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-10', remarks: 'Shared billing across 24 flats.' },
-  { id: 'PRJ-0992', name: 'Vikram Industries Plant 2', customer: 'Vikram Industries', type: 'Industrial', capacity: 30, roofType: 'Metal Sheet', monthlyConsumption: 4100, location: 'Chakan, Maharashtra', roofArea: 2600, estimatedGeneration: 3900, installationType: 'Ground Mounted', status: 'On Hold', createdDate: '2026-07-09', remarks: 'Land clearance pending from local authority.' },
-  { id: 'PRJ-0991', name: 'Kavita Rao Home', customer: 'Kavita Rao', type: 'Residential', capacity: 3, roofType: 'RCC', monthlyConsumption: 300, location: 'Pune, Maharashtra', roofArea: 250, estimatedGeneration: 355, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-08', remarks: '' },
-  { id: 'PRJ-0990', name: 'Deepak Motors Showroom', customer: 'Deepak Motors', type: 'Commercial', capacity: 20, roofType: 'Metal Sheet', monthlyConsumption: 2600, location: 'Pune, Maharashtra', roofArea: 1500, estimatedGeneration: 2550, installationType: 'Rooftop', status: 'In Progress', createdDate: '2026-07-08', remarks: 'Showroom lighting load included.' },
-  { id: 'PRJ-0989', name: 'Farha Textiles Unit 1', customer: 'Farha Textiles', type: 'Industrial', capacity: 6, roofType: 'Tin Shed', monthlyConsumption: 640, location: 'Solapur, Maharashtra', roofArea: 500, estimatedGeneration: 720, installationType: 'Rooftop', status: 'Planning', createdDate: '2026-07-07', remarks: '' },
-  { id: 'PRJ-0988', name: 'Nikhil Joshi Duplex', customer: 'Nikhil Joshi', type: 'Residential', capacity: 4, roofType: 'RCC', monthlyConsumption: 390, location: 'Thane, Maharashtra', roofArea: 330, estimatedGeneration: 470, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-06', remarks: '' },
-  { id: 'PRJ-0987', name: 'Star Cold Storage Facility', customer: 'Star Cold Storage', type: 'Industrial', capacity: 40, roofType: 'Metal Sheet', monthlyConsumption: 5400, location: 'Nashik, Maharashtra', roofArea: 3400, estimatedGeneration: 5200, installationType: 'Ground Mounted', status: 'In Progress', createdDate: '2026-07-05', remarks: 'Phase 1 of 2 — cold room block A.' },
+  { id: 'PRJ-1001', name: 'Sharma Residence Rooftop', customer: 'Amit Sharma', type: 'Residential', capacity: 5, roofType: 'RCC', monthlyConsumption: 450, location: 'Pune, Maharashtra', roofArea: 400, estimatedGeneration: 600, installationType: 'Rooftop', status: 'In Progress', createdDate: '2026-07-15', remarks: 'Customer prefers black panels.', channelPartner: 'CP-0001' },
+  { id: 'PRJ-1000', name: 'Priya Enterprises Office', customer: 'Priya Enterprises', type: 'Commercial', capacity: 10, roofType: 'Metal Sheet', monthlyConsumption: 1200, location: 'Nashik, Maharashtra', roofArea: 900, estimatedGeneration: 1300, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-14', remarks: 'Net metering already approved.', channelPartner: 'CP-0002' },
+  { id: 'PRJ-0999', name: 'Ravi Constructions Site Office', customer: 'Ravi Constructions', type: 'Commercial', capacity: 5, roofType: 'Tin Shed', monthlyConsumption: 520, location: 'Nagpur, Maharashtra', roofArea: 420, estimatedGeneration: 610, installationType: 'Rooftop', status: 'On Hold', createdDate: '2026-07-14', remarks: 'Waiting on customer approval for financing.', channelPartner: 'CP-0001' },
+  { id: 'PRJ-0998', name: 'Meena Textiles Unit 2', customer: 'Meena Textiles', type: 'Industrial', capacity: 25, roofType: 'Metal Sheet', monthlyConsumption: 3200, location: 'Aurangabad, Maharashtra', roofArea: 2100, estimatedGeneration: 3300, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-13', remarks: '', channelPartner: 'CP-0003' },
+  { id: 'PRJ-0997', name: 'Suresh Patel Bungalow', customer: 'Suresh Patel', type: 'Residential', capacity: 4, roofType: 'RCC', monthlyConsumption: 380, location: 'Pune, Maharashtra', roofArea: 320, estimatedGeneration: 480, installationType: 'Rooftop', status: 'Planning', createdDate: '2026-07-12', remarks: 'Site survey scheduled next week.', channelPartner: 'CP-0002' },
+  { id: 'PRJ-0996', name: 'Global Foods Cold Storage', customer: 'Global Foods Pvt Ltd', type: 'Industrial', capacity: 50, roofType: 'Metal Sheet', monthlyConsumption: 6800, location: 'Kolhapur, Maharashtra', roofArea: 4200, estimatedGeneration: 6500, installationType: 'Ground Mounted', status: 'Completed', createdDate: '2026-07-12', remarks: 'Includes battery backup for cold room.', channelPartner: 'CP-0001' },
+  { id: 'PRJ-0995', name: 'Anita Deshmukh Villa', customer: 'Anita Deshmukh', type: 'Residential', capacity: 3, roofType: 'Tile', monthlyConsumption: 310, location: 'Satara, Maharashtra', roofArea: 260, estimatedGeneration: 360, installationType: 'Rooftop', status: 'On Hold', createdDate: '2026-07-11', remarks: 'Roof reinforcement needed before install.', channelPartner: 'CP-0003' },
+  { id: 'PRJ-0994', name: 'Rajesh Traders Warehouse', customer: 'Rajesh Traders', type: 'Commercial', capacity: 7, roofType: 'Metal Sheet', monthlyConsumption: 780, location: 'Pune, Maharashtra', roofArea: 560, estimatedGeneration: 860, installationType: 'Rooftop', status: 'In Progress', createdDate: '2026-07-11', remarks: '', channelPartner: 'CP-0002' },
+  { id: 'PRJ-0993', name: 'Sunrise Apartments Common Area', customer: 'Sunrise Apartments', type: 'Commercial', capacity: 15, roofType: 'RCC', monthlyConsumption: 1900, location: 'Mumbai, Maharashtra', roofArea: 1200, estimatedGeneration: 1950, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-10', remarks: 'Shared billing across 24 flats.', channelPartner: 'CP-0001' },
+  { id: 'PRJ-0992', name: 'Vikram Industries Plant 2', customer: 'Vikram Industries', type: 'Industrial', capacity: 30, roofType: 'Metal Sheet', monthlyConsumption: 4100, location: 'Chakan, Maharashtra', roofArea: 2600, estimatedGeneration: 3900, installationType: 'Ground Mounted', status: 'On Hold', createdDate: '2026-07-09', remarks: 'Land clearance pending from local authority.', channelPartner: 'CP-0002' },
+  { id: 'PRJ-0991', name: 'Kavita Rao Home', customer: 'Kavita Rao', type: 'Residential', capacity: 3, roofType: 'RCC', monthlyConsumption: 300, location: 'Pune, Maharashtra', roofArea: 250, estimatedGeneration: 355, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-08', remarks: '', channelPartner: 'CP-0001' },
+  { id: 'PRJ-0990', name: 'Deepak Motors Showroom', customer: 'Deepak Motors', type: 'Commercial', capacity: 20, roofType: 'Metal Sheet', monthlyConsumption: 2600, location: 'Pune, Maharashtra', roofArea: 1500, estimatedGeneration: 2550, installationType: 'Rooftop', status: 'In Progress', createdDate: '2026-07-08', remarks: 'Showroom lighting load included.', channelPartner: 'CP-0003' },
+  { id: 'PRJ-0989', name: 'Farha Textiles Unit 1', customer: 'Farha Textiles', type: 'Industrial', capacity: 6, roofType: 'Tin Shed', monthlyConsumption: 640, location: 'Solapur, Maharashtra', roofArea: 500, estimatedGeneration: 720, installationType: 'Rooftop', status: 'Planning', createdDate: '2026-07-07', remarks: '', channelPartner: 'CP-0002' },
+  { id: 'PRJ-0988', name: 'Nikhil Joshi Duplex', customer: 'Nikhil Joshi', type: 'Residential', capacity: 4, roofType: 'RCC', monthlyConsumption: 390, location: 'Thane, Maharashtra', roofArea: 330, estimatedGeneration: 470, installationType: 'Rooftop', status: 'Completed', createdDate: '2026-07-06', remarks: '', channelPartner: 'CP-0001' },
+  { id: 'PRJ-0987', name: 'Star Cold Storage Facility', customer: 'Star Cold Storage', type: 'Industrial', capacity: 40, roofType: 'Metal Sheet', monthlyConsumption: 5400, location: 'Nashik, Maharashtra', roofArea: 3400, estimatedGeneration: 5200, installationType: 'Ground Mounted', status: 'In Progress', createdDate: '2026-07-05', remarks: 'Phase 1 of 2 — cold room block A.', channelPartner: 'CP-0002' },
 ];
 
 const TYPE_PILL_CLASS = { 'Residential': 'type-pill-residential', 'Commercial': 'type-pill-commercial', 'Industrial': 'type-pill-industrial' };
@@ -198,6 +208,55 @@ const rowsRangeLabel = document.getElementById('rowsRangeLabel');
 const rowsPerPageSelect = document.getElementById('rowsPerPage');
 const emptyState = document.getElementById('emptyState');
 
+// ============================================================
+// Apply role-based visibility for Channel Partner column
+// ============================================================
+function applyRoleBasedVisibility() {
+  const userRole = window.currentUserRole || 'SUPER_ADMIN';
+  document.querySelectorAll('[data-role]').forEach(el => {
+    const roles = el.getAttribute('data-role').split(',').map(r => r.trim());
+    const shouldShow = roles.includes(userRole);
+    el.style.display = shouldShow ? '' : 'none';
+  });
+}
+applyRoleBasedVisibility();
+
+// ============================================================
+// Export functions
+// ============================================================
+function projectsToCsvRows() {
+  const showChannelPartner = window.currentUserRole === 'SUPER_ADMIN';
+  const header = ['Project ID', 'Project Name', 'Customer', 'Type', 'Capacity (kW)', 'Roof Type', 'Monthly Consumption', 'Location', 'Est. Generation', 'Status', 'Created Date', 'Remarks'];
+  if (showChannelPartner) header.push('Channel Partner');
+  const rows = filteredProjects().map(p => {
+    const row = [p.id, p.name, p.customer, p.type, p.capacity, p.roofType, p.monthlyConsumption, p.location, p.estimatedGeneration, p.status, p.createdDate, p.remarks || ''];
+    if (showChannelPartner) row.push(p.channelPartner || '');
+    return row;
+  });
+  return [header, ...rows];
+}
+
+function downloadDelimited(filename, mime) {
+  const rows = projectsToCsvRows();
+  const content = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
+  downloadDelimited('projects.csv', 'text/csv');
+  showToast('Exported projects.csv');
+});
+
+document.getElementById('exportExcelBtn')?.addEventListener('click', () => {
+  downloadDelimited('projects.xls', 'application/vnd.ms-excel');
+  showToast('Exported projects.xls');
+});
+
 function actionIconsHtml(id) {
   return `
     <div class="row-actions">
@@ -219,22 +278,34 @@ function renderTable() {
   emptyState.classList.toggle('hidden', totalRows !== 0);
   projectsTbody.closest('table').style.display = totalRows === 0 ? 'none' : '';
 
-  projectsTbody.innerHTML = pageRows.map((p) => `
-    <tr data-id="${p.id}">
-      <td data-label="Project ID" class="font-medium">${p.id}</td>
-      <td data-label="Project Name">${p.name}</td>
-      <td data-label="Customer">${p.customer}</td>
-      <td data-label="Type"><span class="type-pill ${TYPE_PILL_CLASS[p.type]}">${p.type}</span></td>
-      <td data-label="Capacity (kW)">${p.capacity} kW</td>
-      <td data-label="Roof Type">${p.roofType}</td>
-      <td data-label="Monthly Consumption">${p.monthlyConsumption} units</td>
-      <td data-label="Location">${p.location}</td>
-      <td data-label="Est. Generation">${p.estimatedGeneration} units</td>
-      <td data-label="Status"><span class="pill ${STATUS_PILL_CLASS[p.status]}">${p.status}</span></td>
-      <td data-label="Created Date">${formatDate(p.createdDate)}</td>
-      <td data-label="Actions">${actionIconsHtml(p.id)}</td>
-    </tr>
-  `).join('');
+  // Determine if we should show Channel Partner column
+  const showChannelPartner = window.currentUserRole === 'SUPER_ADMIN';
+
+  projectsTbody.innerHTML = pageRows.map((p) => {
+    const channelPartnerCell = showChannelPartner ? `<td data-label="Channel Partner">${p.channelPartner || '—'}</td>` : '';
+    return `
+      <tr data-id="${p.id}">
+        <td data-label="Project ID" class="font-medium">${p.id}</td>
+        <td data-label="Project Name">${p.name}</td>
+        <td data-label="Customer">${p.customer}</td>
+        ${channelPartnerCell}
+        <td data-label="Type"><span class="type-pill ${TYPE_PILL_CLASS[p.type]}">${p.type}</span></td>
+        <td data-label="Capacity (kW)">${p.capacity} kW</td>
+        <td data-label="Roof Type">${p.roofType}</td>
+        <td data-label="Monthly Consumption">${p.monthlyConsumption} units</td>
+        <td data-label="Location">${p.location}</td>
+        <td data-label="Est. Generation">${p.estimatedGeneration} units</td>
+        <td data-label="Status"><span class="pill ${STATUS_PILL_CLASS[p.status]}">${p.status}</span></td>
+        <td data-label="Created Date">${formatDate(p.createdDate)}</td>
+        <td data-label="Actions">${actionIconsHtml(p.id)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Hide Channel Partner header if not Super Admin
+  document.querySelectorAll('#projectsTable thead th[data-role="SUPER_ADMIN"]').forEach(th => {
+    th.style.display = showChannelPartner ? '' : 'none';
+  });
 
   rowsRangeLabel.textContent = totalRows === 0
     ? 'No records'
@@ -342,6 +413,7 @@ const projectFormSaveBtn = document.getElementById('projectFormSaveBtn');
 const fld = {
   name: document.getElementById('fldProjectName'),
   customer: document.getElementById('fldCustomer'),
+  channelPartner: document.getElementById('fldChannelPartner'),
   type: document.getElementById('fldType'),
   capacity: document.getElementById('fldCapacity'),
   roofType: document.getElementById('fldRoofType'),
@@ -365,6 +437,17 @@ function openAddProjectModal() {
   projectFormTitle.textContent = 'Add Project';
   projectFormSubtitle.textContent = 'Create a new solar project';
   projectFormSaveBtn.textContent = 'Save';
+  
+  // Auto-fill Channel Partner from session
+  if (window.currentUserRole === 'SUPER_ADMIN') {
+    fld.channelPartner.value = '';
+    fld.channelPartner.readOnly = false;
+    fld.channelPartner.placeholder = 'Select Channel Partner (dropdown coming soon)';
+  } else {
+    fld.channelPartner.value = window.currentUserPartnerName || 'CP-0001';
+    fld.channelPartner.readOnly = true;
+  }
+  
   openModal('projectFormModal');
 }
 
@@ -380,6 +463,7 @@ function openEditProjectModal(id) {
 
   fld.name.value = p.name;
   fld.customer.value = p.customer;
+  fld.channelPartner.value = p.channelPartner || (window.currentUserPartnerName || 'CP-0001');
   fld.type.value = p.type;
   fld.capacity.value = p.capacity;
   fld.roofType.value = p.roofType;
@@ -413,6 +497,7 @@ projectFormSaveBtn?.addEventListener('click', () => {
 
   const name = fld.name.value.trim();
   const customer = fld.customer.value.trim();
+  const channelPartner = fld.channelPartner.value.trim() || (window.currentUserPartnerName || 'CP-0001');
   const type = fld.type.value;
   const capacity = parseFloat(fld.capacity.value);
   const roofType = fld.roofType.value;
@@ -431,7 +516,7 @@ projectFormSaveBtn?.addEventListener('click', () => {
   if (formMode === 'add') {
     const newProject = {
       id: nextProjectId(),
-      name, customer, type, capacity, roofType, monthlyConsumption, location,
+      name, customer, channelPartner, type, capacity, roofType, monthlyConsumption, location,
       roofArea, estimatedGeneration, installationType: 'Rooftop', status, remarks,
       createdDate: new Date().toISOString().slice(0, 10),
     };
@@ -440,7 +525,7 @@ projectFormSaveBtn?.addEventListener('click', () => {
   } else {
     const p = projects.find(x => x.id === editingProjectId);
     if (!p) return;
-    p.name = name; p.customer = customer; p.type = type; p.capacity = capacity;
+    p.name = name; p.customer = customer; p.channelPartner = channelPartner; p.type = type; p.capacity = capacity;
     p.roofType = roofType; p.monthlyConsumption = monthlyConsumption; p.location = location;
     p.roofArea = roofArea; p.estimatedGeneration = estimatedGeneration; p.status = status; p.remarks = remarks;
     showToast(`Project "${p.name}" updated`);
@@ -463,6 +548,7 @@ function openViewProjectModal(id) {
   document.getElementById('viewId').textContent = p.id;
   document.getElementById('viewName').textContent = p.name;
   document.getElementById('viewCustomer').textContent = p.customer;
+  document.getElementById('viewChannelPartner').textContent = p.channelPartner || '—';
   document.getElementById('viewType').textContent = p.type;
   document.getElementById('viewCapacity').textContent = `${p.capacity} kW`;
   document.getElementById('viewRoofType').textContent = p.roofType;
@@ -523,5 +609,9 @@ projectsTbody?.addEventListener('click', (e) => {
 // ============================================================
 // Init
 // ============================================================
+// Set current user role from session
+window.currentUserRole = window.currentUserRole || 'SUPER_ADMIN';
+window.currentUserPartnerName = window.currentUserPartnerName || 'CP-0001';
+
 renderKpis();
 renderTable();

@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/reports
+
 /* ============================================================
    Reports & Analytics — reports.js
    IMPORTANT: core interactive UI (sidebar, dropdowns, tabs,
@@ -132,7 +134,43 @@ if (topPerformersEl) {
 }
 
 // ============================================================
-// 6) DETAILED REPORT TABLE — data, sort, filter, paginate
+// 6) GST REPORT DATA (mock data)
+// ============================================================
+const gstReportData = [
+    { quoteNo: 'SQ-1001', customer: 'Amit Sharma', taxableAmount: 150000, gstPercent: 18, gstAmount: 27000, total: 177000, date: '2026-07-15' },
+    { quoteNo: 'SQ-1002', customer: 'Neha Verma', taxableAmount: 250000, gstPercent: 18, gstAmount: 45000, total: 295000, date: '2026-07-15' },
+    { quoteNo: 'SQ-1003', customer: 'Ramesh Traders', taxableAmount: 500000, gstPercent: 18, gstAmount: 90000, total: 590000, date: '2026-07-14' },
+    { quoteNo: 'SQ-1004', customer: 'Sunil Kumar', taxableAmount: 100000, gstPercent: 18, gstAmount: 18000, total: 118000, date: '2026-07-14' },
+    { quoteNo: 'SQ-1005', customer: 'Green Homes Pvt Ltd', taxableAmount: 1200000, gstPercent: 18, gstAmount: 216000, total: 1416000, date: '2026-07-13' },
+    { quoteNo: 'SQ-1006', customer: 'Deepak Yadav', taxableAmount: 150000, gstPercent: 18, gstAmount: 27000, total: 177000, date: '2026-07-13' },
+    { quoteNo: 'SQ-1007', customer: 'Suresh Enterprises', taxableAmount: 720000, gstPercent: 18, gstAmount: 129600, total: 849600, date: '2026-07-12' },
+    { quoteNo: 'SQ-1008', customer: 'Anjali Gupta', taxableAmount: 190000, gstPercent: 18, gstAmount: 34200, total: 224200, date: '2026-07-11' },
+    { quoteNo: 'SQ-1009', customer: 'Vikram Solar Homes', taxableAmount: 285000, gstPercent: 18, gstAmount: 51300, total: 336300, date: '2026-07-10' },
+    { quoteNo: 'SQ-1010', customer: 'Meena Traders', taxableAmount: 380000, gstPercent: 18, gstAmount: 68400, total: 448400, date: '2026-07-09' },
+    { quoteNo: 'SQ-1011', customer: 'Rajesh Constructions', taxableAmount: 980000, gstPercent: 18, gstAmount: 176400, total: 1156400, date: '2026-07-08' },
+    { quoteNo: 'SQ-1012', customer: 'Sunita Housing Society', taxableAmount: 590000, gstPercent: 18, gstAmount: 106200, total: 696200, date: '2026-07-07' },
+];
+
+// ============================================================
+// 7) REFERRAL INCOME REPORT DATA (mock placeholder data)
+// ============================================================
+const referralIncomeData = [
+    { referrerName: 'Arjun Mehta', referredCustomer: 'Amit Sharma', quotationAmount: 177000, referralPercent: 5, referralAmount: 8850, status: 'Paid' },
+    { referrerName: 'Priya Singh', referredCustomer: 'Neha Verma', quotationAmount: 295000, referralPercent: 5, referralAmount: 14750, status: 'Pending' },
+    { referrerName: 'Kavya Rao', referredCustomer: 'Ramesh Traders', quotationAmount: 590000, referralPercent: 5, referralAmount: 29500, status: 'Paid' },
+    { referrerName: 'Arjun Mehta', referredCustomer: 'Sunil Kumar', quotationAmount: 118000, referralPercent: 5, referralAmount: 5900, status: 'Pending' },
+    { referrerName: 'Priya Singh', referredCustomer: 'Green Homes Pvt Ltd', quotationAmount: 1416000, referralPercent: 5, referralAmount: 70800, status: 'Paid' },
+    { referrerName: 'Kavya Rao', referredCustomer: 'Deepak Yadav', quotationAmount: 177000, referralPercent: 5, referralAmount: 8850, status: 'Pending' },
+    { referrerName: 'Arjun Mehta', referredCustomer: 'Suresh Enterprises', quotationAmount: 849600, referralPercent: 5, referralAmount: 42480, status: 'Paid' },
+    { referrerName: 'Priya Singh', referredCustomer: 'Anjali Gupta', quotationAmount: 224200, referralPercent: 5, referralAmount: 11210, status: 'Rejected' },
+    { referrerName: 'Kavya Rao', referredCustomer: 'Vikram Solar Homes', quotationAmount: 336300, referralPercent: 5, referralAmount: 16815, status: 'Paid' },
+    { referrerName: 'Arjun Mehta', referredCustomer: 'Meena Traders', quotationAmount: 448400, referralPercent: 5, referralAmount: 22420, status: 'Pending' },
+    { referrerName: 'Priya Singh', referredCustomer: 'Rajesh Constructions', quotationAmount: 1156400, referralPercent: 5, referralAmount: 57820, status: 'Paid' },
+    { referrerName: 'Kavya Rao', referredCustomer: 'Sunita Housing Society', quotationAmount: 696200, referralPercent: 5, referralAmount: 34810, status: 'Pending' },
+];
+
+// ============================================================
+// 8) DETAILED REPORT TABLE — data, sort, filter, paginate
 // ============================================================
 const reportData = [
     { quoteNo: 'SQ-1001', customer: 'Amit Sharma', systemSize: '3 kW', amount: 165000, salesPerson: 'Priya Singh', status: 'accepted', date: '2026-07-15' },
@@ -317,16 +355,319 @@ document.getElementById('resetFilters')?.addEventListener('click', () => {
     document.getElementById('statusFilter').value = 'all';
     document.getElementById('salesFilter').value = 'all';
     document.getElementById('vendorFilter').value = 'all';
+    document.getElementById('channelPartnerFilter').value = 'all';
     currentPage = 1;
     renderTable();
     showToast('Filters reset', 'fa-rotate-left');
 });
 
-// Render the table immediately — this must always work, charts or no charts.
-renderTable();
+// ============================================================
+// 9) GST REPORT TABLE RENDERING
+// ============================================================
+let gstSortKey = 'date';
+let gstSortDir = 'desc';
+let gstCurrentPage = 1;
+let gstPageSize = 10;
+
+function getGstFilteredData() {
+    const status = document.getElementById('statusFilter')?.value || 'all';
+    const salesPerson = document.getElementById('salesFilter')?.value || 'all';
+    return gstReportData.filter(row => {
+        // GST report doesn't have status/salesPerson filters, but we keep for consistency
+        return true;
+    });
+}
+
+function getGstSortedData() {
+    const data = [...getGstFilteredData()];
+    data.sort((a, b) => {
+        let av = a[gstSortKey], bv = b[gstSortKey];
+        if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+        if (av < bv) return gstSortDir === 'asc' ? -1 : 1;
+        if (av > bv) return gstSortDir === 'asc' ? 1 : -1;
+        return 0;
+    });
+    return data;
+}
+
+function renderGstTable() {
+    const tbody = document.getElementById('gstTableBody');
+    if (!tbody) return;
+
+    const data = getGstSortedData();
+    const totalRows = data.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / gstPageSize));
+    gstCurrentPage = Math.min(gstCurrentPage, totalPages);
+
+    const start = (gstCurrentPage - 1) * gstPageSize;
+    const pageRows = data.slice(start, start + gstPageSize);
+
+    tbody.innerHTML = pageRows.map(row => {
+        return `
+        <tr class="cursor-pointer" data-quote="${row.quoteNo}">
+            <td data-label="Quotation No." class="font-medium">${row.quoteNo}</td>
+            <td data-label="Customer">${row.customer}</td>
+            <td data-label="Taxable Amount">${formatAmount(row.taxableAmount)}</td>
+            <td data-label="GST %">${row.gstPercent}%</td>
+            <td data-label="GST Amount">${formatAmount(row.gstAmount)}</td>
+            <td data-label="Total">${formatAmount(row.total)}</td>
+            <td data-label="Date">${formatDate(row.date)}</td>
+        </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('tr').forEach(tr => {
+        tr.addEventListener('click', (e) => {
+            showToast(`Opening ${tr.dataset.quote}`, 'fa-eye');
+        });
+    });
+
+    const pageInfo = document.getElementById('gstPageInfo');
+    if (pageInfo) {
+        pageInfo.textContent = totalRows === 0 ? 'No results' : `Showing ${start + 1}–${Math.min(start + gstPageSize, totalRows)} of ${totalRows}`;
+    }
+
+    renderGstPagination(totalPages);
+    updateGstSortIndicators();
+}
+
+function renderGstPagination(totalPages) {
+    const el = document.getElementById('gstPagination');
+    if (!el) return;
+    el.innerHTML = '';
+
+    const prev = document.createElement('span');
+    prev.className = `page-btn ${gstCurrentPage === 1 ? 'disabled' : ''}`;
+    prev.innerHTML = '<i class="fas fa-chevron-left"></i>';
+    prev.addEventListener('click', () => { if (gstCurrentPage > 1) { gstCurrentPage--; renderGstTable(); } });
+    el.appendChild(prev);
+
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('span');
+        btn.className = `page-btn ${i === gstCurrentPage ? 'active' : ''}`;
+        btn.textContent = i;
+        btn.addEventListener('click', () => { gstCurrentPage = i; renderGstTable(); });
+        el.appendChild(btn);
+    }
+
+    const next = document.createElement('span');
+    next.className = `page-btn ${gstCurrentPage === totalPages ? 'disabled' : ''}`;
+    next.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    next.addEventListener('click', () => { if (gstCurrentPage < totalPages) { gstCurrentPage++; renderGstTable(); } });
+    el.appendChild(next);
+}
+
+function updateGstSortIndicators() {
+    document.querySelectorAll('#gstTable thead th[data-key]').forEach(th => {
+        const icon = th.querySelector('.sort-icon');
+        th.classList.remove('sorted');
+        if (icon) icon.className = 'fas fa-sort sort-icon';
+        if (th.dataset.key === gstSortKey && icon) {
+            th.classList.add('sorted');
+            icon.className = `fas ${gstSortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} sort-icon`;
+        }
+    });
+}
+
+document.querySelectorAll('#gstTable thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (gstSortKey === key) {
+            gstSortDir = gstSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            gstSortKey = key;
+            gstSortDir = 'asc';
+        }
+        gstCurrentPage = 1;
+        renderGstTable();
+    });
+});
+
+document.getElementById('gstPageSize')?.addEventListener('change', (e) => {
+    gstPageSize = parseInt(e.target.value, 10);
+    gstCurrentPage = 1;
+    renderGstTable();
+});
 
 // ============================================================
-// 7) CHARTS (isolated — a Chart.js load failure cannot break
+// 10) REFERRAL INCOME TABLE RENDERING
+// ============================================================
+let referralSortKey = 'referrerName';
+let referralSortDir = 'asc';
+let referralCurrentPage = 1;
+let referralPageSize = 10;
+
+function getReferralFilteredData() {
+    return referralIncomeData;
+}
+
+function getReferralSortedData() {
+    const data = [...getReferralFilteredData()];
+    data.sort((a, b) => {
+        let av = a[referralSortKey], bv = b[referralSortKey];
+        if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+        if (av < bv) return referralSortDir === 'asc' ? -1 : 1;
+        if (av > bv) return referralSortDir === 'asc' ? 1 : -1;
+        return 0;
+    });
+    return data;
+}
+
+function renderReferralTable() {
+    const tbody = document.getElementById('referralTableBody');
+    if (!tbody) return;
+
+    const data = getReferralSortedData();
+    const totalRows = data.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / referralPageSize));
+    referralCurrentPage = Math.min(referralCurrentPage, totalPages);
+
+    const start = (referralCurrentPage - 1) * referralPageSize;
+    const pageRows = data.slice(start, start + referralPageSize);
+
+    const statusColors = {
+        'Paid': 'bg-emerald-100 text-emerald-700',
+        'Pending': 'bg-amber-100 text-amber-700',
+        'Rejected': 'bg-rose-100 text-rose-600'
+    };
+
+    tbody.innerHTML = pageRows.map(row => {
+        const statusClass = statusColors[row.status] || 'bg-gray-100 text-gray-600';
+        return `
+        <tr>
+            <td data-label="Referrer Name" class="font-medium">${row.referrerName}</td>
+            <td data-label="Referred Customer">${row.referredCustomer}</td>
+            <td data-label="Quotation Amount">${formatAmount(row.quotationAmount)}</td>
+            <td data-label="Referral %">${row.referralPercent}%</td>
+            <td data-label="Referral Amount">${formatAmount(row.referralAmount)}</td>
+            <td data-label="Status"><span class="status-pill ${statusClass}">${row.status}</span></td>
+        </tr>`;
+    }).join('');
+
+    const pageInfo = document.getElementById('referralPageInfo');
+    if (pageInfo) {
+        pageInfo.textContent = totalRows === 0 ? 'No results' : `Showing ${start + 1}–${Math.min(start + referralPageSize, totalRows)} of ${totalRows}`;
+    }
+
+    renderReferralPagination(totalPages);
+    updateReferralSortIndicators();
+}
+
+function renderReferralPagination(totalPages) {
+    const el = document.getElementById('referralPagination');
+    if (!el) return;
+    el.innerHTML = '';
+
+    const prev = document.createElement('span');
+    prev.className = `page-btn ${referralCurrentPage === 1 ? 'disabled' : ''}`;
+    prev.innerHTML = '<i class="fas fa-chevron-left"></i>';
+    prev.addEventListener('click', () => { if (referralCurrentPage > 1) { referralCurrentPage--; renderReferralTable(); } });
+    el.appendChild(prev);
+
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('span');
+        btn.className = `page-btn ${i === referralCurrentPage ? 'active' : ''}`;
+        btn.textContent = i;
+        btn.addEventListener('click', () => { referralCurrentPage = i; renderReferralTable(); });
+        el.appendChild(btn);
+    }
+
+    const next = document.createElement('span');
+    next.className = `page-btn ${referralCurrentPage === totalPages ? 'disabled' : ''}`;
+    next.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    next.addEventListener('click', () => { if (referralCurrentPage < totalPages) { referralCurrentPage++; renderReferralTable(); } });
+    el.appendChild(next);
+}
+
+function updateReferralSortIndicators() {
+    document.querySelectorAll('#referralTable thead th[data-key]').forEach(th => {
+        const icon = th.querySelector('.sort-icon');
+        th.classList.remove('sorted');
+        if (icon) icon.className = 'fas fa-sort sort-icon';
+        if (th.dataset.key === referralSortKey && icon) {
+            th.classList.add('sorted');
+            icon.className = `fas ${referralSortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} sort-icon`;
+        }
+    });
+}
+
+document.querySelectorAll('#referralTable thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (referralSortKey === key) {
+            referralSortDir = referralSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            referralSortKey = key;
+            referralSortDir = 'asc';
+        }
+        referralCurrentPage = 1;
+        renderReferralTable();
+    });
+});
+
+document.getElementById('referralPageSize')?.addEventListener('change', (e) => {
+    referralPageSize = parseInt(e.target.value, 10);
+    referralCurrentPage = 1;
+    renderReferralTable();
+});
+
+// ============================================================
+// 11) TAB SWITCHING WITH CONTENT VISIBILITY
+// ============================================================
+document.querySelectorAll('.report-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        const tabId = tab.dataset.tab;
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        const targetContent = document.getElementById(`tabContent${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
+        if (targetContent) {
+            targetContent.classList.remove('hidden');
+        }
+        showToast(`${tab.textContent.trim()} loaded`, 'fa-table-list');
+    });
+});
+
+// ============================================================
+// 12) CHANNEL PARTNER FILTER (Super Admin only)
+// ============================================================
+// Check user role from session and show/hide channel partner filter
+function initChannelPartnerFilter() {
+    const channelPartnerFilter = document.getElementById('channelPartnerFilterContainer');
+    if (!channelPartnerFilter) return;
+    
+    // Get user role from session (assuming it's stored in window.user or similar)
+    // This is a placeholder - actual implementation will depend on session.js
+    const userRole = window.user?.role || 'SUPER_ADMIN'; // For demo, show for SUPER_ADMIN
+    
+    // Show only for SUPER_ADMIN
+    if (userRole === 'SUPER_ADMIN') {
+        channelPartnerFilter.classList.remove('hidden');
+    } else {
+        channelPartnerFilter.classList.add('hidden');
+    }
+}
+
+// Call the function after session is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    initChannelPartnerFilter();
+});
+
+// Also call after session.js loads
+setTimeout(initChannelPartnerFilter, 500);
+
+// ============================================================
+// 13) Render tables on page load
+// ============================================================
+// Render the table immediately — this must always work, charts or no charts.
+renderTable();
+renderGstTable();
+renderReferralTable();
+
+// ============================================================
+// 14) CHARTS (isolated — a Chart.js load failure cannot break
 //    anything above this point)
 // ============================================================
 

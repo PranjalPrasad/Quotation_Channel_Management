@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/approval
+
 // ============================================================
 // Sidebar collapse / expand (matches dashboard behaviour, incl.
 // mobile/tablet overlay drawer with backdrop)
@@ -103,11 +105,24 @@ function showToast(message) {
 }
 
 // ============================================================
-// Seed data — quotation approval requests
+// Get current user role from session
+// ============================================================
+function getUserRole() {
+  try {
+    const session = JSON.parse(sessionStorage.getItem("session") || "null");
+    return session?.role || null;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================
+// Seed data — quotation approval requests with partner info
 // ============================================================
 let approvals = [
   {
-    id: "QA-2045", customer: "Amit Sharma", salesExec: "Rohit Verma", project: "Rooftop Solar — 3kW",
+    id: "QA-2045", customer: "Amit Sharma", salesExec: "Rohit Verma", partner: "SolarTech Solutions",
+    project: "Rooftop Solar — 3kW",
     amount: 165000, submittedDate: "2026-07-15", status: "Pending",
     products: [
       { name: "Mono PERC Panel 540W", qty: 6, rate: 14500 },
@@ -119,7 +134,8 @@ let approvals = [
     timeline: { submitted: "2026-07-15", reviewed: null, approved: null, converted: null },
   },
   {
-    id: "QA-2044", customer: "Priya Enterprises", salesExec: "Sneha Kulkarni", project: "Commercial Rooftop — 10kW",
+    id: "QA-2044", customer: "Priya Enterprises", salesExec: "Sneha Kulkarni", partner: "GreenEnergy Partners",
+    project: "Commercial Rooftop — 10kW",
     amount: 540000, submittedDate: "2026-07-14", status: "Approved",
     products: [
       { name: "Mono PERC Panel 540W", qty: 19, rate: 14500 },
@@ -131,7 +147,8 @@ let approvals = [
     timeline: { submitted: "2026-07-14", reviewed: "2026-07-15", approved: "2026-07-16", converted: null },
   },
   {
-    id: "QA-2043", customer: "Ravi Constructions", salesExec: "Rohit Verma", project: "Site Office — 5kW",
+    id: "QA-2043", customer: "Ravi Constructions", salesExec: "Rohit Verma", partner: "SolarTech Solutions",
+    project: "Site Office — 5kW",
     amount: 275000, submittedDate: "2026-07-14", status: "Rejected",
     products: [
       { name: "Mono PERC Panel 540W", qty: 9, rate: 14500 },
@@ -142,7 +159,8 @@ let approvals = [
     timeline: { submitted: "2026-07-14", reviewed: "2026-07-15", approved: null, converted: null },
   },
   {
-    id: "QA-2042", customer: "Meena Textiles", salesExec: "Karan Mehta", project: "Factory Roof — 25kW",
+    id: "QA-2042", customer: "Meena Textiles", salesExec: "Karan Mehta", partner: "EcoSolar India",
+    project: "Factory Roof — 25kW",
     amount: 1320000, submittedDate: "2026-07-13", status: "Converted",
     products: [
       { name: "Mono PERC Panel 540W", qty: 46, rate: 14500 },
@@ -154,7 +172,8 @@ let approvals = [
     timeline: { submitted: "2026-07-13", reviewed: "2026-07-13", approved: "2026-07-14", converted: "2026-07-20" },
   },
   {
-    id: "QA-2041", customer: "Suresh Patel", salesExec: "Sneha Kulkarni", project: "Home Rooftop — 4kW",
+    id: "QA-2041", customer: "Suresh Patel", salesExec: "Sneha Kulkarni", partner: "GreenEnergy Partners",
+    project: "Home Rooftop — 4kW",
     amount: 210000, submittedDate: "2026-07-12", status: "Pending",
     products: [
       { name: "Mono PERC Panel 540W", qty: 8, rate: 14500 },
@@ -165,7 +184,8 @@ let approvals = [
     timeline: { submitted: "2026-07-12", reviewed: null, approved: null, converted: null },
   },
   {
-    id: "QA-2040", customer: "Global Foods Pvt Ltd", salesExec: "Karan Mehta", project: "Warehouse — 50kW",
+    id: "QA-2040", customer: "Global Foods Pvt Ltd", salesExec: "Karan Mehta", partner: "EcoSolar India",
+    project: "Warehouse — 50kW",
     amount: 2650000, submittedDate: "2026-07-12", status: "Approved",
     products: [
       { name: "Mono PERC Panel 540W", qty: 93, rate: 14500 },
@@ -177,7 +197,8 @@ let approvals = [
     timeline: { submitted: "2026-07-12", reviewed: "2026-07-13", approved: "2026-07-14", converted: null },
   },
   {
-    id: "QA-2039", customer: "Anita Deshmukh", salesExec: "Rohit Verma", project: "Home Rooftop — 3kW",
+    id: "QA-2039", customer: "Anita Deshmukh", salesExec: "Rohit Verma", partner: "SolarTech Solutions",
+    project: "Home Rooftop — 3kW",
     amount: 158000, submittedDate: "2026-07-11", status: "Rejected",
     products: [
       { name: "Mono PERC Panel 540W", qty: 6, rate: 14500 },
@@ -188,7 +209,8 @@ let approvals = [
     timeline: { submitted: "2026-07-11", reviewed: "2026-07-12", approved: null, converted: null },
   },
   {
-    id: "QA-2038", customer: "Rajesh Traders", salesExec: "Karan Mehta", project: "Shop Rooftop — 7kW",
+    id: "QA-2038", customer: "Rajesh Traders", salesExec: "Karan Mehta", partner: "EcoSolar India",
+    project: "Shop Rooftop — 7kW",
     amount: 372000, submittedDate: "2026-07-11", status: "Revision Required",
     products: [
       { name: "Mono PERC Panel 540W", qty: 13, rate: 14500 },
@@ -199,7 +221,8 @@ let approvals = [
     timeline: { submitted: "2026-07-11", reviewed: "2026-07-12", approved: null, converted: null },
   },
   {
-    id: "QA-2037", customer: "Sunrise Apartments", salesExec: "Sneha Kulkarni", project: "Society Rooftop — 15kW",
+    id: "QA-2037", customer: "Sunrise Apartments", salesExec: "Sneha Kulkarni", partner: "GreenEnergy Partners",
+    project: "Society Rooftop — 15kW",
     amount: 795000, submittedDate: "2026-07-10", status: "Converted",
     products: [
       { name: "Mono PERC Panel 540W", qty: 28, rate: 14500 },
@@ -211,7 +234,8 @@ let approvals = [
     timeline: { submitted: "2026-07-10", reviewed: "2026-07-10", approved: "2026-07-11", converted: "2026-07-18" },
   },
   {
-    id: "QA-2036", customer: "Vikram Industries", salesExec: "Rohit Verma", project: "Plant Rooftop — 30kW",
+    id: "QA-2036", customer: "Vikram Industries", salesExec: "Rohit Verma", partner: "SolarTech Solutions",
+    project: "Plant Rooftop — 30kW",
     amount: 1580000, submittedDate: "2026-07-09", status: "Pending",
     products: [
       { name: "Mono PERC Panel 540W", qty: 56, rate: 14500 },
@@ -223,7 +247,8 @@ let approvals = [
     timeline: { submitted: "2026-07-09", reviewed: null, approved: null, converted: null },
   },
   {
-    id: "QA-2035", customer: "Kavita Rao", salesExec: "Sneha Kulkarni", project: "Home Rooftop — 3kW",
+    id: "QA-2035", customer: "Kavita Rao", salesExec: "Sneha Kulkarni", partner: "GreenEnergy Partners",
+    project: "Home Rooftop — 3kW",
     amount: 162000, submittedDate: "2026-07-08", status: "Approved",
     products: [
       { name: "Mono PERC Panel 540W", qty: 6, rate: 14500 },
@@ -234,7 +259,8 @@ let approvals = [
     timeline: { submitted: "2026-07-08", reviewed: "2026-07-08", approved: "2026-07-09", converted: null },
   },
   {
-    id: "QA-2034", customer: "Deepak Motors", salesExec: "Karan Mehta", project: "Showroom Rooftop — 20kW",
+    id: "QA-2034", customer: "Deepak Motors", salesExec: "Karan Mehta", partner: "EcoSolar India",
+    project: "Showroom Rooftop — 20kW",
     amount: 1050000, submittedDate: "2026-07-08", status: "Pending",
     products: [
       { name: "Mono PERC Panel 540W", qty: 37, rate: 14500 },
@@ -246,6 +272,33 @@ let approvals = [
     timeline: { submitted: "2026-07-08", reviewed: null, approved: null, converted: null },
   },
 ];
+
+// ============================================================
+// Get unique partners list from approvals
+// ============================================================
+function getUniquePartners() {
+  const partners = new Set();
+  approvals.forEach(a => {
+    if (a.partner) partners.add(a.partner);
+  });
+  return Array.from(partners).sort();
+}
+
+// ============================================================
+// Populate partner filter dropdown
+// ============================================================
+function populatePartnerFilter() {
+  const searchPartner = document.getElementById("searchPartner");
+  if (!searchPartner) return;
+  const partners = getUniquePartners();
+  searchPartner.innerHTML = '<option value="">All partners</option>';
+  partners.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    searchPartner.appendChild(opt);
+  });
+}
 
 // ============================================================
 // Summary cards
@@ -274,6 +327,7 @@ const rowsPerPageSelect = document.getElementById("rowsPerPage");
 const searchId = document.getElementById("searchId");
 const searchCustomer = document.getElementById("searchCustomer");
 const searchExec = document.getElementById("searchExec");
+const searchPartner = document.getElementById("searchPartner");
 const searchStatus = document.getElementById("searchStatus");
 
 const statusPillClass = {
@@ -288,6 +342,7 @@ function filteredApprovals() {
   const idQ = searchId.value.trim().toLowerCase();
   const custQ = searchCustomer.value.trim().toLowerCase();
   const execQ = searchExec.value.trim().toLowerCase();
+  const partnerQ = searchPartner ? searchPartner.value : "";
   const statusQ = searchStatus.value;
 
   return approvals.filter((a) => {
@@ -295,6 +350,7 @@ function filteredApprovals() {
     if (idQ && !a.id.toLowerCase().includes(idQ)) return false;
     if (custQ && !a.customer.toLowerCase().includes(custQ)) return false;
     if (execQ && !a.salesExec.toLowerCase().includes(execQ)) return false;
+    if (partnerQ && a.partner !== partnerQ) return false;
     if (statusQ && a.status !== statusQ) return false;
     return true;
   });
@@ -341,13 +397,14 @@ function renderTable() {
       <td data-label="Quotation ID" class="font-medium">${a.id}</td>
       <td data-label="Customer">${a.customer}</td>
       <td data-label="Sales Executive">${a.salesExec}</td>
+      <td data-label="Channel Partner">${a.partner || "—"}</td>
       <td data-label="Project">${a.project}</td>
       <td data-label="Amount">${formatINR(a.amount)}</td>
       <td data-label="Submitted">${formatDate(a.submittedDate)}</td>
       <td data-label="Status"><span class="pill ${statusPillClass[a.status]}">${a.status}</span></td>
       <td data-label="Actions">${actionIconsHtml(a.id)}</td>
     </tr>
-  `).join("") : `<tr><td colspan="8" style="text-align:center; padding: 24px; color:#9CA3AF;">No quotations match your search.</td></tr>`;
+  `).join("") : `<tr><td colspan="9" style="text-align:center; padding: 24px; color:#9CA3AF;">No quotations match your search.</td></tr>`;
 
   rowsRangeLabel.textContent = totalRows === 0
     ? "No records"
@@ -421,7 +478,45 @@ document.getElementById("filterTabs")?.addEventListener("click", (e) => {
 [searchId, searchCustomer, searchExec].forEach((el) => {
   el?.addEventListener("input", () => { currentPage = 1; renderTable(); });
 });
+searchPartner?.addEventListener("change", () => { currentPage = 1; renderTable(); });
 searchStatus?.addEventListener("change", () => { currentPage = 1; renderTable(); });
+
+// ============================================================
+// Show/hide partner column and filter based on user role
+// ============================================================
+function applyPartnerVisibility() {
+  const role = getUserRole();
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  
+  // Show/hide partner column (4th column, index 3)
+  const tableHeaders = document.querySelectorAll("#approvalTable thead th");
+  const allRows = document.querySelectorAll("#approvalTable tbody tr");
+  
+  // For each row, show/hide the 4th column (index 3)
+  if (tableHeaders.length > 3) {
+    const partnerHeader = tableHeaders[3];
+    if (partnerHeader) {
+      partnerHeader.style.display = isSuperAdmin ? "" : "none";
+    }
+  }
+  
+  // For existing rows
+  allRows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    if (cells.length > 3) {
+      const partnerCell = cells[3];
+      if (partnerCell) {
+        partnerCell.style.display = isSuperAdmin ? "" : "none";
+      }
+    }
+  });
+  
+  // Show/hide partner filter
+  const partnerFilterWrap = document.getElementById("partnerFilterWrap");
+  if (partnerFilterWrap) {
+    partnerFilterWrap.style.display = isSuperAdmin ? "" : "none";
+  }
+}
 
 // ============================================================
 // View Modal — Quotation Details
@@ -484,6 +579,7 @@ function openViewModal(id) {
   document.getElementById("viewModalSubtitle").textContent = `${a.id} · ${a.status}`;
   document.getElementById("dCustomer").textContent = a.customer;
   document.getElementById("dExec").textContent = a.salesExec;
+  document.getElementById("dPartner").textContent = a.partner || "—";
   document.getElementById("dProject").textContent = a.project;
   document.getElementById("dDate").textContent = formatDate(a.submittedDate);
 
@@ -637,5 +733,11 @@ document.addEventListener("keydown", (e) => {
 // ============================================================
 // Init
 // ============================================================
+populatePartnerFilter();
 renderSummary();
 renderTable();
+
+// Apply partner visibility after table is rendered
+setTimeout(() => {
+  applyPartnerVisibility();
+}, 50);

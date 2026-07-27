@@ -59,20 +59,31 @@
         <img src="/img/logo.webp" alt="Company Logo" class="w-auto h-10 object-contain" />
       </div>
 
+      <!--
+        data-role scaffolding (same convention as dashboard.html):
+        - Comma-separated role list on each nav-item; common/session.js hides
+          any item whose list does not include the current user's role.
+        - Items with NO data-role attribute are visible to every role by default.
+        - Dashboard -> SUPER_ADMIN, CHANNEL_PARTNER_ADMIN, CHANNEL_PARTNER_SALES
+          User Management -> SUPER_ADMIN only.
+        - When session.js finds no active session (e.g. dev/testing without
+          login), it fails open and shows every item, so nothing looks
+          "missing" until a real role is present in sessionStorage.
+      -->
       <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
-        <button class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
+        <button class="nav-item" data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuDashboard" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
           <span>Dashboard</span>
         </button>
-        <button class="nav-item" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'">
+        <button class="nav-item" id="menuQuotationManagement" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
           <span>Quotation Management</span>
         </button>
-        <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
+        <button class="nav-item" id="menuProductManagement" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
           <span>Product Management</span>
         </button>
-        <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
+        <button class="nav-item" id="menuCustomerManagement" data-label="Customer Management" aria-label="Customer Management">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
             <circle cx="9" cy="11" r="3"></circle>
@@ -81,27 +92,27 @@
           </svg>
           <span>Customer Management</span>
         </button>
-        <button class="nav-item" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
+        <button class="nav-item" id="menuReportsManagement" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
           <span>Reports Management</span>
         </button>
 
-        <button class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
+        <button class="nav-item" id="menuProjectManagement" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Project Management</span>
         </button>
 
-        <button class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
+        <button class="nav-item" data-role="SUPER_ADMIN" id="menuUserManagement" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           <span>User Management</span>
         </button>
 
-        <button class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
+        <button class="nav-item" id="menuCostCalculator" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
           <span>Cost Calculator</span>
         </button>
 
-        <button class="nav-item active" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
+        <button class="nav-item active" id="menuApprovalManagement" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
           <span>Approval Management</span>
         </button>
@@ -151,6 +162,11 @@
             </button>
 
             <div id="profileDropdown" class="topbar-dropdown hidden">
+              <!-- Filled by common/session.js -> applyProfileRoleLabel():
+                   #profileRoleLabel      = "Logged in as: {role}"
+                   #profilePartnerLabel   = "{partnerName}" (Channel Partner roles only, hidden for Super Admin) -->
+              <p id="profileRoleLabel" class="topbar-dropdown-title">Logged in as: —</p>
+              <p id="profilePartnerLabel" class="hidden px-2 pb-2 -mt-1 text-[11px] text-gray-500"></p>
               <button id="profileLogoutBtn" class="topbar-logout-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 Logout
@@ -225,7 +241,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mb-3">
           <div class="search-field">
             <label class="search-label" for="searchId">Quotation ID</label>
             <input type="text" id="searchId" class="search-input" placeholder="e.g. QA-2045">
@@ -237,6 +253,13 @@
           <div class="search-field">
             <label class="search-label" for="searchExec">Sales Executive</label>
             <input type="text" id="searchExec" class="search-input" placeholder="Search executive">
+          </div>
+          <!-- Channel Partner filter - Super Admin only -->
+          <div class="search-field" id="partnerFilterWrap">
+            <label class="search-label" for="searchPartner">Channel Partner</label>
+            <select id="searchPartner" class="search-input">
+              <option value="">All partners</option>
+            </select>
           </div>
           <div class="search-field">
             <label class="search-label" for="searchStatus">Status</label>
@@ -258,6 +281,7 @@
                 <th data-key="id">Quotation ID <span class="sort-icon">⇅</span></th>
                 <th data-key="customer">Customer <span class="sort-icon">⇅</span></th>
                 <th data-key="salesExec">Sales Executive <span class="sort-icon">⇅</span></th>
+                <th data-key="partner">Channel Partner <span class="sort-icon">⇅</span></th>
                 <th data-key="project">Project <span class="sort-icon">⇅</span></th>
                 <th data-key="amount">Amount <span class="sort-icon">⇅</span></th>
                 <th data-key="submittedDate">Submitted <span class="sort-icon">⇅</span></th>
@@ -305,6 +329,7 @@
           <div class="detail-grid">
             <div class="detail-row"><span class="detail-label">Customer</span><span class="detail-value" id="dCustomer"></span></div>
             <div class="detail-row"><span class="detail-label">Sales Executive</span><span class="detail-value" id="dExec"></span></div>
+            <div class="detail-row"><span class="detail-label">Channel Partner</span><span class="detail-value" id="dPartner"></span></div>
             <div class="detail-row"><span class="detail-label">Project</span><span class="detail-value" id="dProject"></span></div>
             <div class="detail-row"><span class="detail-label">Submitted Date</span><span class="detail-value" id="dDate"></span></div>
           </div>
@@ -395,6 +420,9 @@
 
   <div id="toast-container" class="fixed bottom-5 right-5 z-[400] space-y-2 max-w-[calc(100vw-2.5rem)]"></div>
 
+<!-- common/session.js MUST load before the module's own JS so
+     applyRoleBasedMenu() / applyProfileRoleLabel() run first -->
+<script src="/session.js"></script>
 <script src="/approval/approval.js"></script>
 </body>
 </html>

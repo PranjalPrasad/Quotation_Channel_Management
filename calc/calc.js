@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/calc
+
 // ============================================================
 // Sidebar collapse / expand (matches dashboard behaviour, incl.
 // mobile/tablet overlay drawer with backdrop)
@@ -206,27 +208,27 @@ let history = [
   {
     id: "CALC-1001", customer: "Priya Enterprises", project: "Commercial Rooftop 10kW", capacity: 10, projectType: "Commercial",
     material: 275000, installation: 32000, transportation: 6000, civil: 22000, labour: 16000, electrical: 14000, other: 4000,
-    discount: 8000, gstPct: 18, date: "2026-07-14",
+    discount: 8000, gstPct: 18, date: "2026-07-14", channelPartner: "Green Energy Solutions",
   },
   {
     id: "CALC-1002", customer: "Ravi Constructions", project: "Site Office 5kW", capacity: 5, projectType: "Commercial",
     material: 145000, installation: 18000, transportation: 3500, civil: 12000, labour: 9000, electrical: 7500, other: 2000,
-    discount: 4000, gstPct: 18, date: "2026-07-13",
+    discount: 4000, gstPct: 18, date: "2026-07-13", channelPartner: "SolarTech Partners",
   },
   {
     id: "CALC-1003", customer: "Meena Textiles", project: "Factory Roof 25kW", capacity: 25, projectType: "Industrial",
     material: 667000, installation: 95000, transportation: 12000, civil: 55000, labour: 38000, electrical: 30000, other: 9000,
-    discount: 15000, gstPct: 18, date: "2026-07-12",
+    discount: 15000, gstPct: 18, date: "2026-07-12", channelPartner: "EcoPower Distributors",
   },
   {
     id: "CALC-1004", customer: "Suresh Patel", project: "Home Rooftop 4kW", capacity: 4, projectType: "Residential",
     material: 116000, installation: 10000, transportation: 2500, civil: 8000, labour: 6000, electrical: 5000, other: 1500,
-    discount: 3000, gstPct: 18, date: "2026-07-11",
+    discount: 3000, gstPct: 18, date: "2026-07-11", channelPartner: null,
   },
   {
     id: "CALC-1005", customer: "Global Foods Pvt Ltd", project: "Warehouse 50kW", capacity: 50, projectType: "Industrial",
     material: 1349000, installation: 180000, transportation: 22000, civil: 110000, labour: 78000, electrical: 60000, other: 18000,
-    discount: 35000, gstPct: 18, date: "2026-07-09",
+    discount: 35000, gstPct: 18, date: "2026-07-09", channelPartner: "Renewable Power Systems",
   },
 ];
 
@@ -235,11 +237,33 @@ function historyResult(rec) {
 }
 
 // ============================================================
+// Get user role from session / localStorage
+// ============================================================
+function getUserRole() {
+  try {
+    const sessionData = localStorage.getItem("session");
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      return parsed.role || null;
+    }
+  } catch (e) {
+    console.warn("Could not parse session data");
+  }
+  return null;
+}
+
+function isSuperAdmin() {
+  const role = getUserRole();
+  return role === "SUPER_ADMIN";
+}
+
+// ============================================================
 // History table render / sort
 // ============================================================
 let sortKey = "date";
 let sortDir = "desc";
 const historyTbody = document.getElementById("historyTbody");
+const channelPartnerHeader = document.getElementById("channelPartnerHeader");
 
 function sortedHistory() {
   const list = [...history];
@@ -248,6 +272,10 @@ function sortedHistory() {
     if (sortKey === "finalCost") { av = historyResult(a).finalCost; bv = historyResult(b).finalCost; }
     else if (sortKey === "capacity") { av = a.capacity; bv = b.capacity; }
     else if (sortKey === "date") { av = new Date(a.date).getTime(); bv = new Date(b.date).getTime(); }
+    else if (sortKey === "channelPartner") {
+      av = (a.channelPartner || "").toLowerCase();
+      bv = (b.channelPartner || "").toLowerCase();
+    }
     else { av = String(a[sortKey]).toLowerCase(); bv = String(b[sortKey]).toLowerCase(); }
     if (av < bv) return sortDir === "asc" ? -1 : 1;
     if (av > bv) return sortDir === "asc" ? 1 : -1;
@@ -272,9 +300,21 @@ function actionIconsHtml(id) {
 }
 
 function renderHistoryTable() {
+  const isSuperAdminUser = isSuperAdmin();
+  
+  // Show/hide Channel Partner column based on role
+  if (channelPartnerHeader) {
+    if (isSuperAdminUser) {
+      channelPartnerHeader.classList.remove("hidden");
+    } else {
+      channelPartnerHeader.classList.add("hidden");
+    }
+  }
+
   const list = sortedHistory();
   historyTbody.innerHTML = list.length ? list.map((rec) => {
     const result = historyResult(rec);
+    const channelPartnerCell = isSuperAdminUser ? `<td data-label="Channel Partner">${rec.channelPartner || "—"}</td>` : "";
     return `
     <tr data-id="${rec.id}" class="fade-in">
       <td data-label="Calculation ID" class="font-medium">${rec.id}</td>
@@ -283,9 +323,10 @@ function renderHistoryTable() {
       <td data-label="Capacity">${rec.capacity} kW</td>
       <td data-label="Final Cost">${formatINR(result.finalCost)}</td>
       <td data-label="Date">${formatDate(rec.date)}</td>
+      ${channelPartnerCell}
       <td data-label="Actions">${actionIconsHtml(rec.id)}</td>
     </tr>`;
-  }).join("") : `<tr><td colspan="7" style="text-align:center; padding: 24px; color:#9CA3AF;">No calculations saved yet.</td></tr>`;
+  }).join("") : `<tr><td colspan="8" style="text-align:center; padding: 24px; color:#9CA3AF;">No calculations saved yet.</td></tr>`;
   updateSortIcons();
 }
 
@@ -332,6 +373,7 @@ document.getElementById("saveCalcBtn")?.addEventListener("click", () => {
     material: v.material, installation: v.installation, transportation: v.transportation,
     civil: v.civil, labour: v.labour, electrical: v.electrical, other: v.other,
     discount: v.discount, gstPct: v.gstPct, date: new Date().toISOString().slice(0, 10),
+    channelPartner: null,
   };
   history.unshift(rec);
   sortKey = "date"; sortDir = "desc";
@@ -502,17 +544,38 @@ document.getElementById("exportPdfBtn")?.addEventListener("click", () => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "a4" });
 
+  // Add company logo placeholder
+  const imgData = ''; // Placeholder for base64 image data
+  try {
+    // Try to add logo if available
+    doc.addImage(imgData, 'PNG', 40, 20, 30, 30);
+  } catch(e) {
+    // If no image data, draw a placeholder rectangle with text
+    doc.setDrawColor(129, 11, 56);
+    doc.setFillColor(247, 236, 225);
+    doc.rect(40, 20, 30, 30, 'F');
+    doc.setTextColor(129, 11, 56);
+    doc.setFontSize(8);
+    doc.text('LOGO', 42, 40);
+  }
+
   doc.setFontSize(16);
   doc.setTextColor(129, 11, 56);
-  doc.text("Solar Quotation Management", 40, 45);
+  doc.text("Solar Quotation Management", 80, 45);
   doc.setFontSize(11);
   doc.setTextColor(107, 114, 128);
   doc.text("Calculation History", 40, 62);
   doc.setDrawColor(129, 11, 56);
   doc.line(40, 72, 555, 72);
 
-  const cols = ["ID", "Customer", "Project", "Capacity", "Final Cost", "Date"];
-  const colX = [40, 110, 240, 380, 440, 500];
+  // Column definitions based on user role
+  const isSuperAdminUser = isSuperAdmin();
+  const cols = isSuperAdminUser 
+    ? ["ID", "Customer", "Project", "Capacity", "Final Cost", "Date", "Channel Partner"]
+    : ["ID", "Customer", "Project", "Capacity", "Final Cost", "Date"];
+  const colX = isSuperAdminUser 
+    ? [40, 95, 180, 280, 350, 420, 490]
+    : [40, 95, 180, 280, 350, 420];
   let y = 96;
   doc.setFontSize(9);
   doc.setTextColor(107, 114, 128);
@@ -533,6 +596,9 @@ document.getElementById("exportPdfBtn")?.addEventListener("click", () => {
     doc.text(`${rec.capacity} kW`, colX[3], y);
     doc.text(formatINR(result.finalCost), colX[4], y);
     doc.text(formatDate(rec.date), colX[5], y);
+    if (isSuperAdminUser && colX[6]) {
+      doc.text(String(rec.channelPartner || "—").slice(0, 18), colX[6], y);
+    }
     y += 20;
   });
 
@@ -550,9 +616,10 @@ document.getElementById("exportPdfBtn")?.addEventListener("click", () => {
 document.getElementById("exportExcelBtn")?.addEventListener("click", () => {
   if (!window.XLSX) { showToast("Excel library failed to load"); return; }
 
+  const isSuperAdminUser = isSuperAdmin();
   const rows = sortedHistory().map((rec) => {
     const result = historyResult(rec);
-    return {
+    const baseData = {
       "Calculation ID": rec.id,
       "Customer": rec.customer,
       "Project": rec.project,
@@ -573,6 +640,11 @@ document.getElementById("exportExcelBtn")?.addEventListener("click", () => {
       "Cost Per kW": Math.round(result.costPerKw),
       "Date": rec.date,
     };
+    
+    if (isSuperAdminUser) {
+      baseData["Channel Partner"] = rec.channelPartner || "—";
+    }
+    return baseData;
   });
 
   const ws = XLSX.utils.json_to_sheet(rows);

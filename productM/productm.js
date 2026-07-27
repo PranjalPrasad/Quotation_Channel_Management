@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/products
+
 /* =========================================================
    Solar Quotation System — Product Management
    Sidebar / topbar behaviour mirrors dashboard.js exactly.
@@ -151,6 +153,7 @@
     //    Pricing: mrp (₹), price = selling price (₹), discount (%)
     //    BOQ:     qtyPerKw = default quantity of this product required
     //             per 1 kW of system capacity (unit follows p.unit)
+    //    NEW: hsn (HSN Code), gst (GST Rate %), warranty (Years)
     // ---------------------------------------------------
     const CATEGORY_META = {
         'Solar Panel': { icon: 'fa-solar-panel', cls: 'bg-panel' },
@@ -162,18 +165,18 @@
     };
 
     let products = [
-        { id: 'P-1001', name: '540W Mono PERC Solar Panel', category: 'Solar Panel', brand: 'Waaree', sku: 'WR-540-MP', spec: '540W, 24V', unit: 'Nos', mrp: 13800, price: 12500, discount: 9, qtyPerKw: 1.85, stock: 84, threshold: 20, status: 'Active', description: '25-year performance warranty, anti-reflective glass.' },
-        { id: 'P-1002', name: '5kW Hybrid Solar Inverter', category: 'Inverter', brand: 'Luminous', sku: 'LM-HYB-5K', spec: '5kW, MPPT', unit: 'Nos', mrp: 75000, price: 68000, discount: 9, qtyPerKw: 0.2, stock: 6, threshold: 5, status: 'Active', description: 'Dual MPPT hybrid inverter with WiFi monitoring.' },
-        { id: 'P-1003', name: 'Lithium Battery 10kWh', category: 'Battery', brand: 'Exide', sku: 'EX-LI-10K', spec: '10kWh, 51.2V', unit: 'Nos', mrp: 160000, price: 145000, discount: 9, qtyPerKw: 0.5, stock: 0, threshold: 3, status: 'Active', description: 'LiFePO4 battery, 6000+ cycle life.' },
-        { id: 'P-1004', name: 'GI Mounting Structure (3kW)', category: 'Mounting Structure', brand: 'Tata Power', sku: 'TP-MS-3K', spec: 'For 6 panels', unit: 'Set', mrp: 9200, price: 8500, discount: 8, qtyPerKw: 0.33, stock: 22, threshold: 5, status: 'Active', description: 'Hot-dip galvanized rooftop structure.' },
-        { id: 'P-1005', name: 'DC Solar Cable 4mm²', category: 'Cable & Wiring', brand: 'Polycab', sku: 'PC-DC-4MM', spec: '4mm², 1.5kV', unit: 'Meter', mrp: 36, price: 32, discount: 11, qtyPerKw: 5, stock: 1200, threshold: 200, status: 'Active', description: 'UV-resistant single-core DC cable.' },
-        { id: 'P-1006', name: '440W Mono PERC Solar Panel', category: 'Solar Panel', brand: 'Adani Solar', sku: 'AD-440-MP', spec: '440W, 24V', unit: 'Nos', mrp: 11500, price: 10200, discount: 11, qtyPerKw: 2.27, stock: 15, threshold: 20, status: 'Active', description: '25-year linear performance warranty.' },
-        { id: 'P-1007', name: '3kW On-Grid Inverter', category: 'Inverter', brand: 'Growatt', sku: 'GW-OG-3K', spec: '3kW, Single Phase', unit: 'Nos', mrp: 35000, price: 32000, discount: 9, qtyPerKw: 0.33, stock: 11, threshold: 5, status: 'Active', description: 'Compact on-grid string inverter.' },
-        { id: 'P-1008', name: 'MC4 Connector Pair', category: 'Accessory', brand: 'Staubli', sku: 'ST-MC4-P', spec: 'IP68 rated', unit: 'Box', mrp: 520, price: 450, discount: 13, qtyPerKw: 0.1, stock: 3, threshold: 10, status: 'Active', description: 'Weatherproof solar connectors, box of 50 pairs.' },
-        { id: 'P-1009', name: 'Tubular Battery 150Ah', category: 'Battery', brand: 'Exide', sku: 'EX-TB-150', spec: '150Ah, 12V', unit: 'Nos', mrp: 20000, price: 18500, discount: 8, qtyPerKw: 0.2, stock: 9, threshold: 5, status: 'Inactive', description: 'Discontinued — replaced by lithium range.' },
-        { id: 'P-1010', name: 'AC Distribution Box', category: 'Accessory', brand: 'Havells', sku: 'HV-ACDB-1', spec: 'Single Phase', unit: 'Nos', mrp: 2500, price: 2200, discount: 12, qtyPerKw: 0.1, stock: 18, threshold: 5, status: 'Active', description: 'With SPD and MCB protection.' },
-        { id: 'P-1011', name: 'Elevated Structure (10kW)', category: 'Mounting Structure', brand: 'Tata Power', sku: 'TP-MS-10K', spec: 'For 20 panels', unit: 'Set', mrp: 26500, price: 24000, discount: 9, qtyPerKw: 0.1, stock: 4, threshold: 5, status: 'Active', description: 'For ground-mount / elevated rooftop installs.' },
-        { id: 'P-1012', name: 'AC Cable 6mm²', category: 'Cable & Wiring', brand: 'Polycab', sku: 'PC-AC-6MM', spec: '6mm², 3-core', unit: 'Meter', mrp: 65, price: 58, discount: 11, qtyPerKw: 3, stock: 0, threshold: 100, status: 'Active', description: 'Armoured AC output cable.' }
+        { id: 'P-1001', name: '540W Mono PERC Solar Panel', category: 'Solar Panel', brand: 'Waaree', sku: 'WR-540-MP', spec: '540W, 24V', unit: 'Nos', mrp: 13800, price: 12500, discount: 9, qtyPerKw: 1.85, stock: 84, threshold: 20, status: 'Active', description: '25-year performance warranty, anti-reflective glass.', hsn: '85414300', gst: 18, warranty: 25 },
+        { id: 'P-1002', name: '5kW Hybrid Solar Inverter', category: 'Inverter', brand: 'Luminous', sku: 'LM-HYB-5K', spec: '5kW, MPPT', unit: 'Nos', mrp: 75000, price: 68000, discount: 9, qtyPerKw: 0.2, stock: 6, threshold: 5, status: 'Active', description: 'Dual MPPT hybrid inverter with WiFi monitoring.', hsn: '85044030', gst: 18, warranty: 5 },
+        { id: 'P-1003', name: 'Lithium Battery 10kWh', category: 'Battery', brand: 'Exide', sku: 'EX-LI-10K', spec: '10kWh, 51.2V', unit: 'Nos', mrp: 160000, price: 145000, discount: 9, qtyPerKw: 0.5, stock: 0, threshold: 3, status: 'Active', description: 'LiFePO4 battery, 6000+ cycle life.', hsn: '85076000', gst: 18, warranty: 10 },
+        { id: 'P-1004', name: 'GI Mounting Structure (3kW)', category: 'Mounting Structure', brand: 'Tata Power', sku: 'TP-MS-3K', spec: 'For 6 panels', unit: 'Set', mrp: 9200, price: 8500, discount: 8, qtyPerKw: 0.33, stock: 22, threshold: 5, status: 'Active', description: 'Hot-dip galvanized rooftop structure.', hsn: '73089090', gst: 18, warranty: 10 },
+        { id: 'P-1005', name: 'DC Solar Cable 4mm²', category: 'Cable & Wiring', brand: 'Polycab', sku: 'PC-DC-4MM', spec: '4mm², 1.5kV', unit: 'Meter', mrp: 36, price: 32, discount: 11, qtyPerKw: 5, stock: 1200, threshold: 200, status: 'Active', description: 'UV-resistant single-core DC cable.', hsn: '85444999', gst: 18, warranty: 0 },
+        { id: 'P-1006', name: '440W Mono PERC Solar Panel', category: 'Solar Panel', brand: 'Adani Solar', sku: 'AD-440-MP', spec: '440W, 24V', unit: 'Nos', mrp: 11500, price: 10200, discount: 11, qtyPerKw: 2.27, stock: 15, threshold: 20, status: 'Active', description: '25-year linear performance warranty.', hsn: '85414300', gst: 18, warranty: 25 },
+        { id: 'P-1007', name: '3kW On-Grid Inverter', category: 'Inverter', brand: 'Growatt', sku: 'GW-OG-3K', spec: '3kW, Single Phase', unit: 'Nos', mrp: 35000, price: 32000, discount: 9, qtyPerKw: 0.33, stock: 11, threshold: 5, status: 'Active', description: 'Compact on-grid string inverter.', hsn: '85044030', gst: 18, warranty: 5 },
+        { id: 'P-1008', name: 'MC4 Connector Pair', category: 'Accessory', brand: 'Staubli', sku: 'ST-MC4-P', spec: 'IP68 rated', unit: 'Box', mrp: 520, price: 450, discount: 13, qtyPerKw: 0.1, stock: 3, threshold: 10, status: 'Active', description: 'Weatherproof solar connectors, box of 50 pairs.', hsn: '85444299', gst: 18, warranty: 0 },
+        { id: 'P-1009', name: 'Tubular Battery 150Ah', category: 'Battery', brand: 'Exide', sku: 'EX-TB-150', spec: '150Ah, 12V', unit: 'Nos', mrp: 20000, price: 18500, discount: 8, qtyPerKw: 0.2, stock: 9, threshold: 5, status: 'Inactive', description: 'Discontinued — replaced by lithium range.', hsn: '85072000', gst: 18, warranty: 3 },
+        { id: 'P-1010', name: 'AC Distribution Box', category: 'Accessory', brand: 'Havells', sku: 'HV-ACDB-1', spec: 'Single Phase', unit: 'Nos', mrp: 2500, price: 2200, discount: 12, qtyPerKw: 0.1, stock: 18, threshold: 5, status: 'Active', description: 'With SPD and MCB protection.', hsn: '85371000', gst: 18, warranty: 2 },
+        { id: 'P-1011', name: 'Elevated Structure (10kW)', category: 'Mounting Structure', brand: 'Tata Power', sku: 'TP-MS-10K', spec: 'For 20 panels', unit: 'Set', mrp: 26500, price: 24000, discount: 9, qtyPerKw: 0.1, stock: 4, threshold: 5, status: 'Active', description: 'For ground-mount / elevated rooftop installs.', hsn: '73089090', gst: 18, warranty: 10 },
+        { id: 'P-1012', name: 'AC Cable 6mm²', category: 'Cable & Wiring', brand: 'Polycab', sku: 'PC-AC-6MM', spec: '6mm², 3-core', unit: 'Meter', mrp: 65, price: 58, discount: 11, qtyPerKw: 3, stock: 0, threshold: 100, status: 'Active', description: 'Armoured AC output cable.', hsn: '85444999', gst: 18, warranty: 0 }
     ];
 
     // ---------------------------------------------------
@@ -193,6 +196,7 @@
         search: '',
         category: '',
         status: '',
+        gst: '', // NEW: GST filter
         sortKey: 'name',
         sortDir: 'asc',
         page: 1,
@@ -225,7 +229,9 @@
             const matchesCategory = !state.category || p.category === state.category;
             const label = computeStatusLabel(p);
             const matchesStatus = !state.status || label === state.status;
-            return matchesSearch && matchesCategory && matchesStatus;
+            // NEW: GST filter
+            const matchesGst = !state.gst || (p.gst !== undefined && String(p.gst) === state.gst);
+            return matchesSearch && matchesCategory && matchesStatus && matchesGst;
         });
 
         list.sort((a, b) => {
@@ -238,6 +244,9 @@
                 case 'price': av = a.price; bv = b.price; break;
                 case 'stock': av = a.stock; bv = b.stock; break;
                 case 'status': av = computeStatusLabel(a); bv = computeStatusLabel(b); break;
+                // NEW: sort by HSN and GST
+                case 'hsn': av = a.hsn || ''; bv = b.hsn || ''; break;
+                case 'gst': av = a.gst || 0; bv = b.gst || 0; break;
                 default: av = a.name; bv = b.name;
             }
             if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
@@ -311,6 +320,10 @@
                 <td data-label="Brand">${escapeHtml(p.brand)}</td>
                 <td data-label="Specification">${escapeHtml(p.spec || '—')}</td>
                 <td data-label="Qty / kW">${formatQtyPerKw(p)}</td>
+                <!-- NEW: HSN Code column -->
+                <td data-label="HSN Code">${escapeHtml(p.hsn || '—')}</td>
+                <!-- NEW: GST % column -->
+                <td data-label="GST %">${p.gst !== undefined ? p.gst + '%' : '—'}</td>
                 <td data-label="Selling Price">
                     <div class="price-cell">
                         ${hasDiscount ? `<span class="price-mrp">₹${p.mrp.toLocaleString('en-IN')}</span>` : ''}
@@ -391,6 +404,13 @@
         render();
     });
 
+    // NEW: GST filter
+    document.getElementById('filter-gst').addEventListener('change', (e) => {
+        state.gst = e.target.value;
+        state.page = 1;
+        render();
+    });
+
     document.getElementById('rows-per-page').addEventListener('change', (e) => {
         state.pageSize = parseInt(e.target.value, 10);
         state.page = 1;
@@ -438,6 +458,10 @@
         sku: document.getElementById('pf-sku'),
         spec: document.getElementById('pf-spec'),
         unit: document.getElementById('pf-unit'),
+        // NEW fields
+        hsn: document.getElementById('pf-hsn'),
+        gst: document.getElementById('pf-gst'),
+        warranty: document.getElementById('pf-warranty'),
         mrp: document.getElementById('pf-mrp'),
         discount: document.getElementById('pf-discount'),
         price: document.getElementById('pf-price'),
@@ -496,6 +520,10 @@
             form.sku.value = product.sku;
             form.spec.value = product.spec;
             form.unit.value = product.unit;
+            // NEW fields
+            form.hsn.value = product.hsn || '';
+            form.gst.value = product.gst !== undefined ? product.gst : 18;
+            form.warranty.value = product.warranty !== undefined ? product.warranty : '';
             form.mrp.value = product.mrp ?? '';
             form.discount.value = product.discount ?? '';
             form.price.value = product.price;
@@ -511,6 +539,8 @@
             form.unit.value = 'Nos';
             form.status.value = 'Active';
             form.threshold.value = 10;
+            form.gst.value = 18; // default GST
+            form.warranty.value = ''; // optional
         }
         openModal('modal-product');
     }
@@ -586,6 +616,10 @@
             sku: form.sku.value.trim(),
             spec: form.spec.value.trim(),
             unit: form.unit.value,
+            // NEW fields
+            hsn: form.hsn.value.trim(),
+            gst: Number(form.gst.value) || 0,
+            warranty: form.warranty.value !== '' ? Number(form.warranty.value) : 0,
             mrp: Number(form.mrp.value),
             discount: form.discount.value !== '' ? Number(form.discount.value) : Math.round(((Number(form.mrp.value) - Number(form.price.value)) / Number(form.mrp.value)) * 100),
             price: Number(form.price.value),
@@ -628,6 +662,9 @@
             <div class="view-grid">
                 <div class="view-item"><div class="view-label">Category</div><div class="view-value">${escapeHtml(p.category)}</div></div>
                 <div class="view-item"><div class="view-label">Specification</div><div class="view-value">${escapeHtml(p.spec || '—')}</div></div>
+                <div class="view-item"><div class="view-label">HSN Code</div><div class="view-value">${escapeHtml(p.hsn || '—')}</div></div>
+                <div class="view-item"><div class="view-label">GST Rate</div><div class="view-value">${p.gst !== undefined ? p.gst + '%' : '—'}</div></div>
+                <div class="view-item"><div class="view-label">Warranty</div><div class="view-value">${p.warranty !== undefined && p.warranty > 0 ? p.warranty + ' Years' : '—'}</div></div>
                 <div class="view-item"><div class="view-label">MRP</div><div class="view-value">₹${(p.mrp ?? p.price).toLocaleString('en-IN')}</div></div>
                 <div class="view-item"><div class="view-label">Selling Price</div><div class="view-value">₹${p.price.toLocaleString('en-IN')} / ${escapeHtml(p.unit)}${hasDiscount ? ` <span class="discount-badge">${p.discount || Math.round((p.mrp - p.price) / p.mrp * 100)}% OFF</span>` : ''}</div></div>
                 <div class="view-item"><div class="view-label">Stock</div><div class="view-value">${p.stock} ${escapeHtml(p.unit)}</div></div>

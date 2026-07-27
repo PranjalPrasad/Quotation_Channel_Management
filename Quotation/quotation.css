@@ -252,18 +252,21 @@ html, body {
 .data-table tbody tr { transition: background-color .15s ease; cursor: default; }
 .data-table tbody tr:hover { background: #F1E2D1; }
 
-.data-table th:nth-child(1), .data-table td:nth-child(1) { width: 14%; }
-.data-table th:nth-child(2), .data-table td:nth-child(2) { width: 20%; }
-.data-table th:nth-child(3), .data-table td:nth-child(3) { width: 12%; }
-.data-table th:nth-child(4), .data-table td:nth-child(4) { width: 15%; }
-.data-table th:nth-child(5), .data-table td:nth-child(5) { width: 12%; }
-.data-table th:nth-child(6), .data-table td:nth-child(6) { width: 11%; }
-.data-table th:nth-child(7), .data-table td:nth-child(7) { width: 16%; }
+.data-table th:nth-child(1), .data-table td:nth-child(1) { width: 12%; }
+.data-table th:nth-child(2), .data-table td:nth-child(2) { width: 18%; }
+.data-table th:nth-child(3), .data-table td:nth-child(3) { width: 10%; }
+.data-table th:nth-child(4), .data-table td:nth-child(4) { width: 12%; }
+.data-table th:nth-child(5), .data-table td:nth-child(5) { width: 10%; }
+.data-table th:nth-child(6), .data-table td:nth-child(6) { width: 10%; }
+.data-table th:nth-child(7), .data-table td:nth-child(7) { width: 8%; }
+.data-table th:nth-child(8), .data-table td:nth-child(8) { width: 12%; }
 
 .badge { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 999px; display: inline-block; white-space: nowrap; }
 .badge-pending { background: #FEF3C7; color: #B45309; }
 .badge-accepted { background: #D1FAE5; color: #047857; }
 .badge-rejected { background: #FFE4E6; color: #E11D48; }
+.badge-referred { background: #D1FAE5; color: #047857; }
+.badge-direct { background: #F3F4F6; color: #6B7280; }
 
 .action-icons { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex-wrap: nowrap; }
 .icon-action-btn {
@@ -276,6 +279,7 @@ html, body {
 }
 .icon-action-btn:hover { background: #EFE1D2; color: #374151; }
 .icon-action-btn.danger:hover { background: #FEF2F2; color: #EF4444; }
+.icon-action-btn.success:hover { background: #D1FAE5; color: #047857; }
 
 /* mobile: stack the table into cards, just like the Dashboard table */
 @media (max-width: 720px) {
@@ -435,6 +439,30 @@ select.rows-select, .select-input {
 .sub-title { font-size: 12px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 7px; }
 .sub-title i { color: var(--accent-dark); }
 
+/* Collapsible section */
+.collapsible-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+.collapsible-toggle:hover { color: var(--accent); }
+.collapsible-body { transition: all 0.3s ease; }
+.collapsible-body.collapsed { display: none; }
+
+/* Referral specific styles */
+.referral-highlight {
+  background: #F0FDF4;
+  border-left: 3px solid #059669;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+.referral-amount-row {
+  background: #F0FDF4;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-weight: 600;
+  color: #047857;
+}
+
 /* Products / Items builder */
 .quick-add-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip-btn {
@@ -491,6 +519,7 @@ select.rows-select, .select-input {
 }
 .summary-box .row { display: flex; justify-content: space-between; gap: 10px; }
 .summary-box .row.total { font-weight: 700; font-size: 13.5px; color: var(--accent-dark); border-top: 1px dashed var(--accent-200); padding-top: 8px; margin-top: 4px; }
+.summary-box .row.referral-row { background: #F0FDF4; border-radius: 6px; padding: 4px 8px; color: #047857; }
 
 .share-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
@@ -554,7 +583,32 @@ select.rows-select, .select-input {
 .inv-totals-table td:first-child { color: #555; }
 .inv-totals-table td:last-child { text-align: right; font-weight: 600; }
 .inv-totals-table .total-row td { background: var(--accent-100); font-weight: 700; color: var(--accent-dark); }
+.inv-totals-table .referral-row td { background: #F0FDF4; color: #047857; }
 .inv-seal { text-align: right; margin-top: 22px; font-size: 10.5px; color: #777; font-style: italic; }
+
+/* Bank Details in invoice */
+.inv-bank-details { margin-top: 10px; }
+.inv-bank-details .inv-label { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.inv-bank-details table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.inv-bank-details td { padding: 3px 6px; border: 1px solid var(--line-soft); }
+.inv-bank-details td:first-child { color: #555; font-weight: 500; width: 35%; }
+.inv-bank-details td:last-child { text-align: left; }
+
+/* Payment Terms in invoice */
+.inv-payment-terms { margin-top: 10px; }
+.inv-payment-terms .inv-label { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.inv-payment-terms table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.inv-payment-terms td { padding: 3px 6px; border: 1px solid var(--line-soft); }
+.inv-payment-terms td:first-child { color: #555; font-weight: 500; width: 60%; }
+.inv-payment-terms td:last-child { text-align: right; }
+
+/* Referral Info in invoice */
+.inv-referral-info { margin-top: 10px; }
+.inv-referral-info .inv-label { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.inv-referral-info table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.inv-referral-info td { padding: 3px 6px; border: 1px solid var(--line-soft); }
+.inv-referral-info td:first-child { color: #555; font-weight: 500; width: 40%; }
+.inv-referral-info td:last-child { text-align: left; }
 
 /* toast */
 .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 600; display: flex; flex-direction: column; gap: 8px; max-width: calc(100vw - 40px); }

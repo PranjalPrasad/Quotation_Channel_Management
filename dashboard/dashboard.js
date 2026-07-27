@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/dashboard
+
 // ============================================================
 // Sidebar collapse / expand
 // Below 1024px (phone + tablet) the expanded sidebar becomes an
@@ -209,22 +211,23 @@ renderRecentQuotations();
 // print, PDF export, duplicate) — same behaviour as the
 // reference dashboard, recoloured to the palette theme
 // ============================================================
+// ========== UPDATED: quotations now include 'channelPartner' field ==========
 let quotations = [
-  { no: 'SQ-1001', customer: 'Amit Sharma', size: '3 kW', amount: 165000, status: 'Pending', date: '2026-07-15' },
-  { no: 'SQ-1000', customer: 'Priya Enterprises', size: '10 kW', amount: 540000, status: 'Accepted', date: '2026-07-14' },
-  { no: 'SQ-0999', customer: 'Ravi Constructions', size: '5 kW', amount: 275000, status: 'Rejected', date: '2026-07-14' },
-  { no: 'SQ-0998', customer: 'Meena Textiles', size: '25 kW', amount: 1320000, status: 'Accepted', date: '2026-07-13' },
-  { no: 'SQ-0997', customer: 'Suresh Patel', size: '4 kW', amount: 210000, status: 'Pending', date: '2026-07-12' },
-  { no: 'SQ-0996', customer: 'Global Foods Pvt Ltd', size: '50 kW', amount: 2650000, status: 'Accepted', date: '2026-07-12' },
-  { no: 'SQ-0995', customer: 'Anita Deshmukh', size: '3 kW', amount: 158000, status: 'Rejected', date: '2026-07-11' },
-  { no: 'SQ-0994', customer: 'Rajesh Traders', size: '7 kW', amount: 372000, status: 'Pending', date: '2026-07-11' },
-  { no: 'SQ-0993', customer: 'Sunrise Apartments', size: '15 kW', amount: 795000, status: 'Accepted', date: '2026-07-10' },
-  { no: 'SQ-0992', customer: 'Vikram Industries', size: '30 kW', amount: 1580000, status: 'Pending', date: '2026-07-09' },
-  { no: 'SQ-0991', customer: 'Kavita Rao', size: '3 kW', amount: 162000, status: 'Accepted', date: '2026-07-08' },
-  { no: 'SQ-0990', customer: 'Deepak Motors', size: '20 kW', amount: 1050000, status: 'Pending', date: '2026-07-08' },
-  { no: 'SQ-0989', customer: 'Farha Textiles', size: '6 kW', amount: 318000, status: 'Rejected', date: '2026-07-07' },
-  { no: 'SQ-0988', customer: 'Nikhil Joshi', size: '4 kW', amount: 205000, status: 'Accepted', date: '2026-07-06' },
-  { no: 'SQ-0987', customer: 'Star Cold Storage', size: '40 kW', amount: 2120000, status: 'Pending', date: '2026-07-05' },
+  { no: 'SQ-1001', customer: 'Amit Sharma', size: '3 kW', amount: 165000, status: 'Pending', date: '2026-07-15', channelPartner: 'CP-0001' },
+  { no: 'SQ-1000', customer: 'Priya Enterprises', size: '10 kW', amount: 540000, status: 'Accepted', date: '2026-07-14', channelPartner: 'CP-0002' },
+  { no: 'SQ-0999', customer: 'Ravi Constructions', size: '5 kW', amount: 275000, status: 'Rejected', date: '2026-07-14', channelPartner: 'CP-0001' },
+  { no: 'SQ-0998', customer: 'Meena Textiles', size: '25 kW', amount: 1320000, status: 'Accepted', date: '2026-07-13', channelPartner: 'CP-0003' },
+  { no: 'SQ-0997', customer: 'Suresh Patel', size: '4 kW', amount: 210000, status: 'Pending', date: '2026-07-12', channelPartner: 'CP-0002' },
+  { no: 'SQ-0996', customer: 'Global Foods Pvt Ltd', size: '50 kW', amount: 2650000, status: 'Accepted', date: '2026-07-12', channelPartner: 'CP-0001' },
+  { no: 'SQ-0995', customer: 'Anita Deshmukh', size: '3 kW', amount: 158000, status: 'Rejected', date: '2026-07-11', channelPartner: 'CP-0003' },
+  { no: 'SQ-0994', customer: 'Rajesh Traders', size: '7 kW', amount: 372000, status: 'Pending', date: '2026-07-11', channelPartner: 'CP-0002' },
+  { no: 'SQ-0993', customer: 'Sunrise Apartments', size: '15 kW', amount: 795000, status: 'Accepted', date: '2026-07-10', channelPartner: 'CP-0001' },
+  { no: 'SQ-0992', customer: 'Vikram Industries', size: '30 kW', amount: 1580000, status: 'Pending', date: '2026-07-09', channelPartner: 'CP-0002' },
+  { no: 'SQ-0991', customer: 'Kavita Rao', size: '3 kW', amount: 162000, status: 'Accepted', date: '2026-07-08', channelPartner: 'CP-0003' },
+  { no: 'SQ-0990', customer: 'Deepak Motors', size: '20 kW', amount: 1050000, status: 'Pending', date: '2026-07-08', channelPartner: 'CP-0001' },
+  { no: 'SQ-0989', customer: 'Farha Textiles', size: '6 kW', amount: 318000, status: 'Rejected', date: '2026-07-07', channelPartner: 'CP-0002' },
+  { no: 'SQ-0988', customer: 'Nikhil Joshi', size: '4 kW', amount: 205000, status: 'Accepted', date: '2026-07-06', channelPartner: 'CP-0001' },
+  { no: 'SQ-0987', customer: 'Star Cold Storage', size: '40 kW', amount: 2120000, status: 'Pending', date: '2026-07-05', channelPartner: 'CP-0003' },
 ];
 
 const tableStatusPillClass = { Pending: 'pill-pending', Accepted: 'pill-accepted', Rejected: 'pill-rejected' };
@@ -243,8 +246,18 @@ const paginationControls = document.getElementById('paginationControls');
 const rowsRangeLabel = document.getElementById('rowsRangeLabel');
 const rowsPerPageSelect = document.getElementById('rowsPerPage');
 
+// ========== NEW: Channel Partner Filter ==========
+let activeChannelPartnerFilter = 'all'; // 'all' or specific CP code
+
+// ========== UPDATED: sortedQuotations() with filter ==========
 function sortedQuotations() {
-  const list = [...quotations];
+  let list = [...quotations];
+
+  // Apply Channel Partner filter (if not 'all')
+  if (activeChannelPartnerFilter !== 'all') {
+    list = list.filter(q => q.channelPartner === activeChannelPartnerFilter);
+  }
+
   list.sort((a, b) => {
     let av = a[sortKey], bv = b[sortKey];
     if (sortKey === 'amount') { /* numeric already */ }
@@ -276,6 +289,7 @@ function actionIconsHtml(no) {
     </div>`;
 }
 
+// ========== UPDATED: renderTable() with Channel Partner column ==========
 function renderTable() {
   const data = sortedQuotations();
   const totalRows = data.length;
@@ -285,17 +299,24 @@ function renderTable() {
   const start = (currentPage - 1) * rowsPerPage;
   const pageRows = data.slice(start, start + rowsPerPage);
 
-  qTbody.innerHTML = pageRows.map((q) => `
-    <tr data-no="${q.no}">
-      <td data-label="Quotation No." class="font-medium">${q.no}</td>
-      <td data-label="Customer">${q.customer}</td>
-      <td data-label="System Size">${q.size}</td>
-      <td data-label="Amount">${formatINR(q.amount)}</td>
-      <td data-label="Status"><span class="pill ${tableStatusPillClass[q.status]}">${q.status}</span></td>
-      <td data-label="Date">${formatDate(q.date)}</td>
-      <td data-label="Actions">${actionIconsHtml(q.no)}</td>
-    </tr>
-  `).join('');
+  // Build table rows — include Channel Partner column for Super Admin
+  const rows = pageRows.map((q) => {
+    const channelPartnerCell = `<td data-label="Channel Partner">${q.channelPartner || '—'}</td>`;
+    return `
+      <tr data-no="${q.no}">
+        <td data-label="Quotation No." class="font-medium">${q.no}</td>
+        <td data-label="Customer">${q.customer}</td>
+        ${window.currentUserRole === 'SUPER_ADMIN' ? channelPartnerCell : ''}
+        <td data-label="System Size">${q.size}</td>
+        <td data-label="Amount">${formatINR(q.amount)}</td>
+        <td data-label="Status"><span class="pill ${tableStatusPillClass[q.status]}">${q.status}</span></td>
+        <td data-label="Date">${formatDate(q.date)}</td>
+        <td data-label="Actions">${actionIconsHtml(q.no)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  qTbody.innerHTML = rows;
 
   rowsRangeLabel.textContent = totalRows === 0
     ? 'No records'
@@ -303,6 +324,12 @@ function renderTable() {
 
   renderPagination(totalPages);
   updateSortIcons();
+
+  // Hide Channel Partner column headers if not Super Admin
+  const channelPartnerHeaders = document.querySelectorAll('#quotationsTable thead th[data-key="channelPartner"]');
+  channelPartnerHeaders.forEach(th => {
+    th.style.display = (window.currentUserRole === 'SUPER_ADMIN') ? '' : 'none';
+  });
 }
 
 function renderPagination(totalPages) {
@@ -353,6 +380,16 @@ rowsPerPageSelect?.addEventListener('change', () => {
   currentPage = 1;
   renderTable();
 });
+
+// ========== NEW: Channel Partner Filter Event ==========
+const channelPartnerFilter = document.getElementById('channelPartnerFilter');
+if (channelPartnerFilter) {
+  channelPartnerFilter.addEventListener('change', (e) => {
+    activeChannelPartnerFilter = e.target.value;
+    currentPage = 1;
+    renderTable();
+  });
+}
 
 /* ===========================================================
    Row actions: View (read-only) / Edit (selective fields) /
@@ -555,6 +592,30 @@ function showToast(message) {
 }
 
 /* ---------------- Init table ---------------- */
+// ========== UPDATED: Ensure currentUserRole is set for conditional rendering ==========
+// This is set by session.js — we read it for our conditional logic
+window.currentUserRole = window.currentUserRole || 'SUPER_ADMIN'; // fallback for local testing
+
+// ========== Apply role-based visibility for all elements with data-role ==========
+// This runs in session.js already, but we re-run it here to ensure Channel Partner elements are handled
+function applyRoleBasedVisibility() {
+  const userRole = window.currentUserRole || 'SUPER_ADMIN';
+  document.querySelectorAll('[data-role]').forEach(el => {
+    const roles = el.getAttribute('data-role').split(',').map(r => r.trim());
+    const shouldShow = roles.includes(userRole);
+    el.style.display = shouldShow ? '' : 'none';
+  });
+}
+applyRoleBasedVisibility();
+
+// Re-run visibility after session.js loads (in case it runs after this script)
+if (window.addEventListener) {
+  window.addEventListener('DOMContentLoaded', () => {
+    applyRoleBasedVisibility();
+  });
+}
+
+// ========== Initial render ==========
 renderTable();
 
 // ============================================================

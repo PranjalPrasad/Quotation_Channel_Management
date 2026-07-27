@@ -56,19 +56,19 @@
             </div>
 
             <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
-                <button class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='../dashboard/dashboard.html'">
+                <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuDashboard" class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='../dashboard/dashboard.html'" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
                     <span>Dashboard</span>
-                </button>
-                <button class="nav-item" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'">
+                </li>
+                <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuQuotation" class="nav-item" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
                     <span>Quotation Management</span>
-                </button>
-                <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'">
+                </li>
+                <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuProduct" class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
                     <span>Product Management</span>
-                </button>
-                <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
+                </li>
+                <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuCustomer" class="nav-item" data-label="Customer Management" aria-label="Customer Management" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
                         <circle cx="9" cy="11" r="3"></circle>
@@ -76,31 +76,31 @@
                         <path d="M16 9l2 2 4-4"></path>
                     </svg>
                     <span>Customer Management</span>
-                </button>
-                <button class="nav-item active" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
+                </li>
+                <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuReports" class="nav-item active" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
                     <span>Reports Management</span>
-                </button>
-
-                <button class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
+                </li>
+                <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuProject" class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     <span>Project Management</span>
-                </button>
-
-                <button class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
+                </li>
+                <li data-role="SUPER_ADMIN" id="menuUserManagement" class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     <span>User Management</span>
-                </button>
-
-                <button class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
+                </li>
+                <li data-role="SUPER_ADMIN" id="menuChannelPartners" class="nav-item" data-label="Channel Partners" aria-label="Channel Partners" onclick="window.location.href='channel-partners.html'" style="list-style:none; width:100%;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span>Channel Partners</span>
+                </li>
+                <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuCalculator" class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
                     <span>Cost Calculator</span>
-                </button>
-
-                <button class="nav-item" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
+                </li>
+                <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN" id="menuApproval" class="nav-item" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'" style="list-style:none; width:100%;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
                     <span>Approval Management</span>
-                </button>
+                </li>
             </nav>
         </aside>
 
@@ -160,6 +160,8 @@
                         </button>
 
                         <div id="profileDropdown" class="topbar-dropdown hidden !min-w-[150px]">
+                            <div class="topbar-dropdown-title" id="profileRoleLabel" style="padding:4px 6px 2px;">Logged in as: -</div>
+                            <div id="profilePartnerLabel" class="hidden" style="font-size:10.5px; color:#6B7280; padding:0 6px 6px; font-weight:500;"></div>
                             <a href="../index.html" id="profileLogoutBtn" class="topbar-logout-btn">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                                 Logout
@@ -210,6 +212,17 @@
                                 <option>Waaree Energies</option>
                             </select>
                         </div>
+                        <!-- Channel Partner Filter - Super Admin only -->
+                        <div id="channelPartnerFilterContainer" class="filter-field w-[160px] hidden">
+                            <label for="channelPartnerFilter">Channel Partner</label>
+                            <select id="channelPartnerFilter" class="filter-input">
+                                <option value="all">All partners</option>
+                                <option>Green Energy Solutions</option>
+                                <option>Solar Hub India</option>
+                                <option>Eco Power Systems</option>
+                                <option>Sunrise Renewables</option>
+                            </select>
+                        </div>
                         <button id="applyFilters" class="export-btn primary"><i class="fas fa-filter"></i> Apply</button>
                         <button id="resetFilters" class="export-btn"><i class="fas fa-rotate-left"></i> Reset</button>
                         <div class="flex items-center gap-2 ml-auto flex-wrap">
@@ -227,146 +240,258 @@
                         <div class="report-tab" data-tab="sales">Sales Report</div>
                         <div class="report-tab" data-tab="vendor">Vendor Report</div>
                         <div class="report-tab" data-tab="product">Product Report</div>
+                        <div class="report-tab" data-tab="gst">GST Report</div>
+                        <div class="report-tab" data-tab="referral">Referral Income Report</div>
                     </div>
                 </div>
 
-                <!-- ============ KPI Widgets ============ -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
+                <!-- ============ TAB CONTENT: Quotation Report (default visible) ============ -->
+                <div id="tabContentQuotation" class="tab-content">
+                    <!-- KPI Widgets -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
 
-                    <div class="widget-card">
-                        <div class="widget-body">
-                            <div class="widget-value">187</div>
-                            <div class="widget-label">Total Quotations</div>
-                            <div class="widget-trend bg-peach-100 text-peach-600"><i class="fas fa-file-invoice"></i> Period</div>
+                        <div class="widget-card">
+                            <div class="widget-body">
+                                <div class="widget-value">187</div>
+                                <div class="widget-label">Total Quotations</div>
+                                <div class="widget-trend bg-peach-100 text-peach-600"><i class="fas fa-file-invoice"></i> Period</div>
+                            </div>
+                            <div class="widget-icon bg-peach-100 text-peach-600"><i class="fas fa-file-invoice"></i></div>
                         </div>
-                        <div class="widget-icon bg-peach-100 text-peach-600"><i class="fas fa-file-invoice"></i></div>
+
+                        <div class="widget-card">
+                            <div class="widget-body">
+                                <div class="widget-value">₹1.42 Cr</div>
+                                <div class="widget-label">Total Quotation Value</div>
+                                <div class="widget-trend bg-sky-100 text-sky-700"><i class="fas fa-indian-rupee-sign"></i> Period</div>
+                            </div>
+                            <div class="widget-icon bg-sky-100 text-sky-700"><i class="fas fa-sack-dollar"></i></div>
+                        </div>
+
+                        <div class="widget-card">
+                            <div class="widget-body">
+                                <div class="widget-value">₹86.4L</div>
+                                <div class="widget-label">Accepted Value</div>
+                                <div class="widget-trend bg-emerald-100 text-emerald-700"><i class="fas fa-circle-check"></i> Won</div>
+                            </div>
+                            <div class="widget-icon bg-emerald-100 text-emerald-700"><i class="fas fa-check-double"></i></div>
+                        </div>
+
+                        <div class="widget-card">
+                            <div class="widget-body">
+                                <div class="widget-value">46.2%</div>
+                                <div class="widget-label">Conversion Rate</div>
+                                <div class="widget-trend bg-emerald-100 text-emerald-700"><i class="fas fa-arrow-up"></i> 3.1%</div>
+                            </div>
+                            <div class="widget-icon bg-emerald-100 text-emerald-700"><i class="fas fa-percent"></i></div>
+                        </div>
+
+                        <div class="widget-card">
+                            <div class="widget-body">
+                                <div class="widget-value">₹76,000</div>
+                                <div class="widget-label">Avg Deal Size</div>
+                                <div class="widget-trend bg-gray-100 text-gray-500"><i class="fas fa-scale-balanced"></i> Avg</div>
+                            </div>
+                            <div class="widget-icon bg-gray-100 text-gray-500"><i class="fas fa-chart-simple"></i></div>
+                        </div>
+
+                        <div class="widget-card">
+                            <div class="widget-body">
+                                <div class="widget-value">₹32.8L</div>
+                                <div class="widget-label">Pending Value</div>
+                                <div class="widget-trend bg-amber-100 text-amber-700"><i class="fas fa-hourglass-half"></i> In review</div>
+                            </div>
+                            <div class="widget-icon bg-amber-100 text-amber-700"><i class="fas fa-clock"></i></div>
+                        </div>
+
                     </div>
 
-                    <div class="widget-card">
-                        <div class="widget-body">
-                            <div class="widget-value">₹1.42 Cr</div>
-                            <div class="widget-label">Total Quotation Value</div>
-                            <div class="widget-trend bg-sky-100 text-sky-700"><i class="fas fa-indian-rupee-sign"></i> Period</div>
+                    <!-- Charts Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
+                        <div class="chart-card lg:col-span-2">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <div class="section-title"><i class="fas fa-chart-line mr-1.5 text-peach-500"></i>Quotation Trend</div>
+                                    <div class="section-sub">Quotations raised per month</div>
+                                </div>
+                            </div>
+                            <div class="pie-wrap" style="height:190px;"><canvas id="chartTrend"></canvas></div>
                         </div>
-                        <div class="widget-icon bg-sky-100 text-sky-700"><i class="fas fa-sack-dollar"></i></div>
+
+                        <div class="chart-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <div class="section-title"><i class="fas fa-chart-pie mr-1.5 text-peach-500"></i>Status Distribution</div>
+                                    <div class="section-sub">Accepted vs Pending vs Rejected</div>
+                                </div>
+                            </div>
+                            <div class="pie-wrap" style="height:190px;"><canvas id="chartStatus"></canvas></div>
+                        </div>
                     </div>
 
-                    <div class="widget-card">
-                        <div class="widget-body">
-                            <div class="widget-value">₹86.4L</div>
-                            <div class="widget-label">Accepted Value</div>
-                            <div class="widget-trend bg-emerald-100 text-emerald-700"><i class="fas fa-circle-check"></i> Won</div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+                        <div class="chart-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <div class="section-title"><i class="fas fa-solar-panel mr-1.5 text-peach-500"></i>Revenue by System Size</div>
+                                    <div class="section-sub">Quotation value grouped by kW band</div>
+                                </div>
+                            </div>
+                            <div class="pie-wrap" style="height:190px;"><canvas id="chartSystemSize"></canvas></div>
                         </div>
-                        <div class="widget-icon bg-emerald-100 text-emerald-700"><i class="fas fa-check-double"></i></div>
+
+                        <div class="chart-card">
+                            <div class="section-title mb-2"><i class="fas fa-ranking-star mr-1.5 text-peach-500"></i>Top Sales Performers</div>
+                            <div class="space-y-1.5" id="topPerformers"></div>
+                        </div>
                     </div>
 
-                    <div class="widget-card">
-                        <div class="widget-body">
-                            <div class="widget-value">46.2%</div>
-                            <div class="widget-label">Conversion Rate</div>
-                            <div class="widget-trend bg-emerald-100 text-emerald-700"><i class="fas fa-arrow-up"></i> 3.1%</div>
-                        </div>
-                        <div class="widget-icon bg-emerald-100 text-emerald-700"><i class="fas fa-percent"></i></div>
-                    </div>
-
-                    <div class="widget-card">
-                        <div class="widget-body">
-                            <div class="widget-value">₹76,000</div>
-                            <div class="widget-label">Avg Deal Size</div>
-                            <div class="widget-trend bg-gray-100 text-gray-500"><i class="fas fa-scale-balanced"></i> Avg</div>
-                        </div>
-                        <div class="widget-icon bg-gray-100 text-gray-500"><i class="fas fa-chart-simple"></i></div>
-                    </div>
-
-                    <div class="widget-card">
-                        <div class="widget-body">
-                            <div class="widget-value">₹32.8L</div>
-                            <div class="widget-label">Pending Value</div>
-                            <div class="widget-trend bg-amber-100 text-amber-700"><i class="fas fa-hourglass-half"></i> In review</div>
-                        </div>
-                        <div class="widget-icon bg-amber-100 text-amber-700"><i class="fas fa-clock"></i></div>
-                    </div>
-
-                </div>
-
-                <!-- ============ Charts Row ============ -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
-                    <div class="chart-card lg:col-span-2">
-                        <div class="flex items-center justify-between mb-2">
+                    <!-- Detailed Report Table -->
+                    <div class="chart-card">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                             <div>
-                                <div class="section-title"><i class="fas fa-chart-line mr-1.5 text-peach-500"></i>Quotation Trend</div>
-                                <div class="section-sub">Quotations raised per month</div>
+                                <div class="section-title"><i class="fas fa-table-list mr-1.5 text-peach-500"></i>Detailed Quotation Report</div>
+                                <div class="section-sub">Click a column to sort · click a row to view</div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-[10.5px] text-gray-400">Rows</label>
+                                <select id="pageSize" class="rows-select">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
                             </div>
                         </div>
-                        <div class="pie-wrap" style="height:190px;"><canvas id="chartTrend"></canvas></div>
-                    </div>
 
-                    <div class="chart-card">
-                        <div class="flex items-center justify-between mb-2">
-                            <div>
-                                <div class="section-title"><i class="fas fa-chart-pie mr-1.5 text-peach-500"></i>Status Distribution</div>
-                                <div class="section-sub">Accepted vs Pending vs Rejected</div>
-                            </div>
+                        <div class="table-scope overflow-x-auto">
+                            <table class="report-table" id="reportTable">
+                                <thead>
+                                    <tr>
+                                        <th data-key="quoteNo">Quotation No. <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="customer">Customer <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="systemSize">System Size <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="amount">Amount <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="salesPerson">Sales Person <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="status">Status <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="date">Date <i class="fas fa-sort sort-icon"></i></th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportTableBody"></tbody>
+                            </table>
                         </div>
-                        <div class="pie-wrap" style="height:190px;"><canvas id="chartStatus"></canvas></div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-peach-200">
+                            <div class="text-[10.5px] text-gray-400" id="pageInfo">Showing 1–10 of 10</div>
+                            <div class="flex items-center gap-1 flex-wrap" id="pagination"></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+                <!-- ============ TAB CONTENT: Sales Report (placeholder) ============ -->
+                <div id="tabContentSales" class="tab-content hidden">
                     <div class="chart-card">
-                        <div class="flex items-center justify-between mb-2">
-                            <div>
-                                <div class="section-title"><i class="fas fa-solar-panel mr-1.5 text-peach-500"></i>Revenue by System Size</div>
-                                <div class="section-sub">Quotation value grouped by kW band</div>
-                            </div>
-                        </div>
-                        <div class="pie-wrap" style="height:190px;"><canvas id="chartSystemSize"></canvas></div>
-                    </div>
-
-                    <div class="chart-card">
-                        <div class="section-title mb-2"><i class="fas fa-ranking-star mr-1.5 text-peach-500"></i>Top Sales Performers</div>
-                        <div class="space-y-1.5" id="topPerformers"></div>
+                        <div class="section-title mb-4">Sales Report</div>
+                        <p class="text-gray-500 text-sm">Sales report data will appear here.</p>
                     </div>
                 </div>
 
-                <!-- ============ Detailed Report Table ============ -->
-                <div class="chart-card">
-                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                        <div>
-                            <div class="section-title"><i class="fas fa-table-list mr-1.5 text-peach-500"></i>Detailed Quotation Report</div>
-                            <div class="section-sub">Click a column to sort · click a row to view</div>
+                <!-- ============ TAB CONTENT: Vendor Report (placeholder) ============ -->
+                <div id="tabContentVendor" class="tab-content hidden">
+                    <div class="chart-card">
+                        <div class="section-title mb-4">Vendor Report</div>
+                        <p class="text-gray-500 text-sm">Vendor report data will appear here.</p>
+                    </div>
+                </div>
+
+                <!-- ============ TAB CONTENT: Product Report (placeholder) ============ -->
+                <div id="tabContentProduct" class="tab-content hidden">
+                    <div class="chart-card">
+                        <div class="section-title mb-4">Product Report</div>
+                        <p class="text-gray-500 text-sm">Product report data will appear here.</p>
+                    </div>
+                </div>
+
+                <!-- ============ TAB CONTENT: GST Report ============ -->
+                <div id="tabContentGst" class="tab-content hidden">
+                    <div class="chart-card">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                            <div>
+                                <div class="section-title"><i class="fas fa-file-invoice-dollar mr-1.5 text-peach-500"></i>GST Report</div>
+                                <div class="section-sub">GST details for all quotations</div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-[10.5px] text-gray-400">Rows</label>
+                                <select id="gstPageSize" class="rows-select">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <label class="text-[10.5px] text-gray-400">Rows</label>
-                            <select id="pageSize" class="rows-select">
-                                <option value="10">10</option>
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                            </select>
+
+                        <div class="table-scope overflow-x-auto">
+                            <table class="report-table" id="gstTable">
+                                <thead>
+                                    <tr>
+                                        <th data-key="quoteNo">Quotation No. <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="customer">Customer <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="taxableAmount">Taxable Amount <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="gstPercent">GST % <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="gstAmount">GST Amount <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="total">Total <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="date">Date <i class="fas fa-sort sort-icon"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gstTableBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-peach-200">
+                            <div class="text-[10.5px] text-gray-400" id="gstPageInfo">Showing 1–10 of 10</div>
+                            <div class="flex items-center gap-1 flex-wrap" id="gstPagination"></div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="table-scope overflow-x-auto">
-                        <table class="report-table" id="reportTable">
-                            <thead>
-                                <tr>
-                                    <th data-key="quoteNo">Quotation No. <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="customer">Customer <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="systemSize">System Size <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="amount">Amount <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="salesPerson">Sales Person <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="status">Status <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="date">Date <i class="fas fa-sort sort-icon"></i></th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="reportTableBody"></tbody>
-                        </table>
-                    </div>
+                <!-- ============ TAB CONTENT: Referral Income Report ============ -->
+                <div id="tabContentReferral" class="tab-content hidden">
+                    <div class="chart-card">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                            <div>
+                                <div class="section-title"><i class="fas fa-handshake mr-1.5 text-peach-500"></i>Referral Income Report</div>
+                                <div class="section-sub">Referral commissions by referrer</div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-[10.5px] text-gray-400">Rows</label>
+                                <select id="referralPageSize" class="rows-select">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
 
-                    <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-peach-200">
-                        <div class="text-[10.5px] text-gray-400" id="pageInfo">Showing 1–10 of 10</div>
-                        <div class="flex items-center gap-1 flex-wrap" id="pagination"></div>
+                        <div class="table-scope overflow-x-auto">
+                            <table class="report-table" id="referralTable">
+                                <thead>
+                                    <tr>
+                                        <th data-key="referrerName">Referrer Name <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="referredCustomer">Referred Customer <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="quotationAmount">Quotation Amount <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="referralPercent">Referral % <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="referralAmount">Referral Amount <i class="fas fa-sort sort-icon"></i></th>
+                                        <th data-key="status">Status <i class="fas fa-sort sort-icon"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="referralTableBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-peach-200">
+                            <div class="text-[10.5px] text-gray-400" id="referralPageInfo">Showing 1–10 of 10</div>
+                            <div class="flex items-center gap-1 flex-wrap" id="referralPagination"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -376,6 +501,8 @@
 
     <div id="toast-container" class="fixed bottom-5 right-5 z-[400] space-y-2 max-w-[calc(100vw-2.5rem)]"></div>
 
+    <!-- IMPORTANT: load session.js first, then the module's own JS -->
+    <script src="/session.js"></script>
     <script src="reports.js"></script>
 </body>
 

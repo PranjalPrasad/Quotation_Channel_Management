@@ -1,3 +1,5 @@
+// TODO: replace mock data array below with API call to /api/users
+
 // ============================================================
 // Sidebar collapse / expand (same behaviour as dashboard.js,
 // including the mobile/tablet overlay drawer + backdrop)
@@ -87,32 +89,45 @@ function initials(name) {
 // Dummy user data — no backend
 // ============================================================
 let users = [
-  { id: 'USR-1001', name: 'Barly Vallendito', email: 'barly@sqms.com', phone: '98200 11234', username: 'barly.v', role: 'Admin', department: 'Management', status: 'Active', createdDate: '2025-11-02', photo: null },
-  { id: 'USR-1002', name: 'Rahul Mehta', email: 'rahul.mehta@sqms.com', phone: '98765 43210', username: 'rahul.mehta', role: 'Manager', department: 'Sales', status: 'Active', createdDate: '2025-12-14', photo: null },
-  { id: 'USR-1003', name: 'Sneha Kulkarni', email: 'sneha.k@sqms.com', phone: '99887 65432', username: 'sneha.k', role: 'Sales Executive', department: 'Sales', status: 'Active', createdDate: '2026-01-08', photo: null },
-  { id: 'USR-1004', name: 'Owais Sheikh', email: 'owais.sheikh@sqms.com', phone: '96543 21098', username: 'owais.sheikh', role: 'Sales Executive', department: 'Sales', status: 'Inactive', createdDate: '2026-01-20', photo: null },
-  { id: 'USR-1005', name: 'Priya Nair', email: 'priya.nair@sqms.com', phone: '97654 32109', username: 'priya.nair', role: 'Manager', department: 'Operations', status: 'Active', createdDate: '2026-02-03', photo: null },
-  { id: 'USR-1006', name: 'Amit Sharma', email: 'amit.sharma@sqms.com', phone: '98123 45670', username: 'amit.sharma', role: 'Sales Executive', department: 'Sales', status: 'Active', createdDate: '2026-02-19', photo: null },
-  { id: 'USR-1007', name: 'Farha Sheikh', email: 'farha.sheikh@sqms.com', phone: '95432 10987', username: 'farha.sheikh', role: 'Sales Executive', department: 'Support', status: 'Inactive', createdDate: '2026-03-05', photo: null },
-  { id: 'USR-1008', name: 'Vikram Rao', email: 'vikram.rao@sqms.com', phone: '99001 12233', username: 'vikram.rao', role: 'Admin', department: 'Management', status: 'Active', createdDate: '2026-03-22', photo: null },
-  { id: 'USR-1009', name: 'Meena Iyer', email: 'meena.iyer@sqms.com', phone: '90807 06050', username: 'meena.iyer', role: 'Manager', department: 'Finance', status: 'Active', createdDate: '2026-04-11', photo: null },
-  { id: 'USR-1010', name: 'Deepak Joshi', email: 'deepak.joshi@sqms.com', phone: '91234 56789', username: 'deepak.joshi', role: 'Sales Executive', department: 'Sales', status: 'Active', createdDate: '2026-04-27', photo: null },
-  { id: 'USR-1011', name: 'Anita Deshmukh', email: 'anita.d@sqms.com', phone: '93456 78901', username: 'anita.d', role: 'Sales Executive', department: 'Support', status: 'Inactive', createdDate: '2026-05-09', photo: null },
-  { id: 'USR-1012', name: 'Suresh Patel', email: 'suresh.patel@sqms.com', phone: '94567 89012', username: 'suresh.patel', role: 'Manager', department: 'Operations', status: 'Active', createdDate: '2026-05-30', photo: null },
-  { id: 'USR-1013', name: 'Kavita Rao', email: 'kavita.rao@sqms.com', phone: '95678 90123', username: 'kavita.rao', role: 'Sales Executive', department: 'Sales', status: 'Active', createdDate: '2026-06-14', photo: null },
-  { id: 'USR-1014', name: 'Nikhil Joshi', email: 'nikhil.joshi@sqms.com', phone: '96789 01234', username: 'nikhil.joshi', role: 'Admin', department: 'Management', status: 'Active', createdDate: '2026-06-28', photo: null },
-  { id: 'USR-1015', name: 'Rajesh Traders', email: 'rajesh.t@sqms.com', phone: '97890 12345', username: 'rajesh.t', role: 'Sales Executive', department: 'Sales', status: 'Inactive', createdDate: '2026-07-05', photo: null },
-  { id: 'USR-1016', name: 'Farha Textiles', email: 'farha.textiles@sqms.com', phone: '98901 23456', username: 'farha.textiles', role: 'Sales Executive', department: 'Support', status: 'Active', createdDate: '2026-07-18', photo: null },
+  { id: 'USR-1001', name: 'Barly Vallendito', email: 'barly@sqms.com', phone: '98200 11234', username: 'barly.v', role: 'Super Admin', department: 'Management', status: 'Active', createdDate: '2025-11-02', photo: null, channelPartner: null },
+  { id: 'USR-1002', name: 'Rahul Mehta', email: 'rahul.mehta@sqms.com', phone: '98765 43210', username: 'rahul.mehta', role: 'Channel Partner Admin', department: 'Sales', status: 'Active', createdDate: '2025-12-14', photo: null, channelPartner: 'Green Energy Solutions' },
+  { id: 'USR-1003', name: 'Sneha Kulkarni', email: 'sneha.k@sqms.com', phone: '99887 65432', username: 'sneha.k', role: 'Channel Partner Sales', department: 'Sales', status: 'Active', createdDate: '2026-01-08', photo: null, channelPartner: 'Green Energy Solutions' },
+  { id: 'USR-1004', name: 'Owais Sheikh', email: 'owais.sheikh@sqms.com', phone: '96543 21098', username: 'owais.sheikh', role: 'Channel Partner Sales', department: 'Sales', status: 'Inactive', createdDate: '2026-01-20', photo: null, channelPartner: 'Solar Hub India' },
+  { id: 'USR-1005', name: 'Priya Nair', email: 'priya.nair@sqms.com', phone: '97654 32109', username: 'priya.nair', role: 'Channel Partner Admin', department: 'Operations', status: 'Active', createdDate: '2026-02-03', photo: null, channelPartner: 'Eco Power Systems' },
+  { id: 'USR-1006', name: 'Amit Sharma', email: 'amit.sharma@sqms.com', phone: '98123 45670', username: 'amit.sharma', role: 'Channel Partner Sales', department: 'Sales', status: 'Active', createdDate: '2026-02-19', photo: null, channelPartner: 'Eco Power Systems' },
+  { id: 'USR-1007', name: 'Farha Sheikh', email: 'farha.sheikh@sqms.com', phone: '95432 10987', username: 'farha.sheikh', role: 'Channel Partner Sales', department: 'Support', status: 'Inactive', createdDate: '2026-03-05', photo: null, channelPartner: 'Sunrise Renewables' },
+  { id: 'USR-1008', name: 'Vikram Rao', email: 'vikram.rao@sqms.com', phone: '99001 12233', username: 'vikram.rao', role: 'Super Admin', department: 'Management', status: 'Active', createdDate: '2026-03-22', photo: null, channelPartner: null },
+  { id: 'USR-1009', name: 'Meena Iyer', email: 'meena.iyer@sqms.com', phone: '90807 06050', username: 'meena.iyer', role: 'Channel Partner Admin', department: 'Finance', status: 'Active', createdDate: '2026-04-11', photo: null, channelPartner: 'Solar Hub India' },
+  { id: 'USR-1010', name: 'Deepak Joshi', email: 'deepak.joshi@sqms.com', phone: '91234 56789', username: 'deepak.joshi', role: 'Channel Partner Sales', department: 'Sales', status: 'Active', createdDate: '2026-04-27', photo: null, channelPartner: 'Solar Hub India' },
+  { id: 'USR-1011', name: 'Anita Deshmukh', email: 'anita.d@sqms.com', phone: '93456 78901', username: 'anita.d', role: 'Channel Partner Sales', department: 'Support', status: 'Inactive', createdDate: '2026-05-09', photo: null, channelPartner: 'Green Energy Solutions' },
+  { id: 'USR-1012', name: 'Suresh Patel', email: 'suresh.patel@sqms.com', phone: '94567 89012', username: 'suresh.patel', role: 'Channel Partner Admin', department: 'Operations', status: 'Active', createdDate: '2026-05-30', photo: null, channelPartner: 'Sunrise Renewables' },
+  { id: 'USR-1013', name: 'Kavita Rao', email: 'kavita.rao@sqms.com', phone: '95678 90123', username: 'kavita.rao', role: 'Channel Partner Sales', department: 'Sales', status: 'Active', createdDate: '2026-06-14', photo: null, channelPartner: 'Sunrise Renewables' },
+  { id: 'USR-1014', name: 'Nikhil Joshi', email: 'nikhil.joshi@sqms.com', phone: '96789 01234', username: 'nikhil.joshi', role: 'Super Admin', department: 'Management', status: 'Active', createdDate: '2026-06-28', photo: null, channelPartner: null },
+  { id: 'USR-1015', name: 'Rajesh Traders', email: 'rajesh.t@sqms.com', phone: '97890 12345', username: 'rajesh.t', role: 'Channel Partner Sales', department: 'Sales', status: 'Inactive', createdDate: '2026-07-05', photo: null, channelPartner: 'Eco Power Systems' },
+  { id: 'USR-1016', name: 'Farha Textiles', email: 'farha.textiles@sqms.com', phone: '98901 23456', username: 'farha.textiles', role: 'Channel Partner Sales', department: 'Support', status: 'Active', createdDate: '2026-07-18', photo: null, channelPartner: 'Green Energy Solutions' },
 ];
 
 const PERMISSIONS_BY_ROLE = {
-  'Admin':           { Dashboard: true,  Customers: true,  Projects: true,  Reports: true,  Settings: true  },
-  'Manager':         { Dashboard: true,  Customers: true,  Projects: true,  Reports: true,  Settings: false },
-  'Sales Executive': { Dashboard: true,  Customers: true,  Projects: false, Reports: true,  Settings: false },
+  'Super Admin':           { Dashboard: true,  Customers: true,  Projects: true,  Reports: true,  Settings: true,  Users: true,  'Channel Partners': true },
+  'Channel Partner Admin': { Dashboard: true,  Customers: true,  Projects: true,  Reports: true,  Settings: false, Users: true,  'Channel Partners': false },
+  'Channel Partner Sales': { Dashboard: true,  Customers: true,  Projects: false, Reports: true,  Settings: false, Users: false, 'Channel Partners': false },
 };
 
-const ROLE_PILL_CLASS = { 'Admin': 'role-pill-admin', 'Manager': 'role-pill-manager', 'Sales Executive': 'role-pill-sales' };
+const ROLE_PILL_CLASS = { 
+  'Super Admin': 'role-pill-super-admin', 
+  'Channel Partner Admin': 'role-pill-partner-admin', 
+  'Channel Partner Sales': 'role-pill-partner-sales' 
+};
+
 const STATUS_PILL_CLASS = { 'Active': 'pill-active', 'Inactive': 'pill-inactive' };
+
+// Channel partner options for dropdown
+const CHANNEL_PARTNER_OPTIONS = [
+  'Green Energy Solutions',
+  'Solar Hub India',
+  'Eco Power Systems',
+  'Sunrise Renewables'
+];
 
 const ICONS = {
   view: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
@@ -133,6 +148,7 @@ let rowsPerPage = 8;
 let searchTerm = '';
 let roleFilter = '';
 let statusFilter = '';
+let channelPartnerFilter = '';
 let pendingPhotoDataUrl = null;
 
 let formMode = 'add'; // 'add' | 'edit'
@@ -141,13 +157,23 @@ let deleteTargetId = null;
 let resetTargetId = null;
 
 // ============================================================
+// Check if current user is Super Admin
+// ============================================================
+function isSuperAdmin() {
+  // Get user role from session (assuming it's stored in window.user)
+  // For demo, check if the logged-in user has Super Admin role
+  const userRole = window.user?.role || 'Super Admin'; // Default for demo
+  return userRole === 'Super Admin';
+}
+
+// ============================================================
 // KPIs
 // ============================================================
 function renderKpis() {
   document.getElementById('kpiTotalUsers').textContent = users.length;
   document.getElementById('kpiActiveUsers').textContent = users.filter(u => u.status === 'Active').length;
   document.getElementById('kpiInactiveUsers').textContent = users.filter(u => u.status === 'Inactive').length;
-  document.getElementById('kpiAdminUsers').textContent = users.filter(u => u.role === 'Admin').length;
+  document.getElementById('kpiAdminUsers').textContent = users.filter(u => u.role === 'Super Admin').length;
 }
 
 // ============================================================
@@ -162,7 +188,8 @@ function filteredUsers() {
       u.phone.toLowerCase().includes(term);
     const matchesRole = !roleFilter || u.role === roleFilter;
     const matchesStatus = !statusFilter || u.status === statusFilter;
-    return matchesTerm && matchesRole && matchesStatus;
+    const matchesPartner = !channelPartnerFilter || u.channelPartner === channelPartnerFilter;
+    return matchesTerm && matchesRole && matchesStatus && matchesPartner;
   });
 }
 
@@ -222,7 +249,8 @@ function renderTable() {
       <td data-label="Name">${u.name}</td>
       <td data-label="Email">${u.email}</td>
       <td data-label="Phone">${u.phone}</td>
-      <td data-label="Role"><span class="role-pill ${ROLE_PILL_CLASS[u.role]}">${u.role}</span></td>
+      <td data-label="Role"><span class="role-pill ${ROLE_PILL_CLASS[u.role] || 'role-pill-default'}">${u.role}</span></td>
+      <td data-label="Channel Partner">${u.channelPartner || '—'}</td>
       <td data-label="Department">${u.department}</td>
       <td data-label="Status"><span class="pill ${STATUS_PILL_CLASS[u.status]}">${u.status}</span></td>
       <td data-label="Created Date">${formatDate(u.createdDate)}</td>
@@ -293,17 +321,112 @@ rowsPerPageSelect?.addEventListener('change', () => {
 const searchInput = document.getElementById('searchInput');
 const filterRole = document.getElementById('filterRole');
 const filterStatus = document.getElementById('filterStatus');
+const filterChannelPartner = document.getElementById('filterChannelPartner');
 const resetFiltersBtn = document.getElementById('resetFiltersBtn');
 
 searchInput?.addEventListener('input', () => { searchTerm = searchInput.value; currentPage = 1; renderTable(); });
 filterRole?.addEventListener('change', () => { roleFilter = filterRole.value; currentPage = 1; renderTable(); });
 filterStatus?.addEventListener('change', () => { statusFilter = filterStatus.value; currentPage = 1; renderTable(); });
+filterChannelPartner?.addEventListener('change', () => { channelPartnerFilter = filterChannelPartner.value; currentPage = 1; renderTable(); });
 resetFiltersBtn?.addEventListener('click', () => {
-  searchTerm = ''; roleFilter = ''; statusFilter = '';
-  searchInput.value = ''; filterRole.value = ''; filterStatus.value = '';
+  searchTerm = ''; roleFilter = ''; statusFilter = ''; channelPartnerFilter = '';
+  searchInput.value = ''; filterRole.value = ''; filterStatus.value = ''; filterChannelPartner.value = '';
   currentPage = 1;
   renderTable();
 });
+
+// ============================================================
+// Role dropdown options - conditionally show Super Admin
+// ============================================================
+function populateRoleOptions() {
+  const fldRole = document.getElementById('fldRole');
+  if (!fldRole) return;
+  
+  // Clear existing options
+  fldRole.innerHTML = '';
+  
+  // Define role options
+  const roleOptions = [
+    { value: 'Super Admin', label: 'Super Admin' },
+    { value: 'Channel Partner Admin', label: 'Channel Partner Admin' },
+    { value: 'Channel Partner Sales', label: 'Channel Partner Sales' }
+  ];
+  
+  // Filter options based on user role
+  const isSuperAdminUser = isSuperAdmin();
+  
+  roleOptions.forEach(opt => {
+    // Only show Super Admin option if logged-in user is Super Admin
+    if (opt.value === 'Super Admin' && !isSuperAdminUser) {
+      return;
+    }
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.label;
+    fldRole.appendChild(option);
+  });
+}
+
+// ============================================================
+// Toggle Channel Partner dropdown visibility based on role
+// ============================================================
+function toggleChannelPartnerField() {
+  const fldRole = document.getElementById('fldRole');
+  const partnerField = document.getElementById('fldChannelPartnerGroup');
+  if (!fldRole || !partnerField) return;
+  
+  const selectedRole = fldRole.value;
+  // Show for Channel Partner Admin and Channel Partner Sales
+  if (selectedRole === 'Channel Partner Admin' || selectedRole === 'Channel Partner Sales') {
+    partnerField.style.display = '';
+  } else {
+    partnerField.style.display = 'none';
+    // Reset the value when hidden
+    document.getElementById('fldChannelPartner').value = '';
+  }
+}
+
+// ============================================================
+// Populate Channel Partner dropdown options
+// ============================================================
+function populateChannelPartnerOptions() {
+  const fldPartner = document.getElementById('fldChannelPartner');
+  if (!fldPartner) return;
+  
+  fldPartner.innerHTML = '';
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Select Channel Partner';
+  fldPartner.appendChild(defaultOption);
+  
+  CHANNEL_PARTNER_OPTIONS.forEach(partner => {
+    const option = document.createElement('option');
+    option.value = partner;
+    option.textContent = partner;
+    fldPartner.appendChild(option);
+  });
+}
+
+// ============================================================
+// Populate filter Channel Partner dropdown options
+// ============================================================
+function populateFilterChannelPartnerOptions() {
+  const filterPartner = document.getElementById('filterChannelPartner');
+  if (!filterPartner) return;
+  
+  filterPartner.innerHTML = '';
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'All Partners';
+  filterPartner.appendChild(defaultOption);
+  
+  CHANNEL_PARTNER_OPTIONS.forEach(partner => {
+    const option = document.createElement('option');
+    option.value = partner;
+    option.textContent = partner;
+    filterPartner.appendChild(option);
+  });
+}
 
 // ============================================================
 // Modal open/close helpers
@@ -346,6 +469,7 @@ const fld = {
   role: document.getElementById('fldRole'),
   department: document.getElementById('fldDepartment'),
   status: document.getElementById('fldStatus'),
+  channelPartner: document.getElementById('fldChannelPartner'),
 };
 
 function resetUserForm() {
@@ -354,6 +478,8 @@ function resetUserForm() {
   avatarPreview.innerHTML = 'U';
   pendingPhotoDataUrl = null;
   fldPhotoInput.value = '';
+  // Reset channel partner field visibility
+  toggleChannelPartnerField();
 }
 
 function openAddUserModal() {
@@ -365,6 +491,11 @@ function openAddUserModal() {
   passwordGroup.style.display = '';
   confirmPasswordGroup.style.display = '';
   userFormSaveBtn.textContent = 'Save';
+  populateRoleOptions();
+  populateChannelPartnerOptions();
+  // Set default role and toggle partner field
+  fld.role.value = 'Channel Partner Sales'; // Default role
+  toggleChannelPartnerField();
   openModal('userFormModal');
 }
 
@@ -380,6 +511,9 @@ function openEditUserModal(id) {
   confirmPasswordGroup.style.display = 'none';
   userFormSaveBtn.textContent = 'Update';
 
+  populateRoleOptions();
+  populateChannelPartnerOptions();
+  
   fld.fullName.value = u.name;
   fld.email.value = u.email;
   fld.phone.value = u.phone;
@@ -387,6 +521,14 @@ function openEditUserModal(id) {
   fld.role.value = u.role;
   fld.department.value = u.department;
   fld.status.value = u.status;
+  
+  // Set channel partner if exists
+  if (u.channelPartner) {
+    fld.channelPartner.value = u.channelPartner;
+  }
+  
+  // Toggle partner field visibility based on role
+  toggleChannelPartnerField();
 
   if (u.photo) { avatarPreview.innerHTML = `<img src="${u.photo}" alt="${u.name}">`; pendingPhotoDataUrl = u.photo; }
   else { avatarPreview.textContent = initials(u.name); pendingPhotoDataUrl = null; }
@@ -406,6 +548,9 @@ fldPhotoInput?.addEventListener('change', () => {
   };
   reader.readAsDataURL(file);
 });
+
+// Role change listener to toggle Channel Partner field
+fld.role?.addEventListener('change', toggleChannelPartnerField);
 
 function nextUserId() {
   const maxNum = users.reduce((max, u) => {
@@ -430,9 +575,16 @@ userFormSaveBtn?.addEventListener('click', () => {
   const role = fld.role.value;
   const department = fld.department.value.trim() || '—';
   const status = fld.status.value;
+  const channelPartner = fld.channelPartner.value || null;
 
   if (!name || !email || !phone || !username) {
     showFormError('Please fill in all required fields.');
+    return;
+  }
+
+  // Validate channel partner for partner roles
+  if ((role === 'Channel Partner Admin' || role === 'Channel Partner Sales') && !channelPartner) {
+    showFormError('Please select a Channel Partner for this role.');
     return;
   }
 
@@ -452,6 +604,7 @@ userFormSaveBtn?.addEventListener('click', () => {
       name, email, phone, username, role, department, status,
       createdDate: new Date().toISOString().slice(0, 10),
       photo: pendingPhotoDataUrl,
+      channelPartner: channelPartner,
     };
     users.unshift(newUser);
     showToast(`User ${newUser.name} added`);
@@ -460,6 +613,7 @@ userFormSaveBtn?.addEventListener('click', () => {
     if (!u) return;
     u.name = name; u.email = email; u.phone = phone; u.username = username;
     u.role = role; u.department = department; u.status = status;
+    u.channelPartner = channelPartner;
     if (pendingPhotoDataUrl !== null) u.photo = pendingPhotoDataUrl;
     showToast(`User ${u.name} updated`);
   }
@@ -484,6 +638,7 @@ function openViewUserModal(id) {
   document.getElementById('viewPhone').textContent = u.phone;
   document.getElementById('viewUsername').textContent = u.username;
   document.getElementById('viewRole').textContent = u.role;
+  document.getElementById('viewChannelPartner').textContent = u.channelPartner || '—';
   document.getElementById('viewDepartment').textContent = u.department;
   document.getElementById('viewStatus').textContent = u.status;
   document.getElementById('viewCreatedDate').textContent = formatDate(u.createdDate);
@@ -595,6 +750,9 @@ function renderPermissionCards() {
 // ============================================================
 // Init
 // ============================================================
+populateRoleOptions();
+populateChannelPartnerOptions();
+populateFilterChannelPartnerOptions();
 renderKpis();
 renderTable();
 renderPermissionCards();

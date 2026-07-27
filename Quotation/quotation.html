@@ -68,19 +68,19 @@
       </div>
 
       <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
-        <button class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='../Dashboard/dashboard.html'">
+        <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuDashboard" class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='../Dashboard/dashboard.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
           <span>Dashboard</span>
-        </button>
-        <button class="nav-item active" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='quotation.html'">
+        </li>
+        <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuQuotation" class="nav-item active" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='quotation.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
           <span>Quotation Management</span>
-        </button>
-        <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../product/product.html'">
+        </li>
+        <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuProduct" class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../product/product.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
           <span>Product Management</span>
-        </button>
-        <button class="nav-item" data-label="Customer Management" aria-label="Customer Management" onclick="window.location.href='../vendor/vendor.html'">
+        </li>
+        <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuCustomer" class="nav-item" data-label="Customer Management" aria-label="Customer Management" onclick="window.location.href='../vendor/vendor.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
             <circle cx="9" cy="11" r="3"></circle>
@@ -88,31 +88,31 @@
             <path d="M16 9l2 2 4-4"></path>
           </svg>
           <span>Customer Management</span>
-        </button>
-        <button class="nav-item" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
+        </li>
+        <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuReports" class="nav-item" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
           <span>Reports Management</span>
-        </button>
-
-        <button class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='../Dashboard/project.html'">
+        </li>
+        <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuProject" class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='../Dashboard/project.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Project Management</span>
-        </button>
-
-        <button class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='../Dashboard/user.html'">
+        </li>
+        <li data-role="SUPER_ADMIN" id="menuUserManagement" class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='../Dashboard/user.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           <span>User Management</span>
-        </button>
-
-        <button class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='../Dashboard/calc.html'">
+        </li>
+        <li data-role="SUPER_ADMIN" id="menuChannelPartners" class="nav-item" data-label="Channel Partners" aria-label="Channel Partners" onclick="window.location.href='channel-partners.html'" style="list-style:none; width:100%;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Channel Partners</span>
+        </li>
+        <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuCalculator" class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='../Dashboard/calc.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
           <span>Cost Calculator</span>
-        </button>
-
-        <button class="nav-item" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='../Dashboard/approval.html'">
+        </li>
+        <li data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN" id="menuApproval" class="nav-item" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='../Dashboard/approval.html'" style="list-style:none; width:100%;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
           <span>Approval Management</span>
-        </button>
+        </li>
       </nav>
     </aside>
 
@@ -170,6 +170,8 @@
             </button>
 
             <div id="profileDropdown" class="topbar-dropdown hidden">
+              <div class="topbar-dropdown-title" id="profileRoleLabel" style="padding:4px 6px 2px;">Logged in as: -</div>
+              <div id="profilePartnerLabel" class="hidden" style="font-size:10.5px; color:#6B7280; padding:0 6px 6px; font-weight:500;"></div>
               <a href="../index.html" id="profileLogoutBtn" class="topbar-logout-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 Logout
@@ -262,6 +264,12 @@
             <button class="btn-primary" id="btn-new-quotation">
               <i class="fas fa-plus"></i> New Quotation
             </button>
+            <div class="flex gap-1">
+              <button class="btn-outline small" id="btn-export-excel"><i class="fas fa-file-excel"></i></button>
+              <button class="btn-outline small" id="btn-export-csv"><i class="fas fa-file-csv"></i></button>
+              <button class="btn-outline small" id="btn-export-pdf"><i class="fas fa-file-pdf"></i></button>
+              <button class="btn-outline small" id="btn-print"><i class="fas fa-print"></i></button>
+            </div>
           </div>
         </div>
 
@@ -274,6 +282,7 @@
                 <th data-sort="size">System Size <i class="fas fa-sort"></i></th>
                 <th data-sort="amount">Amount <i class="fas fa-sort"></i></th>
                 <th data-sort="status">Status <i class="fas fa-sort"></i></th>
+                <th data-sort="referral">Referral <i class="fas fa-sort"></i></th>
                 <th data-sort="date">Date <i class="fas fa-sort"></i></th>
                 <th class="actions-th text-right">Actions</th>
               </tr>
@@ -384,6 +393,48 @@
                           <label>GST Number <span class="req">*</span></label>
                           <input type="text" id="f-gst" maxlength="15" placeholder="15-character GSTIN">
                           <span class="field-error" id="err-gst"></span>
+                      </div>
+                  </div>
+
+                  <!-- Referral Details Section -->
+                  <div class="sub-section">
+                      <div class="sub-title collapsible-toggle" id="referralToggle" style="cursor:pointer;">
+                          <i class="fas fa-handshake" style="color:#059669;"></i> Referral Details
+                          <i class="fas fa-chevron-down" id="referralChevron" style="margin-left:auto;font-size:10px;color:var(--muted);"></i>
+                      </div>
+                      <div class="form-grid collapsible-body" id="referralBody">
+                          <div class="form-field span-2">
+                              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                  <input type="checkbox" id="f-isReferred" style="width:16px;height:16px;accent-color:#059669;">
+                                  Is this a referred customer?
+                              </label>
+                          </div>
+                          <div class="form-field" id="referredByField" style="display:none;">
+                              <label>Referred By <span class="req">*</span></label>
+                              <input type="text" id="f-referredBy" placeholder="Search customer or channel partner..." list="referrerList">
+                              <datalist id="referrerList"></datalist>
+                          </div>
+                          <div class="form-field" id="referrerTypeField" style="display:none;">
+                              <label>Referrer Type <span class="req">*</span></label>
+                              <select id="f-referrerType" class="select-input">
+                                  <option value="">Select type</option>
+                                  <option value="Existing Customer">Existing Customer</option>
+                                  <option value="Channel Partner">Channel Partner</option>
+                              </select>
+                          </div>
+                          <div class="form-field" id="referralCodeField" style="display:none;">
+                              <label>Referral Code</label>
+                              <input type="text" id="f-referralCode" placeholder="Auto-filled or manual" readonly>
+                          </div>
+                          <div class="form-field" id="referralPercentField" style="display:none;">
+                              <label>Referral %</label>
+                              <input type="number" id="f-referralPercent" min="0" max="100" value="5" placeholder="e.g. 5">
+                              <span class="field-error" id="err-referralPercent"></span>
+                          </div>
+                          <div class="hint-box span-2" id="referralHint" style="display:none;">
+                              <i class="fas fa-info-circle"></i>
+                              <span id="referralHintText">Referral details will be used for commission calculation. Final payout approval happens in Channel Partner module.</span>
+                          </div>
                       </div>
                   </div>
               </div>
@@ -542,6 +593,86 @@
               <!-- Step 6: Generate -->
               <div class="step-panel" data-panel="6">
                   <div class="panel-title">Generate Quotation</div>
+                  
+                  <!-- Bank Details Section -->
+                  <div class="sub-section">
+                      <div class="sub-title"><i class="fas fa-university"></i> Bank Details</div>
+                      <div class="form-grid">
+                          <div class="form-field">
+                              <label>Account Name</label>
+                              <input type="text" id="f-accountName" placeholder="Account holder name" value="SolarTech Renewables Pvt. Ltd.">
+                          </div>
+                          <div class="form-field">
+                              <label>Bank Name</label>
+                              <input type="text" id="f-bankName" placeholder="Name of the bank" value="State Bank of India">
+                          </div>
+                          <div class="form-field">
+                              <label>Account Number</label>
+                              <input type="text" id="f-accountNumber" placeholder="Bank account number" value="123456789012345">
+                          </div>
+                          <div class="form-field">
+                              <label>IFSC Code</label>
+                              <input type="text" id="f-ifscCode" placeholder="IFSC code" value="SBIN0001234">
+                          </div>
+                          <div class="form-field span-2">
+                              <label>Branch</label>
+                              <input type="text" id="f-branch" placeholder="Branch name" value="Pune Main Branch">
+                          </div>
+                      </div>
+                      <div class="hint-box"><i class="fas fa-info-circle"></i> These bank details will be shown on the quotation/invoice. They can be auto-filled from Settings later.</div>
+                  </div>
+
+                  <!-- Payment Terms Section -->
+                  <div class="sub-section">
+                      <div class="sub-title"><i class="fas fa-hand-holding-usd"></i> Payment Terms</div>
+                      <div class="form-grid">
+                          <div class="form-field">
+                              <label>Advance % <span class="req">*</span></label>
+                              <input type="number" id="f-payment-advance" min="0" max="100" value="50">
+                          </div>
+                          <div class="form-field">
+                              <label>On Material Delivery % <span class="req">*</span></label>
+                              <input type="number" id="f-payment-material" min="0" max="100" value="25">
+                          </div>
+                          <div class="form-field">
+                              <label>On Installation Completion % <span class="req">*</span></label>
+                              <input type="number" id="f-payment-installation" min="0" max="100" value="15">
+                          </div>
+                          <div class="form-field">
+                              <label>Balance % <span class="req">*</span></label>
+                              <input type="number" id="f-payment-balance" min="0" max="100" value="10">
+                          </div>
+                      </div>
+                      <div class="hint-box" id="payment-summary"><i class="fas fa-check-circle"></i> Total: <span id="payment-total">100</span>%</div>
+                      <span class="field-error" id="err-payment"></span>
+                  </div>
+
+                  <!-- Quotation Validity -->
+                  <div class="sub-section">
+                      <div class="sub-title"><i class="fas fa-calendar-alt"></i> Quotation Validity</div>
+                      <div class="form-grid">
+                          <div class="form-field span-2">
+                              <label>Valid Until <span class="req">*</span></label>
+                              <input type="date" id="f-validUntil">
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Terms & Conditions (Editable) -->
+                  <div class="sub-section">
+                      <div class="sub-title"><i class="fas fa-file-contract"></i> Terms & Conditions</div>
+                      <div class="form-field span-2">
+                          <label>Terms & Conditions <span class="req">*</span></label>
+                          <textarea id="edit-terms" rows="4" style="width:100%; border:1px solid var(--line-soft); border-radius:9px; padding:10px; font-size:12px; font-family:inherit;">1. Prices are valid for 15 days from the date of quotation.
+2. 50% advance payment is required to confirm the order.
+3. Delivery and installation will be completed within 3–4 weeks of receiving the advance payment.
+4. All government subsidies and incentives will be processed as per applicable schemes.
+5. Warranty terms apply as per manufacturer's guidelines.
+6. Any additional civil work or structural changes will be charged extra.
+7. Taxes and duties as applicable at the time of billing.</textarea>
+                      </div>
+                  </div>
+
                   <div class="invoice-preview" id="invoice-preview"></div>
                   <div class="share-grid hidden" id="share-grid">
                       <button class="btn-outline" id="btn-download-pdf"><i class="fas fa-download"></i> Download PDF</button>
@@ -647,8 +778,28 @@
       </div>
   </div>
 
+  <!-- ================= MODAL: CONVERT TO ORDER ================= -->
+  <div id="modal-convert-order" class="modal-overlay hidden">
+      <div class="modal-box modal-small">
+          <div class="modal-head">
+              <div class="modal-title"><i class="fas fa-clipboard-list"></i> Convert to Order</div>
+              <button class="modal-close" data-close="modal-convert-order"><i class="fas fa-xmark"></i></button>
+          </div>
+          <div class="modal-body">
+              <p class="confirm-text">Are you sure you want to convert <b id="convert-quoteno"></b> to a Sales Order?</p>
+              <p class="confirm-text" style="font-size:11px;color:var(--muted);margin-top:6px;">This will create a new order with the same products and customer details.</p>
+          </div>
+          <div class="modal-foot">
+              <button class="btn-outline" data-close="modal-convert-order">Cancel</button>
+              <button class="btn-primary" id="btn-confirm-convert"><i class="fas fa-clipboard-check"></i> Convert to Order</button>
+          </div>
+      </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
 
+  <!-- IMPORTANT: load session.js first, then the module's own JS -->
+  <script src="/session.js"></script>
   <script src="/Quotation/quotation.js"></script>
 </body>
 </html>

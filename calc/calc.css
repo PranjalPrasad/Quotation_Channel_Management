@@ -232,13 +232,14 @@ html, body {
 .data-table tbody tr { transition: background-color .15s ease; }
 .data-table tbody tr:hover { background: #F1E2D1; }
 
-.data-table th:nth-child(1), .data-table td:nth-child(1) { width: 14%; }
-.data-table th:nth-child(2), .data-table td:nth-child(2) { width: 17%; }
-.data-table th:nth-child(3), .data-table td:nth-child(3) { width: 17%; }
-.data-table th:nth-child(4), .data-table td:nth-child(4) { width: 12%; }
-.data-table th:nth-child(5), .data-table td:nth-child(5) { width: 15%; }
-.data-table th:nth-child(6), .data-table td:nth-child(6) { width: 13%; }
+.data-table th:nth-child(1), .data-table td:nth-child(1) { width: 12%; }
+.data-table th:nth-child(2), .data-table td:nth-child(2) { width: 14%; }
+.data-table th:nth-child(3), .data-table td:nth-child(3) { width: 16%; }
+.data-table th:nth-child(4), .data-table td:nth-child(4) { width: 10%; }
+.data-table th:nth-child(5), .data-table td:nth-child(5) { width: 12%; }
+.data-table th:nth-child(6), .data-table td:nth-child(6) { width: 11%; }
 .data-table th:nth-child(7), .data-table td:nth-child(7) { width: 12%; }
+.data-table th:nth-child(8), .data-table td:nth-child(8) { width: 13%; }
 
 .row-actions { display: flex; align-items: center; justify-content: flex-start; gap: 2px; flex-wrap: nowrap; }
 .action-icon-btn {
