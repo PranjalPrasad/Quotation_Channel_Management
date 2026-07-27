@@ -1,72 +1,91 @@
 /* ============================================================
    Reports & Analytics — reports.js
+   IMPORTANT: core interactive UI (sidebar, dropdowns, tabs,
+   filters, table sort/paginate) is initialised FIRST and does
+   NOT depend on Chart.js. Chart rendering is isolated in its own
+   try/catch block at the bottom so that if the Chart.js CDN
+   fails to load (slow network, ad-blocker, offline), it can
+   never break the sidebar, table, or any button on this page.
    ============================================================ */
 
-// ---------- Sidebar toggle (ref: Pocket Dashboard behaviour) ----------
+// ============================================================
+// 1) SIDEBAR TOGGLE (matches Dashboard reference behaviour)
+// ============================================================
 const sidebar = document.getElementById('sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
 const toggleIcon = document.getElementById('toggleIcon');
-const sidebarOverlay = document.getElementById('sidebar-overlay');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 
 let expanded = false;
 
 sidebarToggle?.addEventListener('click', () => {
-    if (window.innerWidth < 1024) {
-        sidebar.classList.toggle('mobile-open');
-        sidebarOverlay?.classList.toggle('hidden');
-        return;
-    }
     expanded = !expanded;
     sidebar.classList.toggle('expanded', expanded);
     sidebar.classList.toggle('collapsed', !expanded);
     toggleIcon.style.transform = expanded ? 'rotate(180deg)' : 'rotate(0deg)';
+
+    // On phone/tablet the expanded sidebar becomes an overlay drawer,
+    // so show a tap-outside-to-close backdrop.
+    if (window.innerWidth < 1024) {
+        sidebarBackdrop?.classList.toggle('hidden', !expanded);
+        sidebarBackdrop?.classList.toggle('visible', expanded);
+    }
 });
 
-sidebarOverlay?.addEventListener('click', () => {
-    sidebar?.classList.remove('mobile-open');
-    sidebarOverlay.classList.add('hidden');
+sidebarBackdrop?.addEventListener('click', () => {
+    expanded = false;
+    sidebar.classList.remove('expanded');
+    sidebar.classList.add('collapsed');
+    toggleIcon.style.transform = 'rotate(0deg)';
+    sidebarBackdrop.classList.add('hidden');
+    sidebarBackdrop.classList.remove('visible');
 });
 
 window.addEventListener('resize', () => {
     if (window.innerWidth >= 1024) {
-        sidebar?.classList.remove('mobile-open');
-        sidebarOverlay?.classList.add('hidden');
+        sidebarBackdrop?.classList.add('hidden');
+        sidebarBackdrop?.classList.remove('visible');
     }
 });
 
-// ---------- Notification / user dropdowns ----------
-const userBtn = document.getElementById('user-menu-btn');
-const userMenu = document.getElementById('user-menu');
-userBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    userMenu.classList.toggle('hidden');
-    notifMenu?.classList.add('hidden');
-});
+// ============================================================
+// 2) NOTIFICATION / PROFILE DROPDOWNS
+// ============================================================
+const notifBtn = document.getElementById('notifBtn');
+const notifDropdown = document.getElementById('notifDropdown');
+const profileBtn = document.getElementById('profileBtn');
+const profileDropdown = document.getElementById('profileDropdown');
 
-const notifBtn = document.getElementById('notif-btn');
-const notifMenu = document.getElementById('notif-menu');
 notifBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
-    notifMenu.classList.toggle('hidden');
-    userMenu?.classList.add('hidden');
+    notifDropdown?.classList.toggle('hidden');
+    profileDropdown?.classList.add('hidden');
+});
+
+profileBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profileDropdown?.classList.toggle('hidden');
+    notifDropdown?.classList.add('hidden');
 });
 
 document.addEventListener('click', (e) => {
-    if (!userBtn?.contains(e.target) && !userMenu?.contains(e.target)) userMenu?.classList.add('hidden');
-    if (!notifBtn?.contains(e.target) && !notifMenu?.contains(e.target)) notifMenu?.classList.add('hidden');
+    if (!notifBtn?.contains(e.target) && !notifDropdown?.contains(e.target)) notifDropdown?.classList.add('hidden');
+    if (!profileBtn?.contains(e.target) && !profileDropdown?.contains(e.target)) profileDropdown?.classList.add('hidden');
 });
 
-// ---------- Logout ----------
-document.getElementById('logout-btn')?.addEventListener('click', (e) => {
+document.getElementById('profileLogoutBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = '../index.html';
 });
 
-// ---------- Toast helper ----------
+// ============================================================
+// 3) TOAST HELPER
+// ============================================================
 function showToast(message, icon = 'fa-circle-check', color = 'emerald') {
     const container = document.getElementById('toast-container');
+    if (!container) return;
     const toast = document.createElement('div');
-    toast.className = `toast-animate flex items-center gap-2 bg-white border border-gray-100 shadow-lg rounded-xl px-4 py-2.5 text-xs font-medium text-gray-800`;
+    toast.className = `toast-animate flex items-center gap-2 bg-cream border border-peach-300 shadow-lg rounded-xl px-4 py-2.5 text-xs font-medium text-gray-800`;
     toast.innerHTML = `<i class="fas ${icon} text-${color}-600"></i> ${message}`;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 2800);
@@ -81,110 +100,7 @@ document.querySelectorAll('.export-btn').forEach(btn => {
 });
 
 // ============================================================
-// Chart theme (peach)
-// ============================================================
-const peach = '#FEB4A7';
-const peachDark = '#F4917D';
-const gridColor = 'rgba(75, 86, 148, 0.10)';
-const fontColor = '#9CA3AF';
-
-Chart.defaults.font.family = "'Poppins', sans-serif";
-Chart.defaults.font.size = 11;
-
-// Monthly Quotation Trend
-const trendMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-const trendCounts = [25, 31, 42, 38, 45, 52];
-
-new Chart(document.getElementById('chartTrend'), {
-    type: 'line',
-    data: {
-        labels: trendMonths,
-        datasets: [{
-            label: 'Quotations',
-            data: trendCounts,
-            borderColor: peachDark,
-            backgroundColor: 'rgba(254, 180, 167, 0.25)',
-            fill: true,
-            tension: 0.35,
-            pointBackgroundColor: peachDark,
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            pointRadius: 4
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} quotations` } } },
-        scales: {
-            x: { grid: { display: false }, ticks: { color: fontColor } },
-            y: { grid: { color: gridColor }, ticks: { color: fontColor }, beginAtZero: true }
-        }
-    }
-});
-
-// Status Distribution
-new Chart(document.getElementById('chartStatus'), {
-    type: 'doughnut',
-    data: {
-        labels: ['Accepted', 'Pending', 'Rejected'],
-        datasets: [{
-            data: [86, 62, 39],
-            backgroundColor: ['#059669', '#d97706', '#e11d48'],
-            borderColor: '#FFFFFF',
-            borderWidth: 2
-        }]
-    },
-    options: {
-        responsive: true,
-        cutout: '68%',
-        plugins: {
-            legend: { position: 'bottom', labels: { color: '#1F2937', boxWidth: 10, padding: 12 } },
-            tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed}` } }
-        }
-    }
-});
-
-// Revenue by System Size
-new Chart(document.getElementById('chartSystemSize'), {
-    type: 'bar',
-    data: {
-        labels: ['< 3 kW', '3–5 kW', '5–10 kW', '10 kW+'],
-        datasets: [{
-            label: 'Value (₹ in Lakhs)',
-            data: [18.6, 34.2, 51.8, 37.4],
-            backgroundColor: peach,
-            borderRadius: 8,
-            maxBarThickness: 44
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `₹${ctx.parsed.y}L` } } },
-        scales: {
-            x: { grid: { display: false }, ticks: { color: fontColor } },
-            y: { grid: { color: gridColor }, ticks: { color: fontColor } }
-        }
-    }
-});
-
-// ---------- Top Sales Performers ----------
-const performers = [
-    { name: 'Arjun Mehta', quotes: 68, accepted: 34, rate: '50.0%' },
-    { name: 'Priya Singh', quotes: 61, accepted: 27, rate: '44.3%' },
-    { name: 'Kavya Rao', quotes: 58, accepted: 25, rate: '43.1%' },
-];
-const topPerformersEl = document.getElementById('topPerformers');
-performers.forEach(p => {
-    const row = document.createElement('div');
-    row.className = 'alert-row bg-peach-50';
-    row.innerHTML = `
-        <span class="font-medium text-gray-800">${p.name}</span>
-        <span class="text-peach-600 font-semibold">${p.accepted}/${p.quotes} · ${p.rate}</span>`;
-    topPerformersEl.appendChild(row);
-});
-
-// ============================================================
-// Report type tabs
+// 4) REPORT TYPE TABS
 // ============================================================
 document.querySelectorAll('.report-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -196,7 +112,27 @@ document.querySelectorAll('.report-tab').forEach(tab => {
 });
 
 // ============================================================
-// Detailed report table: data, sort, filter, paginate
+// 5) TOP SALES PERFORMERS
+// ============================================================
+const performers = [
+    { name: 'Arjun Mehta', quotes: 68, accepted: 34, rate: '50.0%' },
+    { name: 'Priya Singh', quotes: 61, accepted: 27, rate: '44.3%' },
+    { name: 'Kavya Rao', quotes: 58, accepted: 25, rate: '43.1%' },
+];
+const topPerformersEl = document.getElementById('topPerformers');
+if (topPerformersEl) {
+    performers.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'alert-row bg-peach-100/60';
+        row.innerHTML = `
+            <span class="font-medium text-gray-800">${p.name}</span>
+            <span class="text-peach-600 font-semibold">${p.accepted}/${p.quotes} · ${p.rate}</span>`;
+        topPerformersEl.appendChild(row);
+    });
+}
+
+// ============================================================
+// 6) DETAILED REPORT TABLE — data, sort, filter, paginate
 // ============================================================
 const reportData = [
     { quoteNo: 'SQ-1001', customer: 'Amit Sharma', systemSize: '3 kW', amount: 165000, salesPerson: 'Priya Singh', status: 'accepted', date: '2026-07-15' },
@@ -234,8 +170,8 @@ function formatDate(iso) {
 }
 
 function getFilteredData() {
-    const status = document.getElementById('statusFilter').value;
-    const salesPerson = document.getElementById('salesFilter').value;
+    const status = document.getElementById('statusFilter')?.value || 'all';
+    const salesPerson = document.getElementById('salesFilter')?.value || 'all';
     return reportData.filter(row => {
         if (status !== 'all' && row.status !== status) return false;
         if (salesPerson !== 'all' && row.salesPerson !== salesPerson) return false;
@@ -256,6 +192,9 @@ function getSortedData() {
 }
 
 function renderTable() {
+    const tbody = document.getElementById('reportTableBody');
+    if (!tbody) return;
+
     const data = getSortedData();
     const totalRows = data.length;
     const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
@@ -264,20 +203,19 @@ function renderTable() {
     const start = (currentPage - 1) * pageSize;
     const pageRows = data.slice(start, start + pageSize);
 
-    const tbody = document.getElementById('reportTableBody');
     tbody.innerHTML = pageRows.map(row => {
         const meta = statusMeta[row.status];
         return `
         <tr class="cursor-pointer" data-quote="${row.quoteNo}">
-            <td class="font-medium">${row.quoteNo}</td>
-            <td>${row.customer}</td>
-            <td>${row.systemSize}</td>
-            <td>${formatAmount(row.amount)}</td>
-            <td>${row.salesPerson}</td>
-            <td><span class="status-pill ${row.status}"><i class="fas ${meta.icon}"></i> ${meta.label}</span></td>
-            <td>${formatDate(row.date)}</td>
-            <td>
-                <div class="flex items-center gap-1">
+            <td data-label="Quotation No." class="font-medium">${row.quoteNo}</td>
+            <td data-label="Customer">${row.customer}</td>
+            <td data-label="System Size">${row.systemSize}</td>
+            <td data-label="Amount">${formatAmount(row.amount)}</td>
+            <td data-label="Sales Person">${row.salesPerson}</td>
+            <td data-label="Status"><span class="status-pill ${row.status}"><i class="fas ${meta.icon}"></i> ${meta.label}</span></td>
+            <td data-label="Date">${formatDate(row.date)}</td>
+            <td data-label="Actions">
+                <div class="flex items-center gap-1 justify-end">
                     <span class="row-action-btn" title="View"><i class="fas fa-eye"></i></span>
                     <span class="row-action-btn" title="Download PDF"><i class="fas fa-file-arrow-down"></i></span>
                     <span class="row-action-btn" title="Print"><i class="fas fa-print"></i></span>
@@ -302,8 +240,10 @@ function renderTable() {
         });
     });
 
-    document.getElementById('pageInfo').textContent =
-        totalRows === 0 ? 'No results' : `Showing ${start + 1}–${Math.min(start + pageSize, totalRows)} of ${totalRows}`;
+    const pageInfo = document.getElementById('pageInfo');
+    if (pageInfo) {
+        pageInfo.textContent = totalRows === 0 ? 'No results' : `Showing ${start + 1}–${Math.min(start + pageSize, totalRows)} of ${totalRows}`;
+    }
 
     renderPagination(totalPages);
     updateSortIndicators();
@@ -311,6 +251,7 @@ function renderTable() {
 
 function renderPagination(totalPages) {
     const el = document.getElementById('pagination');
+    if (!el) return;
     el.innerHTML = '';
 
     const prev = document.createElement('span');
@@ -338,8 +279,8 @@ function updateSortIndicators() {
     document.querySelectorAll('#reportTable thead th[data-key]').forEach(th => {
         const icon = th.querySelector('.sort-icon');
         th.classList.remove('sorted');
-        icon.className = 'fas fa-sort sort-icon';
-        if (th.dataset.key === sortKey) {
+        if (icon) icon.className = 'fas fa-sort sort-icon';
+        if (th.dataset.key === sortKey && icon) {
             th.classList.add('sorted');
             icon.className = `fas ${sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} sort-icon`;
         }
@@ -360,19 +301,19 @@ document.querySelectorAll('#reportTable thead th[data-key]').forEach(th => {
     });
 });
 
-document.getElementById('pageSize').addEventListener('change', (e) => {
+document.getElementById('pageSize')?.addEventListener('change', (e) => {
     pageSize = parseInt(e.target.value, 10);
     currentPage = 1;
     renderTable();
 });
 
-document.getElementById('applyFilters').addEventListener('click', () => {
+document.getElementById('applyFilters')?.addEventListener('click', () => {
     currentPage = 1;
     renderTable();
     showToast('Filters applied', 'fa-filter');
 });
 
-document.getElementById('resetFilters').addEventListener('click', () => {
+document.getElementById('resetFilters')?.addEventListener('click', () => {
     document.getElementById('statusFilter').value = 'all';
     document.getElementById('salesFilter').value = 'all';
     document.getElementById('vendorFilter').value = 'all';
@@ -381,5 +322,127 @@ document.getElementById('resetFilters').addEventListener('click', () => {
     showToast('Filters reset', 'fa-rotate-left');
 });
 
-// Initial render
+// Render the table immediately — this must always work, charts or no charts.
 renderTable();
+
+// ============================================================
+// 7) CHARTS (isolated — a Chart.js load failure cannot break
+//    anything above this point)
+// ============================================================
+
+// Shows a friendly placeholder inside a chart's wrapper instead of
+// leaving a blank box when Chart.js couldn't load or a chart errored.
+function showChartFallback(canvasEl) {
+    if (!canvasEl) return;
+    const wrap = canvasEl.closest('.pie-wrap') || canvasEl.parentElement;
+    if (!wrap) return;
+    wrap.innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full text-center gap-1.5 px-4">
+            <i class="fas fa-chart-simple text-lg text-peach-300"></i>
+            <p class="text-[11px] font-medium text-gray-500">Chart couldn't load</p>
+            <p class="text-[10px] text-gray-400">Chart.js failed to load from the CDN — check your network/firewall, or self-host chart.js.</p>
+        </div>`;
+}
+
+(function initCharts() {
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js did not load — skipping charts, rest of the page is unaffected.');
+        ['chartTrend', 'chartStatus', 'chartSystemSize'].forEach(id => showChartFallback(document.getElementById(id)));
+        return;
+    }
+
+    try {
+        const peach = '#810B38';
+        const peachLight = 'rgba(129, 11, 56, 0.18)';
+        const gridColor = 'rgba(84, 26, 26, 0.08)';
+        const fontColor = '#9CA3AF';
+
+        Chart.defaults.font.family = "'Poppins', sans-serif";
+        Chart.defaults.font.size = 10.5;
+
+        const trendEl = document.getElementById('chartTrend');
+        if (trendEl) {
+            new Chart(trendEl, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Quotations',
+                        data: [25, 31, 42, 38, 45, 52],
+                        borderColor: peach,
+                        backgroundColor: peachLight,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: peach,
+                        pointBorderColor: '#F7ECE1',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} quotations` } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: fontColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: fontColor }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        const statusEl = document.getElementById('chartStatus');
+        if (statusEl) {
+            new Chart(statusEl, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Accepted', 'Pending', 'Rejected'],
+                    datasets: [{
+                        data: [86, 62, 39],
+                        backgroundColor: ['#059669', '#d97706', '#e11d48'],
+                        borderColor: '#F7ECE1',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#1F2937', boxWidth: 9, padding: 10, font: { size: 10 } } },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed}` } }
+                    }
+                }
+            });
+        }
+
+        const sizeEl = document.getElementById('chartSystemSize');
+        if (sizeEl) {
+            new Chart(sizeEl, {
+                type: 'bar',
+                data: {
+                    labels: ['< 3 kW', '3–5 kW', '5–10 kW', '10 kW+'],
+                    datasets: [{
+                        label: 'Value (₹ in Lakhs)',
+                        data: [18.6, 34.2, 51.8, 37.4],
+                        backgroundColor: peach,
+                        borderRadius: 8,
+                        maxBarThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `₹${ctx.parsed.y}L` } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: fontColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: fontColor } }
+                    }
+                }
+            });
+        }
+    } catch (err) {
+        console.warn('Chart rendering failed, rest of the page is unaffected:', err);
+        ['chartTrend', 'chartStatus', 'chartSystemSize'].forEach(id => showChartFallback(document.getElementById(id)));
+    }
+})();

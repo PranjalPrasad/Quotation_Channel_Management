@@ -1,7 +1,9 @@
 /* ============================================================
    User Management — extends dashboard.css theme
-   Reuses: cream/peach palette, Poppins, cards, table, modal
-   patterns already defined in /dashboard/dashboard.css
+   Reuses: app-shell / app-sidebar / app-main layout, sidebar
+   drawer + backdrop behaviour, cream/peach palette, Poppins,
+   cards, table, modal patterns already defined in
+   /dashboard/dashboard.css
    ============================================================ */
 
 /* ============ Search & filter bar ============ */
@@ -177,19 +179,19 @@
 /* ============ Roles & permissions cards ============ */
 .permission-card {
   border: 1px solid #DCC3AA;
-  border-radius: 18px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 14px;
   background: #FBF6EF;
 }
-.permission-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.permission-card-title { font-size: 13px; font-weight: 700; color: #1F2937; }
+.permission-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.permission-card-title { font-size: 12.5px; font-weight: 700; color: #1F2937; }
 .permission-card-count { font-size: 10.5px; color: #9CA3AF; }
-.permission-list { display: flex; flex-direction: column; gap: 7px; }
+.permission-list { display: flex; flex-direction: column; gap: 6px; }
 .permission-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12.5px;
+  font-size: 12px;
   color: #374151;
   padding: 6px 8px;
   border-radius: 9px;
@@ -209,9 +211,19 @@
 .permission-cross { background: #FFE4E6; color: #E11D48; }
 .permission-check svg, .permission-cross svg { width: 11px; height: 11px; }
 
+/* ============ Responsive tuning specific to the users table ============ */
+@media (max-width: 767px) {
+  .filter-select { min-width: 0; flex: 1 1 130px; }
+  .filter-reset-btn { flex: 0 0 auto; }
+}
+
 @media (max-width: 720px) {
   #usersTable td[data-label="Photo"] .table-avatar,
   #usersTable td[data-label="Photo"] .table-avatar-initials {
     margin-left: auto;
   }
+}
+
+@media (max-width: 480px) {
+  .avatar-upload { flex-direction: column; align-items: flex-start; gap: 10px; }
 }

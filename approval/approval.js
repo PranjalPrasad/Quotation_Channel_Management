@@ -1,17 +1,47 @@
 // ============================================================
-// Sidebar collapse / expand (matches dashboard behaviour)
+// Sidebar collapse / expand (matches dashboard behaviour, incl.
+// mobile/tablet overlay drawer with backdrop)
 // ============================================================
 const sidebar = document.getElementById("sidebar");
 const sidebarToggle = document.getElementById("sidebarToggle");
 const toggleIcon = document.getElementById("toggleIcon");
+const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 
 let sidebarExpanded = false;
 
-sidebarToggle.addEventListener("click", () => {
-  sidebarExpanded = !sidebarExpanded;
+function setSidebarExpanded(expanded) {
+  sidebarExpanded = expanded;
   sidebar.classList.toggle("expanded", sidebarExpanded);
   sidebar.classList.toggle("collapsed", !sidebarExpanded);
   toggleIcon.style.transform = sidebarExpanded ? "rotate(180deg)" : "rotate(0deg)";
+
+  if (window.innerWidth < 1024) {
+    sidebarBackdrop.classList.toggle("visible", sidebarExpanded);
+    sidebarBackdrop.classList.toggle("hidden", !sidebarExpanded);
+  } else {
+    sidebarBackdrop.classList.remove("visible");
+    sidebarBackdrop.classList.add("hidden");
+  }
+}
+
+sidebarToggle.addEventListener("click", () => {
+  setSidebarExpanded(!sidebarExpanded);
+});
+
+sidebarBackdrop?.addEventListener("click", () => {
+  setSidebarExpanded(false);
+});
+
+// collapse the drawer automatically if the viewport grows past the
+// mobile/tablet breakpoint while it's open as an overlay
+window.addEventListener("resize", () => {
+  if (window.innerWidth >= 1024) {
+    sidebarBackdrop.classList.remove("visible");
+    sidebarBackdrop.classList.add("hidden");
+  } else if (sidebarExpanded) {
+    sidebarBackdrop.classList.add("visible");
+    sidebarBackdrop.classList.remove("hidden");
+  }
 });
 
 // ============================================================
@@ -431,7 +461,6 @@ function renderTimeline(a) {
       stateClass = "done";
       icon = TIMELINE_ICON_DONE;
     } else {
-      // mark the next pending step as "current" if the previous step is done
       const prevKey = TIMELINE_STEPS[idx - 1]?.key;
       const prevDone = idx === 0 || a.timeline[prevKey];
       if (prevDone && !value && !isRejected) stateClass = "current";

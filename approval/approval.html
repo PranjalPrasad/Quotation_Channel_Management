@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Approval Management — Solar Quotation Management</title>
 
 <!-- Tailwind CDN -->
@@ -40,12 +40,15 @@
 
 <link rel="stylesheet" href="/approval/approval.css" />
 </head>
-<body class="bg-cream min-h-screen font-sans">
+<body class="bg-cream">
 
-  <div class="min-h-screen w-full flex">
+  <div class="app-shell w-full flex">
+
+    <!-- backdrop shown only on phone/tablet when the sidebar drawer is expanded -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
 
     <!-- ===================== SIDEBAR ===================== -->
-    <aside id="sidebar" class="sidebar relative flex flex-col items-center py-5 gap-6 bg-cream border-r border-peach-300 transition-all duration-300 ease-in-out w-20 shrink-0">
+    <aside id="sidebar" class="sidebar app-sidebar relative flex flex-col items-center py-5 gap-6 bg-cream border-r border-peach-300 transition-all duration-300 ease-in-out w-20 shrink-0">
       <button id="sidebarToggle" aria-label="Toggle sidebar" class="absolute -right-3 top-8 w-6 h-6 rounded-full bg-cream shadow-md border border-peach-300 flex items-center justify-center text-peach-500 hover:scale-110 transition-transform">
         <svg id="toggleIcon" class="w-3.5 h-3.5 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"></polyline>
@@ -53,72 +56,72 @@
       </button>
 
       <div class="flex items-center justify-center shrink-0">
-        <img src="/img/logo.webp" alt="Company Logo" class="w-auto h-11 object-contain" />
+        <img src="/img/logo.webp" alt="Company Logo" class="w-auto h-10 object-contain" />
       </div>
 
       <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
-  <button class="nav-item active" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
-    <span>Dashboard</span>
-  </button>
-  <button class="nav-item" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
-    <span>Quotation Management</span>
-  </button>
-  <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
-    <span>Product Management</span>
-  </button>
-  <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-      <circle cx="9" cy="11" r="3"></circle>
-      <path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path>
-      <path d="M16 9l2 2 4-4"></path>
-    </svg>
-    <span>Customer Management</span>
-  </button>
-  <button class="nav-item" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
-    <span>Reports Management</span>
-  </button>
+        <button class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
+          <span>Quotation Management</span>
+        </button>
+        <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
+          <span>Product Management</span>
+        </button>
+        <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+            <circle cx="9" cy="11" r="3"></circle>
+            <path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path>
+            <path d="M16 9l2 2 4-4"></path>
+          </svg>
+          <span>Customer Management</span>
+        </button>
+        <button class="nav-item" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
+          <span>Reports Management</span>
+        </button>
 
-    <button class="nav-item active" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
+        <button class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Project Management</span>
         </button>
 
-   <button class="nav-item active" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
+        <button class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           <span>User Management</span>
         </button>
 
-     <button class="nav-item active" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
+        <button class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
           <span>Cost Calculator</span>
         </button>
 
-   <button class="nav-item active" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
+        <button class="nav-item active" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
           <span>Approval Management</span>
         </button>
-</nav>
+      </nav>
     </aside>
 
     <!-- ===================== MAIN ===================== -->
-    <main class="flex-1 bg-cream px-5 md:px-8 py-6 overflow-y-auto">
+    <main class="app-main flex-1 bg-cream px-4 sm:px-5 md:px-6 py-4 min-w-0">
 
       <!-- top bar -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div>
           <p class="text-sm text-gray-700">👋 Hello, <span class="font-semibold">Barly Vallendito</span></p>
           <p class="text-[11px] text-gray-400">Welcome</p>
         </div>
 
-        <div class="flex items-center gap-3 relative">
+        <div class="flex items-center gap-2.5 relative">
           <div class="relative">
-            <button id="notifBtn" aria-label="Notifications" class="w-9 h-9 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
-              <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button id="notifBtn" aria-label="Notifications" class="w-8 h-8 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
@@ -143,7 +146,7 @@
           </div>
 
           <div class="relative">
-            <button id="profileBtn" aria-label="Profile" class="w-9 h-9 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+            <button id="profileBtn" aria-label="Profile" class="w-8 h-8 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
               B
             </button>
 
@@ -158,61 +161,61 @@
       </div>
 
       <!-- ============ Page header ============ -->
-      <div class="mb-5">
-        <h1 class="text-xl font-semibold text-gray-800">Approval Management</h1>
-        <p class="text-[12.5px] text-gray-400 mt-0.5">Review and approve quotation requests.</p>
+      <div class="mb-2.5">
+        <h1 class="text-base font-semibold text-gray-800">Approval Management</h1>
+        <p class="text-[11px] text-gray-400 mt-0.5">Review and approve quotation requests.</p>
       </div>
 
       <!-- ============ Summary cards ============ -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
-        <div class="summary-card bg-cream rounded-3xl p-4 shadow-sm border border-peach-300 flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-2.5">
+        <div class="summary-card bg-cream rounded-xl p-3 shadow-sm border border-peach-300 flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
           </div>
           <div>
-            <p class="text-lg font-semibold text-gray-800" id="kpiPending">0</p>
-            <p class="text-[11px] text-gray-400">Pending</p>
+            <p class="text-sm font-semibold text-gray-800" id="kpiPending">0</p>
+            <p class="text-[10px] text-gray-400">Pending</p>
           </div>
         </div>
 
-        <div class="summary-card bg-cream rounded-3xl p-4 shadow-sm border border-peach-300 flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <div class="summary-card bg-cream rounded-xl p-3 shadow-sm border border-peach-300 flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
           </div>
           <div>
-            <p class="text-lg font-semibold text-gray-800" id="kpiApproved">0</p>
-            <p class="text-[11px] text-gray-400">Approved</p>
+            <p class="text-sm font-semibold text-gray-800" id="kpiApproved">0</p>
+            <p class="text-[10px] text-gray-400">Approved</p>
           </div>
         </div>
 
-        <div class="summary-card bg-cream rounded-3xl p-4 shadow-sm border border-peach-300 flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+        <div class="summary-card bg-cream rounded-xl p-3 shadow-sm border border-peach-300 flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
           </div>
           <div>
-            <p class="text-lg font-semibold text-gray-800" id="kpiRejected">0</p>
-            <p class="text-[11px] text-gray-400">Rejected</p>
+            <p class="text-sm font-semibold text-gray-800" id="kpiRejected">0</p>
+            <p class="text-[10px] text-gray-400">Rejected</p>
           </div>
         </div>
 
-        <div class="summary-card bg-cream rounded-3xl p-4 shadow-sm border border-peach-300 flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"></path><path d="M16 2h6v6"></path><path d="M10 14 22 2"></path></svg>
+        <div class="summary-card bg-cream rounded-xl p-3 shadow-sm border border-peach-300 flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-violet-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"></path><path d="M16 2h6v6"></path><path d="M10 14 22 2"></path></svg>
           </div>
           <div>
-            <p class="text-lg font-semibold text-gray-800" id="kpiConverted">0</p>
-            <p class="text-[11px] text-gray-400">Converted</p>
+            <p class="text-sm font-semibold text-gray-800" id="kpiConverted">0</p>
+            <p class="text-[10px] text-gray-400">Converted</p>
           </div>
         </div>
       </div>
 
       <!-- ============ Search + Filters + Table ============ -->
-      <div class="bg-cream rounded-3xl p-5 shadow-sm border border-peach-300">
+      <div class="bg-cream rounded-xl p-3.5 shadow-sm border border-peach-300 mb-3">
 
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
           <div>
-            <h2 class="text-sm font-semibold text-gray-700">Quotation Requests</h2>
-            <p class="text-[11px] text-gray-400">Search, filter, and take action on submitted quotations</p>
+            <h2 class="text-xs font-semibold text-gray-700">Quotation Requests</h2>
+            <p class="text-[10.5px] text-gray-400">Search, filter, and take action on submitted quotations</p>
           </div>
           <div class="filter-tabs" id="filterTabs">
             <button class="filter-tab active" data-status="All">All</button>
@@ -222,7 +225,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
           <div class="search-field">
             <label class="search-label" for="searchId">Quotation ID</label>
             <input type="text" id="searchId" class="search-input" placeholder="e.g. QA-2045">
@@ -248,7 +251,7 @@
           </div>
         </div>
 
-        <div class="table-scope">
+        <div class="table-scope overflow-x-auto">
           <table class="data-table" id="approvalTable">
             <thead>
               <tr>
@@ -267,7 +270,7 @@
         </div>
 
         <div class="flex items-center justify-between mt-2 flex-wrap gap-2">
-          <div class="flex items-center gap-2 text-[11px] text-gray-400">
+          <div class="flex items-center gap-2 text-[10.5px] text-gray-400">
             <span>Rows per page</span>
             <select id="rowsPerPage" class="rows-select">
               <option value="10" selected>10</option>

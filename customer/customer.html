@@ -2,18 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Pocket Dashboard — Customer Management</title>
-
-<!--
-  NOTE: Tailwind is loaded here ONLY because the shared sidebar/topbar
-  markup below is copied verbatim from dashboard.html and depends on it
-  (per the brief: do not modify sidebar/topbar/theme). Every class used
-  in the actual Customer Management module further down (cards, filters,
-  table extras, history, follow-ups, modals) is plain CSS from
-  dashboard.css (reused) and customer.css (new) — no Tailwind utility
-  classes are used anywhere in the new module markup.
--->
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -49,12 +39,15 @@
 <link rel="stylesheet" href="/dashboard/dashboard.css" />
 <link rel="stylesheet" href="/customer/customer.css" />
 </head>
-<body class="bg-cream min-h-screen font-sans">
+<body class="bg-cream">
 
-  <div class="min-h-screen w-full flex">
+  <div class="app-shell w-full flex">
+
+    <!-- backdrop shown only on phone/tablet when the sidebar drawer is expanded (same as dashboard ref) -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
 
     <!-- ===================== SIDEBAR (matches dashboard.html exactly) ===================== -->
-    <aside id="sidebar" class="sidebar relative flex flex-col items-center py-5 gap-6 bg-cream border-r border-peach-300 transition-all duration-300 ease-in-out w-20 shrink-0">
+    <aside id="sidebar" class="sidebar app-sidebar relative flex flex-col items-center py-5 gap-6 bg-cream border-r border-peach-300 transition-all duration-300 ease-in-out w-20 shrink-0">
       <button id="sidebarToggle" aria-label="Toggle sidebar" class="absolute -right-3 top-8 w-6 h-6 rounded-full bg-cream shadow-md border border-peach-300 flex items-center justify-center text-peach-500 hover:scale-110 transition-transform">
         <svg id="toggleIcon" class="w-3.5 h-3.5 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"></polyline>
@@ -62,11 +55,11 @@
       </button>
 
       <div class="flex items-center justify-center shrink-0">
-        <img src="/img/logo.webp" alt="Company Logo" class="w-auto h-11 object-contain" />
+        <img src="/img/logo.webp" alt="Company Logo" class="w-auto h-10 object-contain" />
       </div>
 
       <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
-        <button class="nav-item active" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
+        <button class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
           <span>Dashboard</span>
         </button>
@@ -78,7 +71,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
           <span>Product Management</span>
         </button>
-        <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
+        <button class="nav-item active" data-label="Customer Management" aria-label="Customer Management">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
             <circle cx="9" cy="11" r="3"></circle>
@@ -92,22 +85,22 @@
           <span>Reports Management</span>
         </button>
 
-        <button class="nav-item active" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
+        <button class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>Project Management</span>
         </button>
 
-        <button class="nav-item active" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
+        <button class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           <span>User Management</span>
         </button>
 
-        <button class="nav-item active" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
+        <button class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
           <span>Cost Calculator</span>
         </button>
 
-        <button class="nav-item active" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
+        <button class="nav-item" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
           <span>Approval Management</span>
         </button>
@@ -115,19 +108,19 @@
     </aside>
 
     <!-- ===================== MAIN ===================== -->
-    <main class="flex-1 bg-cream px-6 md:px-10 py-8 overflow-y-auto">
+    <main class="app-main flex-1 bg-cream px-4 sm:px-5 md:px-6 py-4 min-w-0">
 
       <!-- Topbar (matches dashboard.html exactly) -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div>
           <p class="text-sm text-gray-700">Customer Management</p>
           <p class="text-[11px] text-gray-400">Manage all customer records, project information and follow-up activities.</p>
         </div>
 
-        <div class="flex items-center gap-3 relative">
+        <div class="flex items-center gap-2.5 relative">
           <div class="relative">
-            <button id="notifBtn" aria-label="Notifications" class="w-9 h-9 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
-              <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button id="notifBtn" aria-label="Notifications" class="w-8 h-8 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
@@ -142,7 +135,7 @@
           </div>
 
           <div class="relative">
-            <button id="profileBtn" aria-label="Profile" class="w-9 h-9 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">B</button>
+            <button id="profileBtn" aria-label="Profile" class="w-8 h-8 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">B</button>
             <div id="profileDropdown" class="topbar-dropdown hidden">
               <button id="profileLogoutBtn" class="topbar-logout-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -295,7 +288,7 @@
 
         <div class="table-footer" id="tableFooter">
           <div class="rows-label" id="rowsRangeLabel"></div>
-          <div id="paginationControls" class="flex items-center gap-1" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;"></div>
+          <div id="paginationControls" class="flex items-center gap-1 flex-wrap"></div>
         </div>
       </div>
 

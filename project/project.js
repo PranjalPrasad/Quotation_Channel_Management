@@ -1,5 +1,5 @@
 // ============================================================
-// Sidebar collapse / expand (same behaviour as dashboard.js,
+// Sidebar collapse / expand (identical behaviour to dashboard.js,
 // including the mobile/tablet overlay drawer + backdrop)
 // ============================================================
 const sidebar = document.getElementById("sidebar");
@@ -22,7 +22,7 @@ function setSidebarExpanded(value) {
   }
 }
 
-// start collapsed, same as dashboard on first load
+// Start collapsed on every page load — exactly like dashboard.
 sidebar.classList.add("collapsed");
 
 sidebarToggle?.addEventListener("click", () => {
@@ -39,12 +39,13 @@ window.addEventListener("resize", () => {
   }
 });
 
-document.querySelectorAll(".nav-list .nav-item").forEach((item) => {
-  item.addEventListener("click", () => {
-    document.querySelectorAll(".nav-list .nav-item").forEach((i) => i.classList.remove("active"));
-    item.classList.add("active");
-  });
-});
+// NOTE: nav "active" highlighting is NOT toggled by click here.
+// Each page is a separate full load (onclick="window.location.href=...")
+// so the correct nav item is marked class="active" directly in that
+// page's HTML — exactly like dashboard.html marks "Dashboard" active
+// and project.html marks "Project Management" active. This avoids the
+// old bug where a runtime click-listener briefly re-highlighted the
+// wrong item right before navigation fired.
 
 // ============================================================
 // Topbar dropdowns (same behaviour as dashboard.js)

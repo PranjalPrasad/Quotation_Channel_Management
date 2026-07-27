@@ -3,17 +3,57 @@
    Vanilla JS only. No frameworks, no jQuery.
    ============================================================ */
 
-/* ---------- Sidebar collapse/expand (same behaviour as dashboard.js) ---------- */
+/* ---------- Sidebar collapse/expand (same behaviour as dashboard.js) ----------
+   On tablet/phone (<1024px) the sidebar opens as an overlay drawer
+   (see .sidebar.expanded position:fixed rule in dashboard.css), so a
+   backdrop is shown/hidden alongside it and tapping the backdrop, a
+   nav item, or resizing back to desktop closes the drawer again. */
 const sidebar = document.getElementById('sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
 const toggleIcon = document.getElementById('toggleIcon');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 let sidebarExpanded = false;
 
-sidebarToggle?.addEventListener('click', () => {
-  sidebarExpanded = !sidebarExpanded;
+function isDrawerBreakpoint() {
+  return window.innerWidth <= 1023;
+}
+
+function setSidebarExpanded(expanded) {
+  sidebarExpanded = expanded;
   sidebar.classList.toggle('expanded', sidebarExpanded);
   sidebar.classList.toggle('collapsed', !sidebarExpanded);
   toggleIcon.style.transform = sidebarExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+
+  if (isDrawerBreakpoint()) {
+    sidebarBackdrop?.classList.toggle('visible', sidebarExpanded);
+    sidebarBackdrop?.classList.toggle('hidden', !sidebarExpanded);
+  } else {
+    sidebarBackdrop?.classList.remove('visible');
+    sidebarBackdrop?.classList.add('hidden');
+  }
+}
+
+sidebarToggle?.addEventListener('click', () => {
+  setSidebarExpanded(!sidebarExpanded);
+});
+
+sidebarBackdrop?.addEventListener('click', () => setSidebarExpanded(false));
+
+/* Tapping a nav item on a phone/tablet should close the drawer instead
+   of leaving it open over the newly-loaded page. */
+document.querySelectorAll('.nav-item').forEach((item) => {
+  item.addEventListener('click', () => {
+    if (isDrawerBreakpoint()) setSidebarExpanded(false);
+  });
+});
+
+/* If the viewport is resized past the drawer breakpoint while the
+   drawer is open, drop the backdrop so it doesn't linger on desktop. */
+window.addEventListener('resize', () => {
+  if (!isDrawerBreakpoint()) {
+    sidebarBackdrop?.classList.remove('visible');
+    sidebarBackdrop?.classList.add('hidden');
+  }
 });
 
 /* ---------- Topbar dropdowns (same behaviour as dashboard.js) ---------- */

@@ -1,23 +1,37 @@
 // ============================================================
-// Sidebar collapse / expand (same behaviour as dashboard.js)
+// Sidebar collapse / expand (same behaviour as dashboard.js,
+// including the mobile/tablet overlay drawer + backdrop)
 // ============================================================
 const sidebar = document.getElementById("sidebar");
 const sidebarToggle = document.getElementById("sidebarToggle");
 const toggleIcon = document.getElementById("toggleIcon");
+const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 let expanded = false;
 
-sidebarToggle?.addEventListener("click", () => {
-  expanded = !expanded;
+function setSidebarExpanded(next) {
+  expanded = next;
   sidebar.classList.toggle("expanded", expanded);
   sidebar.classList.toggle("collapsed", !expanded);
   toggleIcon.style.transform = expanded ? "rotate(180deg)" : "rotate(0deg)";
-});
 
-document.querySelectorAll(".nav-list .nav-item").forEach((item) => {
-  item.addEventListener("click", () => {
-    document.querySelectorAll(".nav-list .nav-item").forEach((i) => i.classList.remove("active"));
-    item.classList.add("active");
-  });
+  // Below the lg breakpoint the sidebar becomes an overlay drawer,
+  // so show/hide the tap-outside-to-close backdrop with it.
+  if (window.innerWidth <= 1023 && sidebarBackdrop) {
+    sidebarBackdrop.classList.toggle("visible", expanded);
+    sidebarBackdrop.classList.toggle("hidden", !expanded);
+  }
+}
+
+sidebarToggle?.addEventListener("click", () => setSidebarExpanded(!expanded));
+sidebarBackdrop?.addEventListener("click", () => setSidebarExpanded(false));
+
+// Collapse the drawer automatically if the viewport grows past the
+// mobile/tablet breakpoint while it's open (e.g. device rotation).
+window.addEventListener("resize", () => {
+  if (window.innerWidth > 1023 && sidebarBackdrop) {
+    sidebarBackdrop.classList.remove("visible");
+    sidebarBackdrop.classList.add("hidden");
+  }
 });
 
 // ============================================================

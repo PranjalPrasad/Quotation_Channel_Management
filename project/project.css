@@ -40,7 +40,7 @@
 
 /* ============ Wide table: horizontal scroll on desktop instead of
    squeezing 12 columns, mobile keeps the existing card-stack look ============ */
-.table-scope-scroll { overflow-x: auto; }
+.table-scope-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 @media (min-width: 721px) {
   .wide-table { table-layout: auto; min-width: 1180px; }
   .wide-table th, .wide-table td { white-space: nowrap; }
@@ -151,12 +151,58 @@
 @media (max-width: 560px) {
   .project-details-grid { grid-template-columns: repeat(2, 1fr); }
 }
+@media (max-width: 380px) {
+  .project-details-grid { grid-template-columns: 1fr; }
+}
 
-/* ============ Responsive tightening to match dashboard scale on small screens ============ */
+/* ============================================================
+   Responsive — mirrors dashboard.css's breakpoint scale so
+   Project Management feels identical to Dashboard on every
+   device (tablet 768–1023, phone 481–767, small phone ≤480,
+   extra-small ≤360)
+   ============================================================ */
+
+/* ---- Tablets (768–1023px) ---- */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .filter-input, .filter-select, .filter-reset-btn { height: 36px; font-size: 12px; }
+  .project-details-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ---- Phones (large — 481–767px) ---- */
 @media (max-width: 767px) {
   .filter-input, .filter-reset-btn { height: 36px; font-size: 12px; }
+
+  /* Search & filter bar: let each field take a comfortable width and
+     wrap onto its own row instead of squeezing to unreadable widths.
+     !important is needed to beat Tailwind's flex-1 / min-w-[160px]
+     utility classes on the wrapper divs (same pattern dashboard.css
+     uses for its own responsive overrides). */
+  #searchProjectName, #searchCustomerName, #searchLocation {
+    width: 100% !important;
+  }
+  .filter-field {
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
+  }
+  .filter-select { flex: 1 1 calc(50% - 5px) !important; min-width: 0 !important; }
+  .filter-reset-btn { flex: 1 1 calc(50% - 5px) !important; justify-content: center; text-align: center; }
+
   .project-details-grid { gap: 10px; }
 }
+
+/* ---- Small phones (≤480px, e.g. iPhone SE/mini) ---- */
 @media (max-width: 480px) {
-  .filter-select { min-width: 110px; }
+  .filter-select { min-width: 0; flex: 1 1 100%; }
+  .filter-reset-btn { flex: 1 1 100%; }
+  .type-pill, .pill-planning, .pill-inprogress, .pill-completed, .pill-onhold {
+    font-size: 10px;
+    padding: 3px 7px;
+  }
+  .project-details-card { padding: 13px; }
+  .project-detail-value { font-size: 13px; }
+}
+
+/* ---- Extra small screens (≤360px) ---- */
+@media (max-width: 360px) {
+  .filter-input, .filter-reset-btn { font-size: 11.5px; padding: 8px 10px; }
 }

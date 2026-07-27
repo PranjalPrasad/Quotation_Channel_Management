@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Reports & Analytics — Solar Quotation Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -12,14 +12,16 @@
                 extend: {
                     colors: {
                         peach: {
-                            50: "#FFF8F5",
-                            100: "#F8EDEB",
-                            200: "#FED5CD",
-                            300: "#FADBC6",
-                            400: "#FFC69E",
-                            500: "#FEB4A7",
-                            600: "#F4917D",
+                            50: "#FBF6EF",
+                            100: "#F1E2D1",
+                            200: "#E4CBAE",
+                            300: "#DCC3AA",
+                            400: "#A8446B",
+                            500: "#810B38",
+                            600: "#6B0930",
+                            700: "#541A1A",
                         },
+                        cream: "#F7ECE1",
                     },
                     fontFamily: { sans: ["Poppins", "ui-sans-serif", "system-ui"] },
                     borderRadius: { "3xl": "1.75rem", "4xl": "2rem" },
@@ -30,97 +32,102 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/reports/reports.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="reports.css">
 </head>
 
-<body class="bg-gray-100 text-[#1F2937] min-h-screen font-sans">
+<body class="bg-cream">
 
-    <div class="min-h-screen w-full flex">
+    <div class="app-shell w-full flex">
 
-        <!-- ===================== SIDEBAR (ref: Pocket Dashboard) ===================== -->
-        <aside id="sidebar" class="sidebar collapsed relative flex flex-col items-center py-6 gap-8 bg-white border-r border-gray-100 transition-all duration-300 ease-in-out shrink-0">
-            <button id="sidebarToggle" aria-label="Toggle sidebar" class="absolute -right-3 top-9 w-6 h-6 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-peach-500 hover:scale-110 transition-transform">
+        <!-- backdrop shown only on phone/tablet when the sidebar drawer is expanded -->
+        <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
+
+        <!-- ===================== SIDEBAR (identical to Dashboard reference) ===================== -->
+        <aside id="sidebar" class="sidebar app-sidebar relative flex flex-col items-center py-5 gap-6 bg-cream border-r border-peach-300 transition-all duration-300 ease-in-out w-20 shrink-0">
+            <button id="sidebarToggle" aria-label="Toggle sidebar" class="absolute -right-3 top-8 w-6 h-6 rounded-full bg-cream shadow-md border border-peach-300 flex items-center justify-center text-peach-500 hover:scale-110 transition-transform">
                 <svg id="toggleIcon" class="w-3.5 h-3.5 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
 
             <div class="flex items-center justify-center shrink-0">
-                
-        <div class="sidebar-logo">
-            <img src="/img/logo.png" alt="Logo" />
-        </div>
+                <img src="/img/logo.webp" alt="Company Logo" class="w-auto h-10 object-contain" onerror="this.style.display='none'" />
             </div>
 
             <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
-  <button class="nav-item active" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
-    <span>Dashboard</span>
-  </button>
-  <button class="nav-item" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
-    <span>Quotation Management</span>
-  </button>
-  <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
-    <span>Product Management</span>
-  </button>
-  <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-      <circle cx="9" cy="11" r="3"></circle>
-      <path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path>
-      <path d="M16 9l2 2 4-4"></path>
-    </svg>
-    <span>Customer Management</span>
-  </button>
-  <button class="nav-item" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
-    <span>Reports Management</span>
-  </button>
+                <button class="nav-item" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='../dashboard/dashboard.html'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-label="Quotation Management" aria-label="Quotation Management" onclick="window.location.href='../Quotation/quotation.html'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>
+                    <span>Quotation Management</span>
+                </button>
+                <button class="nav-item" data-label="Product Management" aria-label="Product Management" onclick="window.location.href='../productM/productm.html'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
+                    <span>Product Management</span>
+                </button>
+                <button class="nav-item" data-label="Customer Management" aria-label="Customer Management">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                        <circle cx="9" cy="11" r="3"></circle>
+                        <path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path>
+                        <path d="M16 9l2 2 4-4"></path>
+                    </svg>
+                    <span>Customer Management</span>
+                </button>
+                <button class="nav-item active" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
+                    <span>Reports Management</span>
+                </button>
 
-    <button class="nav-item active" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-          <span>Project Management</span>
-        </button>
+                <button class="nav-item" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span>Project Management</span>
+                </button>
 
-   <button class="nav-item active" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          <span>User Management</span>
-        </button>
+                <button class="nav-item" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span>User Management</span>
+                </button>
 
-     <button class="nav-item active" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
-          <span>Cost Calculator</span>
-        </button>
+                <button class="nav-item" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
+                    <span>Cost Calculator</span>
+                </button>
 
-   <button class="nav-item active" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-          <span>Approval Management</span>
-        </button>
-</nav>
+                <button class="nav-item" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                    <span>Approval Management</span>
+                </button>
+            </nav>
         </aside>
 
         <!-- ===================== MAIN ===================== -->
-        <main class="flex-1 px-4 sm:px-6 md:px-10 py-6 md:py-8 overflow-y-auto">
+        <main class="app-main flex-1 bg-cream px-4 sm:px-5 md:px-6 py-4 min-w-0">
 
-            <!-- ============ Topbar (ref: Pocket Dashboard) ============ -->
-            <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <!-- ============ Topbar (identical structure to Dashboard reference) ============ -->
+            <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <div>
-                    <h1 class="text-sm font-semibold text-gray-800">Reports & Analytics</h1>
+                    <p class="text-sm text-gray-700 font-semibold">Reports & Analytics</p>
                     <p class="text-[11px] text-gray-400">Quotation, sales & vendor performance reports</p>
                 </div>
 
-                <div class="flex items-center gap-3 relative">
+                <div class="flex items-center gap-2.5 relative">
+                    <!-- Notification Icon -->
                     <div class="relative">
-                        <button id="notif-btn" aria-label="Notifications" class="w-10 h-10 rounded-full flex items-center justify-center relative">
-                            <i class="fas fa-bell text-base"></i>
-                            <span class="notif-dot"></span>
+                        <button id="notifBtn" aria-label="Notifications" class="w-8 h-8 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
                         </button>
-                        <div id="notif-menu" class="topbar-dropdown hidden">
+
+                        <div id="notifDropdown" class="topbar-dropdown hidden">
                             <p class="topbar-dropdown-title">Notifications <span class="text-[10px] px-2 py-0.5 rounded-full bg-peach-100 text-peach-600 font-medium normal-case">3 new</span></p>
-                            <div class="max-h-80 overflow-y-auto space-y-1">
+                            <div class="max-h-72 overflow-y-auto space-y-1">
                                 <div class="topbar-notif-item">
                                     <div class="topbar-notif-icon bg-emerald-100 text-emerald-700"><i class="fas fa-file-export"></i></div>
                                     <div>
@@ -146,33 +153,36 @@
                         </div>
                     </div>
 
+                    <!-- Profile Icon -->
                     <div class="relative">
-                        <button id="user-menu-btn" aria-label="Profile" class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold">
+                        <button id="profileBtn" aria-label="Profile" class="w-8 h-8 rounded-full bg-peach-500 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
                             AD
                         </button>
-                        <div id="user-menu" class="topbar-dropdown hidden !min-w-[160px]">
-                            <a href="../index.html" id="logout-btn" class="topbar-logout-btn">
-                                <i class="fas fa-sign-out-alt w-4"></i> Logout
+
+                        <div id="profileDropdown" class="topbar-dropdown hidden !min-w-[150px]">
+                            <a href="../index.html" id="profileLogoutBtn" class="topbar-logout-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                Logout
                             </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="space-y-4 sm:space-y-5">
+            <div class="space-y-2.5">
 
                 <!-- ============ Filter Bar ============ -->
                 <div class="filter-bar">
-                    <div class="flex flex-wrap items-end gap-3">
-                        <div class="filter-field w-[140px]">
+                    <div class="flex flex-wrap items-end gap-2.5">
+                        <div class="filter-field w-[130px]">
                             <label for="fromDate">From</label>
                             <input type="date" id="fromDate" class="filter-input" value="2026-01-01">
                         </div>
-                        <div class="filter-field w-[140px]">
+                        <div class="filter-field w-[130px]">
                             <label for="toDate">To</label>
                             <input type="date" id="toDate" class="filter-input" value="2026-06-30">
                         </div>
-                        <div class="filter-field w-[160px]">
+                        <div class="filter-field w-[150px]">
                             <label for="statusFilter">Status</label>
                             <select id="statusFilter" class="filter-input">
                                 <option value="all">All statuses</option>
@@ -181,7 +191,7 @@
                                 <option value="rejected">Rejected</option>
                             </select>
                         </div>
-                        <div class="filter-field w-[170px]">
+                        <div class="filter-field w-[160px]">
                             <label for="salesFilter">Sales Person</label>
                             <select id="salesFilter" class="filter-input">
                                 <option value="all">All sales staff</option>
@@ -190,7 +200,7 @@
                                 <option>Kavya Rao</option>
                             </select>
                         </div>
-                        <div class="filter-field w-[160px]">
+                        <div class="filter-field w-[150px]">
                             <label for="vendorFilter">Vendor</label>
                             <select id="vendorFilter" class="filter-input">
                                 <option value="all">All vendors</option>
@@ -200,11 +210,11 @@
                                 <option>Waaree Energies</option>
                             </select>
                         </div>
-                        <button id="applyFilters" class="export-btn primary"><i class="fas fa-filter"></i> Apply Filters</button>
+                        <button id="applyFilters" class="export-btn primary"><i class="fas fa-filter"></i> Apply</button>
                         <button id="resetFilters" class="export-btn"><i class="fas fa-rotate-left"></i> Reset</button>
-                        <div class="ml-auto flex items-center gap-2">
-                            <button class="export-btn"><i class="fas fa-file-csv"></i> Export CSV</button>
-                            <button class="export-btn"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                        <div class="flex items-center gap-2 ml-auto flex-wrap">
+                            <button class="export-btn"><i class="fas fa-file-csv"></i> CSV</button>
+                            <button class="export-btn"><i class="fas fa-file-pdf"></i> PDF</button>
                             <button class="export-btn"><i class="fas fa-print"></i> Print</button>
                         </div>
                     </div>
@@ -221,7 +231,7 @@
                 </div>
 
                 <!-- ============ KPI Widgets ============ -->
-                <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
 
                     <div class="widget-card">
                         <div class="widget-body">
@@ -280,55 +290,55 @@
                 </div>
 
                 <!-- ============ Charts Row ============ -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
                     <div class="chart-card lg:col-span-2">
-                        <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center justify-between mb-2">
                             <div>
                                 <div class="section-title"><i class="fas fa-chart-line mr-1.5 text-peach-500"></i>Quotation Trend</div>
                                 <div class="section-sub">Quotations raised per month</div>
                             </div>
                         </div>
-                        <canvas id="chartTrend" height="150"></canvas>
+                        <div class="pie-wrap" style="height:190px;"><canvas id="chartTrend"></canvas></div>
                     </div>
 
                     <div class="chart-card">
-                        <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center justify-between mb-2">
                             <div>
                                 <div class="section-title"><i class="fas fa-chart-pie mr-1.5 text-peach-500"></i>Status Distribution</div>
                                 <div class="section-sub">Accepted vs Pending vs Rejected</div>
                             </div>
                         </div>
-                        <canvas id="chartStatus" height="150"></canvas>
+                        <div class="pie-wrap" style="height:190px;"><canvas id="chartStatus"></canvas></div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
                     <div class="chart-card">
-                        <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center justify-between mb-2">
                             <div>
                                 <div class="section-title"><i class="fas fa-solar-panel mr-1.5 text-peach-500"></i>Revenue by System Size</div>
                                 <div class="section-sub">Quotation value grouped by kW band</div>
                             </div>
                         </div>
-                        <canvas id="chartSystemSize" height="170"></canvas>
+                        <div class="pie-wrap" style="height:190px;"><canvas id="chartSystemSize"></canvas></div>
                     </div>
 
                     <div class="chart-card">
-                        <div class="section-title mb-3"><i class="fas fa-ranking-star mr-1.5 text-peach-500"></i>Top Sales Performers</div>
+                        <div class="section-title mb-2"><i class="fas fa-ranking-star mr-1.5 text-peach-500"></i>Top Sales Performers</div>
                         <div class="space-y-1.5" id="topPerformers"></div>
                     </div>
                 </div>
 
                 <!-- ============ Detailed Report Table ============ -->
                 <div class="chart-card">
-                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                         <div>
                             <div class="section-title"><i class="fas fa-table-list mr-1.5 text-peach-500"></i>Detailed Quotation Report</div>
                             <div class="section-sub">Click a column to sort · click a row to view</div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <label class="text-[11px] text-gray-400">Rows:</label>
-                            <select id="pageSize" class="filter-input !w-auto !py-1">
+                            <label class="text-[10.5px] text-gray-400">Rows</label>
+                            <select id="pageSize" class="rows-select">
                                 <option value="10">10</option>
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -336,7 +346,7 @@
                         </div>
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <div class="table-scope overflow-x-auto">
                         <table class="report-table" id="reportTable">
                             <thead>
                                 <tr>
@@ -354,9 +364,9 @@
                         </table>
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-gray-100">
-                        <div class="text-[11px] text-gray-400" id="pageInfo">Showing 1–10 of 10</div>
-                        <div class="flex items-center gap-1" id="pagination"></div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-peach-200">
+                        <div class="text-[10.5px] text-gray-400" id="pageInfo">Showing 1–10 of 10</div>
+                        <div class="flex items-center gap-1 flex-wrap" id="pagination"></div>
                     </div>
                 </div>
 
@@ -364,11 +374,9 @@
         </main>
     </div>
 
-    <div id="sidebar-overlay" class="hidden fixed inset-0 bg-gray-900/40 z-[90] lg:hidden"></div>
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[400] space-y-2 max-w-[calc(100vw-2.5rem)]"></div>
 
-    <div id="toast-container" class="fixed bottom-5 right-5 z-[400] space-y-2"></div>
-
-    <script src="/reports/report.js"></script>
+    <script src="reports.js"></script>
 </body>
 
 </html>

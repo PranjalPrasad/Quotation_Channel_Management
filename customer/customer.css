@@ -1,17 +1,3 @@
-/* ==========================================================================
-   customer.css
-   Customer Management module — ADDITIVE ONLY.
-   This file does NOT touch .sidebar, .nav-item, topbar, .data-table,
-   .modal-*, .field-*, .btn-primary, .btn-secondary, .pill, .pagination-btn,
-   .action-icon-btn, .toast-animate — those already live in dashboard.css
-   and are reused as-is so this page inherits the exact same theme.
-
-   Color theme matched to dashboard.css / dashboard.html reference palette:
-   berry #810B38, maroon #541A1A, tan #DCC3AA, cream-100 #F1E2D1,
-   cream page-bg #F7ECE1, hairline #E9D9C6, text #1F2937, muted #9CA3AF.
-   No Bootstrap / Tailwind / jQuery / frameworks — plain CSS + flex/grid.
-   ========================================================================== */
-
 /* ============ Page header ============ */
 .cm-header {
   display: flex;
@@ -379,3 +365,39 @@
 .req { color: #EF4444; }
 .field-input.invalid { border-color: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
 .field-error { font-size: 10.5px; color: #EF4444; min-height: 13px; }
+
+/* ============================================================
+   Responsive fixes — tablet & mobile
+   (mirrors the breakpoints dashboard.css uses for the sidebar,
+   nav rail and shared .data-table so this module tracks it
+   exactly instead of drifting on its own breakpoints)
+   ============================================================ */
+
+/* Header: stack title/actions and let the export+add buttons wrap
+   onto their own row once the header can't fit on one line. */
+@media (max-width: 640px) {
+  .cm-header { flex-direction: column; align-items: stretch; }
+  .cm-header-actions { justify-content: flex-start; }
+  .cm-header-actions .btn-primary,
+  .cm-header-actions .btn-export { flex: 1 1 auto; justify-content: center; }
+}
+
+/* Filter bar: search takes full width first, reset button follows
+   on its own line rather than squeezing next to a shrunk search box. */
+@media (max-width: 560px) {
+  .filter-row { flex-direction: column; align-items: stretch; }
+  .filter-group.grow,
+  .filter-group.fixed { flex: 1 1 auto; min-width: 0; width: 100%; }
+}
+
+@media (max-width: 720px) {
+  .table-scroll .data-table { min-width: 0; }
+  .table-card { padding: 16px; }
+  .history-card-head { padding: 12px; }
+}
+
+@media (max-width: 480px) {
+  .cm-title { font-size: 17px; }
+  .summary-card { padding: 16px; border-radius: 1.25rem; }
+  .filter-card, .table-card { padding: 14px; border-radius: 1.25rem; }
+}
