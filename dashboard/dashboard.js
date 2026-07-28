@@ -1,4 +1,8 @@
-// TODO: replace mock data array below with API call to /api/dashboard
+// TODO: quotationsForSizeChart() / statusCounts below still use a mock array —
+// once GET /api/quotations is wired up, replace those two mock sources with
+// the real quotation list (loadDashboardData() below already pulls the
+// aggregate numbers from /api/dashboard/summary; the per-record chart inputs
+// are a separate call because the summary endpoint intentionally stays light).
 
 // ============================================================
 // Sidebar collapse / expand
@@ -211,7 +215,6 @@ renderRecentQuotations();
 // print, PDF export, duplicate) — same behaviour as the
 // reference dashboard, recoloured to the palette theme
 // ============================================================
-// ========== UPDATED: quotations now include 'channelPartner' field ==========
 let quotations = [
   { no: 'SQ-1001', customer: 'Amit Sharma', size: '3 kW', amount: 165000, status: 'Pending', date: '2026-07-15', channelPartner: 'CP-0001' },
   { no: 'SQ-1000', customer: 'Priya Enterprises', size: '10 kW', amount: 540000, status: 'Accepted', date: '2026-07-14', channelPartner: 'CP-0002' },
@@ -236,6 +239,16 @@ function formatINR(n) {
   return '₹' + n.toLocaleString('en-IN');
 }
 
+// Compact format for big KPI numbers, e.g. 39000000 -> "₹3.9Cr", 450000 -> "₹4.5L"
+function formatCompactINR(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 1e7) return '₹' + (n / 1e7).toFixed(1) + 'Cr';
+  if (abs >= 1e5) return '₹' + (n / 1e5).toFixed(1) + 'L';
+  if (abs >= 1e3) return '₹' + (n / 1e3).toFixed(1) + 'K';
+  return '₹' + n.toLocaleString('en-IN');
+}
+
 let sortKey = 'date';
 let sortDir = 'desc';
 let currentPage = 1;
@@ -246,14 +259,12 @@ const paginationControls = document.getElementById('paginationControls');
 const rowsRangeLabel = document.getElementById('rowsRangeLabel');
 const rowsPerPageSelect = document.getElementById('rowsPerPage');
 
-// ========== NEW: Channel Partner Filter ==========
+// Channel Partner Filter (Super Admin only widget)
 let activeChannelPartnerFilter = 'all'; // 'all' or specific CP code
 
-// ========== UPDATED: sortedQuotations() with filter ==========
 function sortedQuotations() {
   let list = [...quotations];
 
-  // Apply Channel Partner filter (if not 'all')
   if (activeChannelPartnerFilter !== 'all') {
     list = list.filter(q => q.channelPartner === activeChannelPartnerFilter);
   }
@@ -289,7 +300,6 @@ function actionIconsHtml(no) {
     </div>`;
 }
 
-// ========== UPDATED: renderTable() with Channel Partner column ==========
 function renderTable() {
   const data = sortedQuotations();
   const totalRows = data.length;
@@ -299,7 +309,6 @@ function renderTable() {
   const start = (currentPage - 1) * rowsPerPage;
   const pageRows = data.slice(start, start + rowsPerPage);
 
-  // Build table rows — include Channel Partner column for Super Admin
   const rows = pageRows.map((q) => {
     const channelPartnerCell = `<td data-label="Channel Partner">${q.channelPartner || '—'}</td>`;
     return `
@@ -325,7 +334,6 @@ function renderTable() {
   renderPagination(totalPages);
   updateSortIcons();
 
-  // Hide Channel Partner column headers if not Super Admin
   const channelPartnerHeaders = document.querySelectorAll('#quotationsTable thead th[data-key="channelPartner"]');
   channelPartnerHeaders.forEach(th => {
     th.style.display = (window.currentUserRole === 'SUPER_ADMIN') ? '' : 'none';
@@ -381,7 +389,6 @@ rowsPerPageSelect?.addEventListener('change', () => {
   renderTable();
 });
 
-// ========== NEW: Channel Partner Filter Event ==========
 const channelPartnerFilter = document.getElementById('channelPartnerFilter');
 if (channelPartnerFilter) {
   channelPartnerFilter.addEventListener('change', (e) => {
@@ -591,13 +598,15 @@ function showToast(message) {
   setTimeout(() => toast.remove(), 2500);
 }
 
-/* ---------------- Init table ---------------- */
-// ========== UPDATED: Ensure currentUserRole is set for conditional rendering ==========
-// This is set by session.js — we read it for our conditional logic
-window.currentUserRole = window.currentUserRole || 'SUPER_ADMIN'; // fallback for local testing
+/* ---------------- Role helpers ---------------- */
+// currentUserRole is normally set by session.js from the JWT payload after
+// login (SUPER_ADMIN / CHANNEL_PARTNER_ADMIN / CHANNEL_PARTNER_SALES).
+// Fallback here only covers local testing before session.js exists on a page.
+window.currentUserRole = window.currentUserRole || 'SUPER_ADMIN';
 
-// ========== Apply role-based visibility for all elements with data-role ==========
-// This runs in session.js already, but we re-run it here to ensure Channel Partner elements are handled
+// Re-applies data-role visibility. session.js already runs this once on
+// DOMContentLoaded; dashboard.js calls it again after loadDashboardData()
+// populates numbers, so cards that were hidden don't flash stale content.
 function applyRoleBasedVisibility() {
   const userRole = window.currentUserRole || 'SUPER_ADMIN';
   document.querySelectorAll('[data-role]').forEach(el => {
@@ -608,15 +617,128 @@ function applyRoleBasedVisibility() {
 }
 applyRoleBasedVisibility();
 
-// Re-run visibility after session.js loads (in case it runs after this script)
-if (window.addEventListener) {
-  window.addEventListener('DOMContentLoaded', () => {
-    applyRoleBasedVisibility();
-  });
+// ============================================================
+// NEW: loadDashboardData() — the ONE API call this whole page needs.
+// Works for both Super Admin and Channel Partner logins: the backend
+// (DashboardService -> SecurityUtils.getCurrentPartnerId()) already
+// scopes every number correctly, so this function only has to render
+// whatever it gets back. Super-Admin-only fields (totalPartners,
+// topPartners) come back null for a Channel Partner login — the
+// data-role attributes on the HTML cards already keep those hidden,
+// this function just guards against writing into hidden/absent data.
+// ============================================================
+const API_BASE = window.API_BASE || ''; // set window.API_BASE = 'http://localhost:8080' if frontend and backend run on different ports
+
+function getAuthToken() {
+  return sessionStorage.getItem('token');
 }
 
-// ========== Initial render ==========
+async function loadDashboardData() {
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/summary`, {
+      headers: { 'Authorization': 'Bearer ' + getAuthToken() }
+    });
+    if (!res.ok) throw new Error('Dashboard summary request failed: ' + res.status);
+    const body = await res.json();
+    if (!body.success) throw new Error(body.message || 'Dashboard summary returned an error');
+    renderDashboardSummary(body.data);
+  } catch (err) {
+    // Backend not wired up yet / offline — fall back to mock numbers so the
+    // page still looks complete during frontend-only development.
+    console.warn('loadDashboardData() falling back to mock data:', err.message);
+    renderDashboardSummary(MOCK_DASHBOARD_SUMMARY);
+  }
+}
+
+// Mirrors the shape of DashboardSummaryDto on the backend — used only until
+// the real API response is available; delete once /api/dashboard/summary is live everywhere.
+const MOCK_DASHBOARD_SUMMARY = {
+  totalCustomers: 86,
+  totalProjects: 63,
+  totalQuotations: 248,
+  totalQuotationValue: 39000000,
+  pendingApprovals: 58,
+  totalReferralIncome: 214000,
+  totalPartners: 21,
+  activePartners: 18,
+  platformPendingReferralPayouts: 96000,
+  topPartners: [
+    { partnerName: 'Sunrise Solar Solutions', partnerCode: 'CP-0001', totalQuotations: 62, totalRevenue: 9800000 },
+    { partnerName: 'GreenVolt Energy',       partnerCode: 'CP-0002', totalQuotations: 54, totalRevenue: 8650000 },
+    { partnerName: 'Bright Future Power',    partnerCode: 'CP-0003', totalQuotations: 41, totalRevenue: 6200000 },
+    { partnerName: 'EcoRay Installations',   partnerCode: 'CP-0004', totalQuotations: 33, totalRevenue: 4750000 },
+    { partnerName: 'Solaris Traders',        partnerCode: 'CP-0005', totalQuotations: 28, totalRevenue: 3900000 },
+  ],
+};
+
+function renderDashboardSummary(data) {
+  // ---- Group C: common to every role ----
+  const pendingApprovalsEl = document.getElementById('kpiPendingApprovals');
+  if (pendingApprovalsEl) pendingApprovalsEl.textContent = data.pendingApprovals ?? '—';
+
+  const pendingApprovalsLabelEl = document.getElementById('kpiPendingApprovalsLabel');
+  if (pendingApprovalsLabelEl) {
+    pendingApprovalsLabelEl.textContent = window.currentUserRole === 'SUPER_ADMIN'
+      ? 'Pending Approvals (All Partners)'
+      : 'Pending Approvals';
+  }
+
+  // ---- Group A: Super Admin only ----
+  if (window.currentUserRole === 'SUPER_ADMIN') {
+    setText('kpiTotalPartners', data.totalPartners ?? '—');
+    const activeSuffix = document.getElementById('kpiActivePartnersSuffix');
+    if (activeSuffix && data.activePartners !== null && data.activePartners !== undefined) {
+      activeSuffix.textContent = `(${data.activePartners} active)`;
+    }
+    setText('kpiPlatformRevenue', formatCompactINR(data.totalQuotationValue));
+    setText('kpiReferralPayoutsPending', formatCompactINR(data.platformPendingReferralPayouts));
+
+    renderTopPartners(data.topPartners || []);
+  }
+
+  // ---- Group B: Channel Partner roles only ----
+  if (window.currentUserRole === 'CHANNEL_PARTNER_ADMIN' || window.currentUserRole === 'CHANNEL_PARTNER_SALES') {
+    setText('kpiMyCustomers', data.totalCustomers ?? '—');
+    setText('kpiMyQuotations', data.totalQuotations ?? '—');
+    // NOTE: DashboardSummaryDto currently returns all-time quotation value, not
+    // month-filtered. Swap this for a dedicated "this month" figure once the
+    // backend adds one (see README TODO) — kept as totalQuotationValue for now
+    // so the card isn't left blank.
+    setText('kpiMyRevenueMonth', formatCompactINR(data.totalQuotationValue));
+    setText('kpiMyReferralIncome', formatCompactINR(data.totalReferralIncome));
+  }
+
+  // ---- Re-apply role visibility now that content is populated ----
+  applyRoleBasedVisibility();
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function renderTopPartners(topPartners) {
+  const tbody = document.getElementById('topPartnersTbody');
+  if (!tbody) return;
+
+  if (!topPartners.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-400 py-3">No partner data yet</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = topPartners.map((p, idx) => `
+    <tr>
+      <td data-label="Rank">#${idx + 1}</td>
+      <td data-label="Partner Name" class="font-medium">${p.partnerName} <span class="text-gray-400">(${p.partnerCode})</span></td>
+      <td data-label="Total Quotations">${p.totalQuotations}</td>
+      <td data-label="Total Revenue">${formatCompactINR(p.totalRevenue)}</td>
+    </tr>
+  `).join('');
+}
+
+/* ---------------- Init table + dashboard data ---------------- */
 renderTable();
+loadDashboardData();
 
 // ============================================================
 // New Quotation button — redirects to the Quotation Management module
