@@ -78,6 +78,20 @@
     Dashboard -> SUPER_ADMIN, CHANNEL_PARTNER_ADMIN, CHANNEL_PARTNER_SALES
     User Management -> SUPER_ADMIN only.
     All other modules left open for now; tighten here as roles are finalized.
+
+  ROUTING MAP (folder : file — as confirmed by project owner):
+    approval        : approval.html
+    calc            : calc.html
+    channel-partner : channel.html
+    customer        : customer.html
+    dashboard       : dashboard.html   (this page's own folder)
+    productM        : productm.html
+    project         : project.html
+    reports         : report.html
+    user-management : user.html
+    (root)          : index.html
+  All hrefs below are relative to /dashboard/dashboard.html, hence the "../" prefix
+  on every sibling-folder route.
 -->
 <nav class="nav-list w-full flex-1 flex flex-col items-center gap-1.5 mt-3 px-3">
   <button class="nav-item active" data-role="SUPER_ADMIN,CHANNEL_PARTNER_ADMIN,CHANNEL_PARTNER_SALES" id="menuDashboard" data-label="Dashboard" aria-label="Dashboard" onclick="window.location.href='dashboard.html'">
@@ -92,7 +106,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>
     <span>Product Management</span>
   </button>
-  <button class="nav-item" id="menuCustomerManagement" data-label="Customer Management" aria-label="Customer Management">
+  <button class="nav-item" id="menuCustomerManagement" data-label="Customer Management" aria-label="Customer Management" onclick="window.location.href='../customer/customer.html'">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
       <circle cx="9" cy="11" r="3"></circle>
@@ -101,27 +115,32 @@
     </svg>
     <span>Customer Management</span>
   </button>
-  <button class="nav-item" id="menuReportsManagement" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/reports.html'">
+  <button class="nav-item" id="menuReportsManagement" data-label="Reports Management" aria-label="Reports Management" onclick="window.location.href='../reports/report.html'">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>
     <span>Reports Management</span>
   </button>
 
-  <button class="nav-item" id="menuProjectManagement" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='project.html'">
+  <button class="nav-item" id="menuProjectManagement" data-label="Project Management" aria-label="Project Management" onclick="window.location.href='../project/project.html'">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
     <span>Project Management</span>
   </button>
 
-  <button class="nav-item" data-role="SUPER_ADMIN" id="menuUserManagement" data-label="User Management" aria-label="User Management" onclick="window.location.href='user.html'">
+  <button class="nav-item" id="menuChannelPartner" data-label="Channel Partner" aria-label="Channel Partner" onclick="window.location.href='../channel-partner/channel.html'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    <span>Channel Partner</span>
+  </button>
+
+  <button class="nav-item" data-role="SUPER_ADMIN" id="menuUserManagement" data-label="User Management" aria-label="User Management" onclick="window.location.href='../user-management/user.html'">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
     <span>User Management</span>
   </button>
 
-  <button class="nav-item" id="menuCostCalculator" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='calc.html'">
+  <button class="nav-item" id="menuCostCalculator" data-label="Cost Calculator" aria-label="Cost Calculator" onclick="window.location.href='../calc/calc.html'">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>
     <span>Cost Calculator</span>
   </button>
 
-  <button class="nav-item" id="menuApprovalManagement" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='approval.html'">
+  <button class="nav-item" id="menuApprovalManagement" data-label="Approval Management" aria-label="Approval Management" onclick="window.location.href='../approval/approval.html'">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
     <span>Approval Management</span>
   </button>
