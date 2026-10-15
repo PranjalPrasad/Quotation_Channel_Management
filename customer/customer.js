@@ -485,7 +485,7 @@ function openCustomerForm(mode, customer) {
     channelPartnerField.placeholder = 'Select Channel Partner (dropdown coming soon)';
   } else {
     // For Channel Partner, field is read-only and auto-filled
-    const partnerName = window.currentUserPartnerName || 'CP-0001'; // fallback
+    const partnerName = window.currentUserPartnerName || ''; // from the login session
     channelPartnerField.value = partnerName;
     channelPartnerField.readOnly = true;
   }
@@ -549,7 +549,7 @@ document.getElementById('customerFormSaveBtn')?.addEventListener('click', () => 
     type: document.getElementById('fldType').value,
     project: document.getElementById('fldProject').value.trim(),
     status: document.getElementById('fldStatus').value,
-    channelPartner: document.getElementById('fldChannelPartner').value.trim() || (window.currentUserPartnerName || 'CP-0001'),
+    channelPartner: document.getElementById('fldChannelPartner').value.trim() || (window.currentUserPartnerName || ''),
   };
 
   if (formMode === 'add') {
@@ -794,10 +794,8 @@ document.getElementById('printBtn')?.addEventListener('click', () => {
    Render all
    ============================================================ */
 function renderAll() {
-  // Set current user role from session
-  window.currentUserRole = window.currentUserRole || 'SUPER_ADMIN';
-  window.currentUserPartnerName = window.currentUserPartnerName || 'CP-0001';
-  
+  // currentUserRole / currentUserPartnerName are read-only globals provided
+  // by session.js from the login session — no local fallback here.
   renderSummary();
   renderTable();
   renderHistory();

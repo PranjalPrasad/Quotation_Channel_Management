@@ -1,67 +1,32 @@
 // ============================================================
-// Settings — Super Admin only. All data is mock / localStorage-backed
-// for now; "Save Settings" persists to localStorage and shows a toast.
-// TODO: replace with real endpoints once backend is ready:
-//   GET/PUT /api/settings/branding
-//   GET/PUT /api/settings/bank-details
-//   GET/PUT /api/settings/quotation-defaults
-//   GET/POST/PUT/DELETE /api/settings/subsidy-rules
-//   GET/POST/PUT/DELETE /api/settings/gst-rules
+// Settings — Super Admin only. Backed by the REST API (no localStorage,
+// no mock data). All calls go through Session.api() from session.js, which
+// adds the Bearer token and logs the user out on 401.
+//
+//   GET/PUT            /api/settings/branding
+//   GET/PUT            /api/settings/bank-details
+//   GET/PUT            /api/settings/quotation-defaults
+//   GET/POST           /api/settings/subsidy-rules
+//   PUT/DELETE         /api/settings/subsidy-rules/:id
+//   GET/POST           /api/settings/gst-rules
+//   PUT/DELETE         /api/settings/gst-rules/:id
+//
+// Responses may be the bare JSON or wrapped as { data: ... }.
+// Branding: { name, address, phone, email, website, logoDataUrl }
+// Bank:     { accountName, bankName, accountNumber, ifsc, branch }
+// Defaults: { terms, validityDays, prefix }
+// Subsidy:  { id, type, category, valueType, value, capMin, capMax }
+// GST:      { id, category, gstPercent, applicableOn }
 // ============================================================
 
-const STORAGE_KEY = "sqms_settings_mock";
+const SETTINGS_API = "/api/settings";
 
-// ============================================================
-// Safe storage wrapper — localStorage isn't always available
-// (blocked cookies/storage, sandboxed preview iframes, private
-// browsing on some browsers, file:// origins, etc). Previously a
-// failed write was silently swallowed and the UI still showed
-// "Settings saved" — that's what made saves look like they were
-// failing. Now: real success/failure is reported, and if
-// localStorage genuinely isn't available we still keep the data
-// in memory so the page behaves correctly for the rest of the
-// session instead of silently discarding what was typed.
-// ============================================================
-let inMemoryFallback = null;
-
-function isLocalStorageAvailable() {
-  try {
-    const testKey = "__sqms_ls_test__";
-    localStorage.setItem(testKey, "1");
-    localStorage.removeItem(testKey);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-const localStorageAvailable = isLocalStorageAvailable();
-
-function safeSaveSettings(data) {
-  const json = JSON.stringify(data);
-  if (!localStorageAvailable) {
-    inMemoryFallback = json;
-    return { ok: true, persisted: false };
-  }
-  try {
-    localStorage.setItem(STORAGE_KEY, json);
-    return { ok: true, persisted: true };
-  } catch (e) {
-    // Most common real-world cause: the logo image (base64) pushed the
-    // payload past the ~5MB localStorage quota.
-    console.error("Settings save failed:", e);
-    inMemoryFallback = json; // still keep it for this session
-    return { ok: false, persisted: false, error: e };
-  }
+function unwrap(body) {
+  return body && typeof body === "object" && !Array.isArray(body) && "data" in body ? body.data : body;
 }
 
-function safeLoadSettings() {
-  if (!localStorageAvailable) return inMemoryFallback;
-  try {
-    return localStorage.getItem(STORAGE_KEY);
-  } catch (e) {
-    console.error("Settings load failed:", e);
-    return inMemoryFallback;
-  }
+function esc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 // ============================================================
@@ -69,10 +34,11 @@ function safeLoadSettings() {
 // hidden for other roles via data-role, but we also hard-guard the
 // page body in case someone opens the URL directly.
 // ============================================================
-window.currentUserRole = window.currentUserRole || "SUPER_ADMIN"; // fallback for local testing
+// window.currentUserRole is a read-only global from session.js (login session).
+// There is no fallback role.
 
 function applyRoleBasedVisibility() {
-  const userRole = window.currentUserRole || "SUPER_ADMIN";
+  const userRole = window.currentUserRole;
   document.querySelectorAll("[data-role]").forEach((el) => {
     const roles = el.getAttribute("data-role").split(",").map((r) => r.trim());
     el.style.display = roles.includes(userRole) ? "" : "none";
@@ -82,7 +48,7 @@ applyRoleBasedVisibility();
 window.addEventListener("DOMContentLoaded", applyRoleBasedVisibility);
 
 function enforcePageAccess() {
-  const isSuperAdmin = (window.currentUserRole || "SUPER_ADMIN") === "SUPER_ADMIN";
+  const isSuperAdmin = window.currentUserRole === "SUPER_ADMIN";
   document.getElementById("accessRestricted").classList.toggle("hidden", isSuperAdmin);
   document.getElementById("settingsContent").classList.toggle("hidden", !isSuperAdmin);
   document.getElementById("saveSettingsBtn").style.display = isSuperAdmin ? "" : "none";
@@ -118,54 +84,32 @@ document.querySelectorAll(".nav-list .nav-item").forEach((item) => {
 });
 
 // ============================================================
-// Mock default settings (used the first time, before anything is saved)
+// Settings state — filled from the API by loadSettings() (see Init).
 // ============================================================
-const defaultSettings = {
-  branding: {
-    logoDataUrl: "",
-    name: "Solar Quotation Management Pvt. Ltd.",
-    address: "4th Floor, Highland Park, Pune, Maharashtra 411001",
-    phone: "+91 98765 43210",
-    email: "info@sqms.example",
-    website: "www.sqms.example",
-  },
-  bank: {
-    accountName: "Solar Quotation Management Pvt. Ltd.",
-    bankName: "HDFC Bank",
-    accountNumber: "50100234567890",
-    ifsc: "HDFC0001234",
-    branch: "Highland Park, Pune",
-  },
-  defaults: {
-    terms: "1. Prices are inclusive of installation & commissioning.\n2. 50% advance required to confirm the order.\n3. Subsidy amount subject to government approval & disbursal timelines.\n4. Warranty as per manufacturer terms.",
-    validityDays: 15,
-    prefix: "SQ",
-  },
-  subsidyRules: [
-    { id: "SUB-001", type: "Central Financial Assistance", category: "Residential", valueType: "percentage", value: 40, capMin: 0, capMax: 3 },
-    { id: "SUB-002", type: "Central Financial Assistance", category: "Residential", valueType: "percentage", value: 20, capMin: 3, capMax: 10 },
-    { id: "SUB-003", type: "State Solar Incentive", category: "Commercial", valueType: "amount", value: 50000, capMin: 10, capMax: 50 },
-  ],
-  gstRules: [
-    { id: "GST-001", category: "Solar Panels", gstPercent: 12, applicableOn: "Product" },
-    { id: "GST-002", category: "Inverters", gstPercent: 12, applicableOn: "Product" },
-    { id: "GST-003", category: "Installation & Commissioning", gstPercent: 18, applicableOn: "Service" },
-  ],
+let settings = {
+  branding: { logoDataUrl: "", name: "", address: "", phone: "", email: "", website: "" },
+  bank: { accountName: "", bankName: "", accountNumber: "", ifsc: "", branch: "" },
+  defaults: { terms: "", validityDays: "", prefix: "" },
+  subsidyRules: [],
+  gstRules: [],
 };
 
-function loadSettings() {
-  const raw = safeLoadSettings();
-  if (raw) {
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
-      console.error("Saved settings were corrupted, falling back to defaults:", e);
-    }
-  }
-  return JSON.parse(JSON.stringify(defaultSettings));
+async function loadSettings() {
+  const [branding, bank, defaults, subsidyRules, gstRules] = await Promise.all([
+    Session.api(`${SETTINGS_API}/branding`),
+    Session.api(`${SETTINGS_API}/bank-details`),
+    Session.api(`${SETTINGS_API}/quotation-defaults`),
+    Session.api(`${SETTINGS_API}/subsidy-rules`),
+    Session.api(`${SETTINGS_API}/gst-rules`),
+  ]);
+  settings = {
+    branding: Object.assign({}, settings.branding, unwrap(branding) || {}),
+    bank: Object.assign({}, settings.bank, unwrap(bank) || {}),
+    defaults: Object.assign({}, settings.defaults, unwrap(defaults) || {}),
+    subsidyRules: unwrap(subsidyRules) || [],
+    gstRules: unwrap(gstRules) || [],
+  };
 }
-
-let settings = loadSettings();
 
 // ============================================================
 // Tabs
@@ -206,7 +150,7 @@ function setLogoPreview(dataUrl) {
 fldLogoUpload.addEventListener("change", () => {
   const file = fldLogoUpload.files && fldLogoUpload.files[0];
   if (!file) return;
-  // UI-only preview — nothing is uploaded anywhere yet, wiring is pending backend.
+  // Sent to the API as a data URL together with the branding payload on Save.
   const reader = new FileReader();
   reader.onload = () => {
     settings.branding.logoDataUrl = reader.result;
@@ -275,15 +219,15 @@ function renderSubsidyTable() {
     return;
   }
   subsidyTbody.innerHTML = settings.subsidyRules.map((r) => `
-    <tr data-id="${r.id}">
-      <td data-label="Subsidy Type" class="font-medium">${r.type}</td>
-      <td data-label="Category"><span class="pill ${r.category === "Residential" ? "pill-residential" : "pill-commercial"}">${r.category}</span></td>
+    <tr data-id="${esc(r.id)}">
+      <td data-label="Subsidy Type" class="font-medium">${esc(r.type)}</td>
+      <td data-label="Category"><span class="pill ${r.category === "Residential" ? "pill-residential" : "pill-commercial"}">${esc(r.category)}</span></td>
       <td data-label="Percentage / Amount">${formatSubsidyValue(r)}</td>
       <td data-label="Applicable Capacity Range">${r.capMin} – ${r.capMax} kW</td>
       <td data-label="Actions">
         <div class="row-actions">
-          <button class="action-icon-btn icon-edit" data-action="editSubsidy" data-id="${r.id}" title="Edit">${ICON_EDIT}</button>
-          <button class="action-icon-btn icon-delete" data-action="deleteSubsidy" data-id="${r.id}" title="Delete">${ICON_DELETE}</button>
+          <button class="action-icon-btn icon-edit" data-action="editSubsidy" data-id="${esc(r.id)}" title="Edit">${ICON_EDIT}</button>
+          <button class="action-icon-btn icon-delete" data-action="deleteSubsidy" data-id="${esc(r.id)}" title="Delete">${ICON_DELETE}</button>
         </div>
       </td>
     </tr>`).join("");
@@ -295,9 +239,14 @@ subsidyTbody.addEventListener("click", (e) => {
   const id = btn.getAttribute("data-id");
   if (btn.dataset.action === "editSubsidy") openSubsidyModal(id);
   else if (btn.dataset.action === "deleteSubsidy") {
-    settings.subsidyRules = settings.subsidyRules.filter((r) => r.id !== id);
-    renderSubsidyTable();
-    showToast("Subsidy rule removed — click Save Settings to keep this change");
+    if (!confirm("Delete this subsidy rule?")) return;
+    Session.api(`${SETTINGS_API}/subsidy-rules/${encodeURIComponent(id)}`, { method: "DELETE" })
+      .then(() => {
+        settings.subsidyRules = settings.subsidyRules.filter((r) => String(r.id) !== String(id));
+        renderSubsidyTable();
+        showToast("Subsidy rule deleted");
+      })
+      .catch((err) => showToast(err.message || "Could not delete subsidy rule"));
   }
 });
 
@@ -314,7 +263,7 @@ let editingSubsidyId = null;
 
 function openSubsidyModal(id) {
   editingSubsidyId = id || null;
-  const r = id ? settings.subsidyRules.find((x) => x.id === id) : null;
+  const r = id ? settings.subsidyRules.find((x) => String(x.id) === String(id)) : null;
   subsidyModalTitle.textContent = r ? "Edit Subsidy Rule" : "Add Subsidy Rule";
   sfType.value = r ? r.type : "";
   sfCategory.value = r ? r.category : "Residential";
@@ -327,7 +276,7 @@ function openSubsidyModal(id) {
 
 document.getElementById("addSubsidyBtn").addEventListener("click", () => openSubsidyModal(null));
 
-document.getElementById("subsidySaveBtn").addEventListener("click", () => {
+document.getElementById("subsidySaveBtn").addEventListener("click", async () => {
   if (!sfType.value.trim() || sfValue.value === "") {
     showToast("Subsidy type and value are required");
     return;
@@ -340,15 +289,21 @@ document.getElementById("subsidySaveBtn").addEventListener("click", () => {
     capMin: parseFloat(sfCapMin.value) || 0,
     capMax: parseFloat(sfCapMax.value) || 0,
   };
-  if (editingSubsidyId) {
-    Object.assign(settings.subsidyRules.find((r) => r.id === editingSubsidyId), payload);
-  } else {
-    const newId = `SUB-${String(settings.subsidyRules.length + 1).padStart(3, "0")}`;
-    settings.subsidyRules.push({ id: newId, ...payload });
+  try {
+    if (editingSubsidyId) {
+      const saved = unwrap(await Session.api(`${SETTINGS_API}/subsidy-rules/${encodeURIComponent(editingSubsidyId)}`, { method: "PUT", body: payload }));
+      const idx = settings.subsidyRules.findIndex((r) => String(r.id) === String(editingSubsidyId));
+      if (idx >= 0) settings.subsidyRules[idx] = Object.assign({}, settings.subsidyRules[idx], payload, saved || {});
+    } else {
+      const saved = unwrap(await Session.api(`${SETTINGS_API}/subsidy-rules`, { method: "POST", body: payload }));
+      settings.subsidyRules.push(Object.assign({}, payload, saved || {}));
+    }
+    renderSubsidyTable();
+    closeModalById("subsidyModal");
+    showToast("Subsidy rule saved");
+  } catch (err) {
+    showToast(err.message || "Could not save subsidy rule");
   }
-  renderSubsidyTable();
-  closeModalById("subsidyModal");
-  showToast("Subsidy rule saved — click Save Settings to keep this change");
 });
 
 // ============================================================
@@ -362,14 +317,14 @@ function renderGstTable() {
     return;
   }
   gstTbody.innerHTML = settings.gstRules.map((r) => `
-    <tr data-id="${r.id}">
-      <td data-label="Category" class="font-medium">${r.category}</td>
+    <tr data-id="${esc(r.id)}">
+      <td data-label="Category" class="font-medium">${esc(r.category)}</td>
       <td data-label="GST %">${r.gstPercent}%</td>
-      <td data-label="Applicable On"><span class="pill ${r.applicableOn === "Product" ? "pill-product" : "pill-service"}">${r.applicableOn}</span></td>
+      <td data-label="Applicable On"><span class="pill ${r.applicableOn === "Product" ? "pill-product" : "pill-service"}">${esc(r.applicableOn)}</span></td>
       <td data-label="Actions">
         <div class="row-actions">
-          <button class="action-icon-btn icon-edit" data-action="editGst" data-id="${r.id}" title="Edit">${ICON_EDIT}</button>
-          <button class="action-icon-btn icon-delete" data-action="deleteGst" data-id="${r.id}" title="Delete">${ICON_DELETE}</button>
+          <button class="action-icon-btn icon-edit" data-action="editGst" data-id="${esc(r.id)}" title="Edit">${ICON_EDIT}</button>
+          <button class="action-icon-btn icon-delete" data-action="deleteGst" data-id="${esc(r.id)}" title="Delete">${ICON_DELETE}</button>
         </div>
       </td>
     </tr>`).join("");
@@ -381,9 +336,14 @@ gstTbody.addEventListener("click", (e) => {
   const id = btn.getAttribute("data-id");
   if (btn.dataset.action === "editGst") openGstModal(id);
   else if (btn.dataset.action === "deleteGst") {
-    settings.gstRules = settings.gstRules.filter((r) => r.id !== id);
-    renderGstTable();
-    showToast("GST rule removed — click Save Settings to keep this change");
+    if (!confirm("Delete this GST rule?")) return;
+    Session.api(`${SETTINGS_API}/gst-rules/${encodeURIComponent(id)}`, { method: "DELETE" })
+      .then(() => {
+        settings.gstRules = settings.gstRules.filter((r) => String(r.id) !== String(id));
+        renderGstTable();
+        showToast("GST rule deleted");
+      })
+      .catch((err) => showToast(err.message || "Could not delete GST rule"));
   }
 });
 
@@ -397,7 +357,7 @@ let editingGstId = null;
 
 function openGstModal(id) {
   editingGstId = id || null;
-  const r = id ? settings.gstRules.find((x) => x.id === id) : null;
+  const r = id ? settings.gstRules.find((x) => String(x.id) === String(id)) : null;
   gstModalTitle.textContent = r ? "Edit GST Rule" : "Add GST Rule";
   gfCategory.value = r ? r.category : "";
   gfPercent.value = r ? r.gstPercent : "";
@@ -407,7 +367,7 @@ function openGstModal(id) {
 
 document.getElementById("addGstBtn").addEventListener("click", () => openGstModal(null));
 
-document.getElementById("gstSaveBtn").addEventListener("click", () => {
+document.getElementById("gstSaveBtn").addEventListener("click", async () => {
   if (!gfCategory.value.trim() || gfPercent.value === "") {
     showToast("Category and GST % are required");
     return;
@@ -417,15 +377,21 @@ document.getElementById("gstSaveBtn").addEventListener("click", () => {
     gstPercent: parseFloat(gfPercent.value) || 0,
     applicableOn: gfApplicableOn.value,
   };
-  if (editingGstId) {
-    Object.assign(settings.gstRules.find((r) => r.id === editingGstId), payload);
-  } else {
-    const newId = `GST-${String(settings.gstRules.length + 1).padStart(3, "0")}`;
-    settings.gstRules.push({ id: newId, ...payload });
+  try {
+    if (editingGstId) {
+      const saved = unwrap(await Session.api(`${SETTINGS_API}/gst-rules/${encodeURIComponent(editingGstId)}`, { method: "PUT", body: payload }));
+      const idx = settings.gstRules.findIndex((r) => String(r.id) === String(editingGstId));
+      if (idx >= 0) settings.gstRules[idx] = Object.assign({}, settings.gstRules[idx], payload, saved || {});
+    } else {
+      const saved = unwrap(await Session.api(`${SETTINGS_API}/gst-rules`, { method: "POST", body: payload }));
+      settings.gstRules.push(Object.assign({}, payload, saved || {}));
+    }
+    renderGstTable();
+    closeModalById("gstModal");
+    showToast("GST rule saved");
+  } catch (err) {
+    showToast(err.message || "Could not save GST rule");
   }
-  renderGstTable();
-  closeModalById("gstModal");
-  showToast("GST rule saved — click Save Settings to keep this change");
 });
 
 // ============================================================
@@ -460,42 +426,50 @@ document.querySelectorAll(".modal-panel form").forEach((form) => {
 });
 
 // ============================================================
-// Save Settings (mock) — collects every tab's current field values
-// into `settings` and writes to localStorage.
+// Save Settings — collects Branding, Bank Details and Quotation Defaults
+// and PUTs them to the API. (Subsidy / GST rules are saved immediately
+// from their own modals.)
 // ============================================================
-document.getElementById("saveSettingsBtn").addEventListener("click", () => {
-  settings.branding.name = fldCompanyName.value.trim();
-  settings.branding.address = fldCompanyAddress.value.trim();
-  settings.branding.phone = fldCompanyPhone.value.trim();
-  settings.branding.email = fldCompanyEmail.value.trim();
-  settings.branding.website = fldCompanyWebsite.value.trim();
+document.getElementById("saveSettingsBtn").addEventListener("click", async () => {
+  const saveBtn = document.getElementById("saveSettingsBtn");
 
-  settings.bank.accountName = fldAccountName.value.trim();
-  settings.bank.bankName = fldBankName.value.trim();
-  settings.bank.accountNumber = fldAccountNumber.value.trim();
-  settings.bank.ifsc = fldIfsc.value.trim().toUpperCase();
-  settings.bank.branch = fldBranch.value.trim();
+  const branding = {
+    name: fldCompanyName.value.trim(),
+    address: fldCompanyAddress.value.trim(),
+    phone: fldCompanyPhone.value.trim(),
+    email: fldCompanyEmail.value.trim(),
+    website: fldCompanyWebsite.value.trim(),
+    logoDataUrl: settings.branding.logoDataUrl || "",
+  };
+  const bank = {
+    accountName: fldAccountName.value.trim(),
+    bankName: fldBankName.value.trim(),
+    accountNumber: fldAccountNumber.value.trim(),
+    ifsc: fldIfsc.value.trim().toUpperCase(),
+    branch: fldBranch.value.trim(),
+  };
+  const defaults = {
+    terms: fldTerms.value,
+    validityDays: parseInt(fldValidityDays.value, 10) || 0,
+    prefix: (fldPrefix.value.trim() || "SQ").toUpperCase(),
+  };
 
-  settings.defaults.terms = fldTerms.value;
-  settings.defaults.validityDays = parseInt(fldValidityDays.value, 10) || 0;
-  settings.defaults.prefix = (fldPrefix.value.trim() || "SQ").toUpperCase();
-
-  const result = safeSaveSettings(settings);
-
-  if (result.ok && result.persisted) {
-    showToast("Settings saved (mock)");
-  } else if (result.ok && !result.persisted) {
-    // Saved for this session only — browser storage isn't available here
-    // (e.g. a sandboxed preview or file:// origin). Values will hold
-    // until the page is closed, but won't survive a reload.
-    showToast("Settings saved for this session (browser storage isn't available here)");
-  } else {
-    // Real failure — most likely the logo image pushed the payload over
-    // the ~5MB localStorage limit.
-    const reason = settings.branding.logoDataUrl
-      ? "Save failed — the logo image is too large for local storage. Try a smaller logo file."
-      : "Save failed — check the browser console for details.";
-    showToast(reason);
+  saveBtn.disabled = true;
+  try {
+    await Promise.all([
+      Session.api(`${SETTINGS_API}/branding`, { method: "PUT", body: branding }),
+      Session.api(`${SETTINGS_API}/bank-details`, { method: "PUT", body: bank }),
+      Session.api(`${SETTINGS_API}/quotation-defaults`, { method: "PUT", body: defaults }),
+    ]);
+    settings.branding = branding;
+    settings.bank = bank;
+    settings.defaults = defaults;
+    showToast("Settings saved");
+  } catch (err) {
+    console.error("Settings save failed:", err);
+    showToast(err.message || "Save failed — nothing was changed on the server");
+  } finally {
+    saveBtn.disabled = false;
   }
 });
 
@@ -538,18 +512,23 @@ profileBtn?.addEventListener("click", (e) => {
 });
 document.addEventListener("click", () => closeAllTopbarDropdowns());
 
-profileLogoutBtn?.addEventListener("click", () => {
-  showToast("Logged out");
-  window.location.href = "../index.html";
-});
+profileLogoutBtn?.addEventListener("click", () => Session.logout());
 
 // ============================================================
 // Init
 // ============================================================
-if (enforcePageAccess()) {
+(async function initSettings() {
+  if (!enforcePageAccess()) return;
+  try {
+    await loadSettings();
+  } catch (err) {
+    console.error("Settings load failed:", err);
+    showToast(err.message || "Could not load settings from the server");
+    // Forms stay empty: we never show made-up values as if they were saved settings.
+  }
   fillBrandingForm();
   fillBankForm();
   fillDefaultsForm();
   renderSubsidyTable();
   renderGstTable();
-}
+})();

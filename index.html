@@ -570,10 +570,88 @@
     <!-- ======== FORGOT PASSWORD MODAL (built in JS) ======== -->
     <div id="forgotModalContainer"></div>
 
+    <!-- session.js in "public" mode: exposes Session.save()/get() but does not force a login redirect -->
+    <script src="/session.js" data-public="true"></script>
     <script>
-        // ---- DUMMY CREDENTIALS (frontend only) ----
-        const DUMMY_EMAIL = 'admin@gmail.com';
-        const DUMMY_PASSWORD = 'admin@1234';
+        // ---- Dev-only mock users -------------------------------------------
+        // Used ONLY when the page is opened on localhost / 127.0.0.1 AND the
+        // backend login endpoint is unreachable. On any other host the mock
+        // is never consulted, so it cannot be used to log in to production.
+        const IS_LOCAL_DEV = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+        const ALL_MODULES = ['dashboard', 'quotation', 'product', 'customer', 'reports', 'project',
+            'channel_partner', 'user_management', 'calculator', 'approval', 'settings'];
+        const DEV_MOCK_USERS = {
+            'admin@gmail.com': {
+                password: 'admin@1234',
+                profile: { role: 'SUPER_ADMIN', name: 'Admin', modules: ALL_MODULES }
+            },
+            'partner.admin@gmail.com': {
+                password: 'admin@1234',
+                profile: {
+                    role: 'CHANNEL_PARTNER_ADMIN', name: 'Partner Admin',
+                    partnerId: 'CP-0001', partnerName: 'Sunrise Solar Solutions',
+                    modules: ['dashboard', 'quotation', 'product', 'customer', 'reports', 'project', 'calculator', 'approval']
+                }
+            },
+            'partner.sales@gmail.com': {
+                password: 'admin@1234',
+                profile: {
+                    role: 'CHANNEL_PARTNER_SALES', name: 'Partner Sales',
+                    partnerId: 'CP-0001', partnerName: 'Sunrise Solar Solutions',
+                    modules: ['dashboard', 'quotation', 'product', 'customer', 'reports', 'project', 'calculator']
+                }
+            }
+        };
+
+        /**
+         * POST /api/auth/login  { email, password }
+         * Expected response (bare or wrapped in { data }):
+         *   { token, role, userId, name, email, partnerId, partnerName,
+         *     modules: ["dashboard","quotation",...]  // or [{key,label,path}] }
+         * Returns the login response, or null for wrong credentials.
+         * Throws Error for server/network problems.
+         */
+        async function authenticate(email, password) {
+            let networkError = null;
+            try {
+                const res = await fetch((window.API_BASE || '') + '/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                if (res.status === 400 || res.status === 401 || res.status === 403) return null;
+                if (res.ok) {
+                    const body = await res.json();
+                    return (body && body.data && body.data.token) ? body.data : body;
+                }
+                networkError = new Error('Login service error (' + res.status + ')');
+                if (!(IS_LOCAL_DEV && [404, 405, 501, 502, 503].includes(res.status))) throw networkError;
+            } catch (err) {
+                networkError = err;
+            }
+
+            if (IS_LOCAL_DEV) {
+                console.warn('Login API unreachable — using dev-only mock user (localhost only).', networkError);
+                const u = DEV_MOCK_USERS[email.toLowerCase()];
+                if (!u || u.password !== password) return null;
+                return Object.assign({ token: 'dev-mock-token', userId: 'dev-' + u.profile.role, email }, u.profile);
+            }
+            throw networkError || new Error('Unable to reach the login service');
+        }
+
+        function firstModulePath(session) {
+            const mods = session.modules || [];
+            const dash = mods.find(m => m.key === 'dashboard');
+            return (dash || mods[0] || {}).path || '/dashboard/dashboard.html';
+        }
+
+        // Already logged in? Skip the login screen.
+        (function () {
+            const existing = Session.get();
+            if (existing && existing.modules && existing.modules.length) {
+                window.location.replace(firstModulePath(existing));
+            }
+        })();
 
         // ---- DOM refs ----
         const emailInput = document.getElementById('email');
@@ -628,7 +706,7 @@
                                 <i class="fas fa-check-circle"></i>
                             </div>
                             <h3 style="font-size:20px; font-weight:700; margin-bottom:12px; color:#541A1A;">Authentication Successful</h3>
-                            <p style="font-size:13px; color:#6b7280; line-height:1.5; margin-bottom:20px;">Welcome back, Administrator! You have successfully logged into the Solar Management.</p>
+                            <p style="font-size:13px; color:#6b7280; line-height:1.5; margin-bottom:20px;">Welcome back! You have successfully logged into the Solar Management.</p>
                             <div style="font-size:11px; color:#9CA3AF; display:flex; align-items:center; justify-content:center; gap:6px; margin-top:16px; padding-top:16px; border-top:1px solid #E9D9C6;">
                                 <i class="fas fa-clock"></i> Redirecting to dashboard...
                             </div>
@@ -686,7 +764,7 @@
         }
 
         // ---- LOGIN submit ----
-        loginForm.addEventListener('submit', (e) => {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const email = emailInput.value.trim();
@@ -698,38 +776,50 @@
             }
 
             loginBtn.classList.add('loading');
+            loginBtn.disabled = true;
             loginBtn.innerHTML = '<i class="fas fa-spinner"></i> Logging in...';
             loginError.style.display = 'none';
 
-            setTimeout(() => {
-                if (email === DUMMY_EMAIL && password === DUMMY_PASSWORD) {
-                    // clear any previous storage
-                    localStorage.removeItem('rememberedEmail');
-                    localStorage.removeItem('isLoggedIn');
-                    localStorage.removeItem('adminName');
-                    localStorage.removeItem('adminEmail');
-                    localStorage.removeItem('adminRole');
-                    localStorage.removeItem('adminId');
+            const resetButton = () => {
+                loginBtn.classList.remove('loading');
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login to Dashboard';
+            };
 
-                    // === ROLE CHECK PLACEHOLDER ===
-                    // currently hardcoded, but structure ready for future backend response
-                    // if backend sends "CHANNEL_PARTNER_SALES" we can adjust dashboard KPIs
-                    // For now we just store a dummy role (admin) but the logic is ready.
-                    // In future: const role = response.role; if(role === 'CHANNEL_PARTNER_SALES') { /* show less KPIs */ }
-                    // For demonstration we set a default role
-                    localStorage.setItem('adminRole', 'ADMIN'); // change to 'CHANNEL_PARTNER_SALES' to test
+            try {
+                const resp = await authenticate(email, password);
 
-                    showOverlayMessage('', 'success');
-                    setTimeout(() => {
-                        window.location.href = './dashboard/dashboard.html';
-                    }, 3000);
-                } else {
+                if (!resp) {
                     showOverlayMessage('', 'error');
-                    loginBtn.classList.remove('loading');
-                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login to Dashboard';
+                    resetButton();
                     passwordInput.value = '';
+                    return;
                 }
-            }, 600);
+
+                // Remember-me only stores the e-mail address (never the password).
+                if (rememberCheckbox.checked) localStorage.setItem('rememberedEmail', email);
+                else localStorage.removeItem('rememberedEmail');
+
+                // ONE session: sessionStorage.sqms_session = { token, role, ..., modules }
+                // (the old sessionStorage.token / sessionStorage.session /
+                //  localStorage.session / localStorage.adminRole keys are no longer used)
+                const session = Session.save(resp);
+                if (!session.modules.length) {
+                    Session.clear();
+                    showLoginError('Your account has no modules assigned. Please contact the administrator.');
+                    resetButton();
+                    return;
+                }
+
+                showOverlayMessage('', 'success');
+                setTimeout(() => {
+                    window.location.href = firstModulePath(session);
+                }, 3000);
+            } catch (err) {
+                console.error('Login failed:', err);
+                showLoginError('Unable to sign in right now. Please try again in a moment.');
+                resetButton();
+            }
         });
 
         // ---- FORGOT PASSWORD : open modal ----

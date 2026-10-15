@@ -638,9 +638,8 @@ function initChannelPartnerFilter() {
     const channelPartnerFilter = document.getElementById('channelPartnerFilterContainer');
     if (!channelPartnerFilter) return;
     
-    // Get user role from session (assuming it's stored in window.user or similar)
-    // This is a placeholder - actual implementation will depend on session.js
-    const userRole = window.user?.role || 'SUPER_ADMIN'; // For demo, show for SUPER_ADMIN
+    // Role comes from the login session (session.js) — no default role.
+    const userRole = window.currentUserRole;
     
     // Show only for SUPER_ADMIN
     if (userRole === 'SUPER_ADMIN') {
