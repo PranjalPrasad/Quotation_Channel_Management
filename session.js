@@ -1,412 +1,352 @@
-// ============================================================
-// session.js  (project root, served as /session.js)
-//
-// SINGLE SOURCE OF TRUTH for auth/session on the whole frontend.
-//
-//   sessionStorage["sqms_session"] = {
-//     token, role, userId, name, email, partnerId, partnerName,
-//     modules: [ { key, label, path }, ... ],   // from the login response
-//     loginAt
-//   }
-//
-// The old, scattered keys are gone and are wiped on every page load:
-//   sessionStorage.token, sessionStorage.session,
-//   localStorage.session, localStorage.adminRole (+ isLoggedIn/adminName/
-//   adminEmail/adminId).  Nothing else may read or write them.
-//
-// Include this file BEFORE each module's own JS:
-//   <script src="/session.js"></script>
-//   <script src="/dashboard/dashboard.js"></script>
-// On the login page include it with data-public="true" so the
-// "must be logged in" guard is skipped:
-//   <script src="/session.js" data-public="true"></script>
-//
-// What this file does:
-//   1. Session.save / get / clear / logout        (one session, one key)
-//   2. Session.requireAuth()                      (no session -> login page;
-//                                                  there is NO SUPER_ADMIN fallback)
-//   3. Session.renderSidebar()                    (sidebar is generated from
-//                                                  session.modules, not copy-pasted)
-//   4. Session.api() / authFetch()                (fetch + Bearer token + 401 handling)
-//   5. window.currentUserRole / currentUserPartnerName (read-only, from session)
-//   6. applyRoleBasedMenu() / applyProfileRoleLabel() for in-page [data-role] bits
-// ============================================================
+/* ============================================================================
+ * session.js  -  Solar CRM frontend <-> Spring Boot backend (port 8091)
+ *
+ * Load it with a plain <script src="/session.js"></script> at the END of <body> on every page.
+ * On a protected page it redirects to /index.html (login) when there is no session.
+ * On the login page use:  <script src="/session.js" data-public="true"></script>
+ *
+ * What it does for every protected page
+ *   1. Draws the sidebar into <nav id="sidebarNav" data-active="<moduleKey>"> from the modules
+ *      the backend returned at login (and refreshes them from /api/auth/me).
+ *   2. Defines window.currentUserRole / window.currentUserPartnerName (read-only globals).
+ *   3. Runs applyRoleBasedVisibility() ([data-role] elements) and applyProfileRoleLabel().
+ *   4. Wires #profileLogoutBtn to a logout that really clears the session first.
+ *
+ * Public API
+ *   API_BASE, Session.save/get/clear/token/has/can/logout
+ *   Session.api(path, {method, body})  -> parsed JSON envelope { success, message, data }, throws on error
+ *   Session.authFetch(path, options)   -> raw fetch Response (Bearer token + automatic refresh)
+ *   Session.getRole() / getUser() / getSession() / Session.user
+ *   apiFetch(path, options), api.get/post/put/patch/delete (return body.data)
+ * ========================================================================== */
+(function () {
+    'use strict';
 
-(function (global) {
-  "use strict";
+    var BACKEND_PORT = 8091;
+    var LOGIN_PAGE = '/index.html';          // the login page of this frontend (was /login.html, which does not exist)
+    var KEY = 'sqms_session';
 
-  const SESSION_KEY = "sqms_session";
-  const LOGIN_PAGE = "/index.html";
+    var host = (location.protocol === 'file:' || !location.hostname) ? 'localhost' : location.hostname;
+    var proto = location.protocol === 'https:' ? 'https:' : 'http:';
+    window.API_BASE = window.API_BASE || (proto + '//' + host + ':' + BACKEND_PORT);
 
-  const thisScript = document.currentScript;
-  const IS_PUBLIC_PAGE = !!(thisScript && thisScript.dataset && thisScript.dataset.public === "true");
-
-  // ------------------------------------------------------------
-  // Legacy keys — removed so there is only one session left.
-  // ------------------------------------------------------------
-  function purgeLegacyKeys() {
-    try {
-      ["token", "session"].forEach((k) => sessionStorage.removeItem(k));
-    } catch (e) { /* storage blocked */ }
-    try {
-      ["session", "adminRole", "isLoggedIn", "adminName", "adminEmail", "adminId"].forEach((k) =>
-        localStorage.removeItem(k)
-      );
-    } catch (e) { /* storage blocked */ }
-  }
-  purgeLegacyKeys();
-
-  // ------------------------------------------------------------
-  // Module catalog: default label / path / icon per module key.
-  // The login response only has to send the keys it allows
-  // (["dashboard","quotation",...]) or full objects
-  // ({ key, label, path }); anything the backend sends wins.
-  // ------------------------------------------------------------
-  const SVG_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
-  const ICONS = {
-    dashboard: SVG_OPEN + '<rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>',
-    quotation: SVG_OPEN + '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h1"></path><path d="M9.5 12.5c0-.83.67-1.5 1.5-1.5h.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3h.5a1.5 1.5 0 0 0 1.5-1.5"></path><line x1="11" y1="10" x2="11" y2="10.7"></line><line x1="11" y1="17.3" x2="11" y2="18"></line></svg>',
-    product: SVG_OPEN + '<circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line></svg>',
-    customer: SVG_OPEN + '<rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><circle cx="9" cy="11" r="3"></circle><path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path><path d="M16 9l2 2 4-4"></path></svg>',
-    reports: SVG_OPEN + '<line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line></svg>',
-    project: SVG_OPEN + '<path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
-    channel_partner: SVG_OPEN + '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
-    user_management: SVG_OPEN + '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
-    calculator: SVG_OPEN + '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line></svg>',
-    approval: SVG_OPEN + '<path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>',
-    referral: SVG_OPEN + '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 8l-3.5 3.5L17 10"></path><path d="M16 4.5a4 4 0 0 1 1.5 7.7"></path></svg>',
-    settings: SVG_OPEN + '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
-    _default: SVG_OPEN + '<circle cx="12" cy="12" r="9"></circle></svg>',
-  };
-
-  const MODULE_CATALOG = {
-    dashboard:       { label: "Dashboard",             path: "/dashboard/dashboard.html" },
-    quotation:       { label: "Quotation Management",  path: "/Quotation/quotation.html" },
-    product:         { label: "Product Management",    path: "/productM/productm.html" },
-    customer:        { label: "Customer Management",   path: "/customer/customer.html" },
-    reports:         { label: "Reports Management",    path: "/reports/reports.html" },
-    project:         { label: "Project Management",    path: "/project/project.html" },
-    channel_partner: { label: "Channel Partners",      path: "/channel-partner/channel.html" },
-    user_management: { label: "User Management",       path: "/user-management/user.html" },
-    calculator:      { label: "Cost Calculator",       path: "/calc/calc.html" },
-    approval:        { label: "Approval Management",   path: "/approval/approval.html" },
-    settings:        { label: "Settings",              path: "/settings/settings.html" },
-  };
-
-  // Only same-origin absolute paths are allowed as sidebar links.
-  function safePath(p) {
-    return typeof p === "string" && /^\/(?!\/)[^\s]*$/.test(p) ? p : null;
-  }
-
-  // Accepts ["dashboard", ...] or [{ key, label, path }, ...]
-  function normalizeModules(input) {
-    if (!Array.isArray(input)) return [];
-    const seen = new Set();
-    const out = [];
-    input.forEach((m) => {
-      const raw = typeof m === "string" ? { key: m } : m;
-      if (!raw || typeof raw.key !== "string") return;
-      const key = raw.key.trim().toLowerCase();
-      if (!key || seen.has(key)) return;
-      const def = MODULE_CATALOG[key] || {};
-      const path = safePath(raw.path) || def.path;
-      if (!path) return; // unknown module with no usable path -> skip
-      seen.add(key);
-      out.push({
-        key,
-        label: String(raw.label || def.label || key),
-        path,
-      });
-    });
-    return out;
-  }
-
-  // ------------------------------------------------------------
-  // Session store (sessionStorage.sqms_session only)
-  // ------------------------------------------------------------
-  function readRaw() {
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (err) {
-      console.error("session.js: failed to read session", err);
-      return null;
+    function read(store) {
+        try { var r = store.getItem(KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; }
     }
-  }
-
-  function jwtExpired(token) {
-    try {
-      const parts = String(token).split(".");
-      if (parts.length !== 3) return false; // not a JWT -> let the server decide
-      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-      return typeof payload.exp === "number" && payload.exp * 1000 <= Date.now();
-    } catch (e) {
-      return false;
+    function write(store, obj) {
+        try { store.setItem(KEY, JSON.stringify(obj)); } catch (e) { /* storage full / blocked */ }
     }
-  }
+    function get() { return read(sessionStorage) || read(localStorage); }
+    function store() { return read(sessionStorage) ? sessionStorage : (read(localStorage) ? localStorage : sessionStorage); }
 
-  /** Returns the full session object, or null when not logged in / expired. */
-  function getSession() {
-    const s = readRaw();
-    if (!s || !s.token || !s.role) return null;
-    if (jwtExpired(s.token)) {
-      clearSession();
-      return null;
+    function normModules(list) {
+        return (list || []).map(function (m) {
+            if (typeof m === 'string') return { key: m, label: m, path: null, actions: [] };
+            var code = m.code ? String(m.code).toLowerCase() : null;
+            return {
+                key: m.key || (code === 'user' ? 'user_management' : code),
+                label: m.label || m.name || m.key,
+                path: m.path || m.route || null,
+                actions: m.actions || []
+            };
+        }).filter(function (m) { return m.key; });
     }
-    return s;
-  }
 
-  /**
-   * Called once by the login page with the backend login response:
-   *   { token, role, userId, name, email, partnerId, partnerName, modules }
-   */
-  function saveSession(resp) {
-    if (!resp || !resp.token || !resp.role) {
-      throw new Error("Login response must contain token and role");
+    function save(d, remember) {
+        d = d || {};
+        var user = d.user || {};
+        var session = {
+            token: d.token || d.accessToken,
+            refreshToken: d.refreshToken || null,
+            expiresAt: d.expiresIn ? Date.now() + d.expiresIn * 1000 : null,
+            role: d.role || (user.role && user.role.code) || null,
+            roleName: (user.role && user.role.name) || d.roleName || null,
+            userId: d.userId || user.id || null,
+            name: d.name || user.name || '',
+            email: d.email || user.email || '',
+            photoUrl: user.photoUrl || null,
+            mustChangePassword: !!user.mustChangePassword,
+            partnerId: d.partnerId != null ? d.partnerId : (user.partner ? user.partner.id : null),
+            partnerName: d.partnerName || (user.partner ? user.partner.name : null),
+            modules: normModules(d.modules),
+            permissions: d.permissions || []
+        };
+        var useLocal = remember === true;
+        clear();
+        write(useLocal ? localStorage : sessionStorage, session);
+        return session;
     }
-    const session = {
-      token: resp.token,
-      role: resp.role,
-      userId: resp.userId || null,
-      name: resp.name || null,
-      email: resp.email || null,
-      partnerId: resp.partnerId || null,
-      partnerName: resp.partnerName || null,
-      modules: normalizeModules(resp.modules),
-      loginAt: Date.now(),
+
+    function clear() {
+        try { sessionStorage.removeItem(KEY); } catch (e) {}
+        try { localStorage.removeItem(KEY); } catch (e) {}
+    }
+
+    function has(moduleKey) {
+        var s = get();
+        return !!s && (s.modules || []).some(function (m) { return m.key === moduleKey; });
+    }
+    function can(permission) {
+        var s = get();
+        return !!s && (s.permissions || []).indexOf(permission) !== -1;
+    }
+    function goLogin() { window.location.replace(LOGIN_PAGE); }
+
+    /* ---------------------------------------------------------------- refresh */
+    var refreshing = null;
+    function refreshTokens() {
+        if (refreshing) return refreshing;
+        var s = get();
+        if (!s || !s.refreshToken) return Promise.reject(new Error('No refresh token'));
+        refreshing = fetch(window.API_BASE + '/api/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ refreshToken: s.refreshToken })
+        }).then(function (res) {
+            if (!res.ok) throw new Error('Refresh failed (' + res.status + ')');
+            return res.json();
+        }).then(function (body) {
+            var t = (body && body.data) || body;
+            var cur = get();
+            cur.token = t.accessToken;
+            cur.refreshToken = t.refreshToken;
+            cur.expiresAt = t.expiresIn ? Date.now() + t.expiresIn * 1000 : null;
+            write(store(), cur);
+            return cur.token;
+        }).finally(function () { refreshing = null; });
+        return refreshing;
+    }
+
+    /* ---------------------------------------------------------------- apiFetch */
+    function apiFetch(path, options) {
+        options = options || {};
+        var isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
+        function send(token) {
+            var headers = Object.assign({ 'Accept': 'application/json' }, options.headers || {});
+            if (!isForm && options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            return fetch(/^https?:/i.test(path) ? path : window.API_BASE + path,
+                Object.assign({}, options, { headers: headers }));
+        }
+
+        var s = get();
+        return send(s && s.token).then(function (res) {
+            if (res.status !== 401) return res;
+            return res.clone().json().catch(function () { return {}; }).then(function (body) {
+                if (body && body.errorCode && body.errorCode !== 'TOKEN_EXPIRED') {
+                    clear(); goLogin(); return res;
+                }
+                return refreshTokens().then(send, function () { clear(); goLogin(); return res; });
+            });
+        });
+    }
+
+    function toError(res, json) {
+        var first = json && json.errors && json.errors[0] && json.errors[0].message;
+        var err = new Error((json && json.message) || first || ('Request failed (' + res.status + ')'));
+        err.status = res.status; err.errorCode = json && json.errorCode; err.errors = json && json.errors;
+        return err;
+    }
+
+    function jsonCall(method) {
+        return function (path, body) {
+            var opts = { method: method };
+            if (body !== undefined) opts.body = JSON.stringify(body);
+            return apiFetch(path, opts).then(function (res) {
+                return res.json().catch(function () { return {}; }).then(function (json) {
+                    if (!res.ok || json.success === false) throw toError(res, json);
+                    return json.data !== undefined ? json.data : json;
+                });
+            });
+        };
+    }
+    var api = { get: jsonCall('GET'), post: jsonCall('POST'), put: jsonCall('PUT'),
+                patch: jsonCall('PATCH'), delete: jsonCall('DELETE') };
+
+    /* Session.api(path, { method, body }): body may be an object (sent as JSON) or FormData.
+       Resolves with the whole JSON envelope ({ success, message, data }) - callers read res.data. */
+    function sessionApi(path, options) {
+        options = Object.assign({}, options || {});
+        var b = options.body;
+        var isForm = typeof FormData !== 'undefined' && b instanceof FormData;
+        var isBlob = typeof Blob !== 'undefined' && b instanceof Blob;
+        if (b != null && typeof b === 'object' && !isForm && !isBlob) options.body = JSON.stringify(b);
+        return apiFetch(path, options).then(function (res) {
+            return res.json().catch(function () { return {}; }).then(function (json) {
+                if (!res.ok || json.success === false) throw toError(res, json);
+                return json;
+            });
+        });
+    }
+
+    /* Clears the session FIRST (so the login page cannot bounce back to the dashboard),
+       then tells the server to revoke the refresh token in the background. */
+    function logout() {
+        var s = get();
+        var rt = s && s.refreshToken, tok = s && s.token;
+        clear();
+        if (rt) {
+            try {
+                fetch(window.API_BASE + '/api/auth/logout', {
+                    method: 'POST', keepalive: true,
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+                               'Authorization': 'Bearer ' + tok },
+                    body: JSON.stringify({ refreshToken: rt })
+                }).catch(function () {});
+            } catch (e) { /* ignore */ }
+        }
+        goLogin();
+    }
+
+    function getUser() {
+        var s = get();
+        if (!s) return null;
+        return { id: s.userId, name: s.name, email: s.email, role: s.role, roleName: s.roleName,
+                 photoUrl: s.photoUrl, partnerId: s.partnerId, partnerName: s.partnerName };
+    }
+
+    var Session = {
+        save: save, get: get, clear: clear,
+        token: function () { var s = get(); return s && s.token; },
+        has: has, can: can, logout: logout,
+        api: sessionApi, authFetch: apiFetch,
+        getSession: get, getUser: getUser,
+        getRole: function () { var s = get(); return s ? s.role : null; }
     };
-    purgeLegacyKeys();
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    return session;
-  }
+    Object.defineProperty(Session, 'user', { get: getUser, enumerable: true });
 
-  function clearSession() {
-    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
-    purgeLegacyKeys();
-  }
+    window.Session = Session;
+    window.apiFetch = apiFetch;
+    window.api = api;
 
-  function logout() {
-    clearSession();
-    global.location.href = LOGIN_PAGE;
-  }
+    // Read-only globals every page script relies on.
+    Object.defineProperty(window, 'currentUserRole', {
+        get: function () { var s = get(); return s ? s.role : null; }, configurable: true });
+    Object.defineProperty(window, 'currentUserPartnerName', {
+        get: function () { var s = get(); return (s && s.partnerName) || ''; }, configurable: true });
 
-  /** { token, role, userId, name, email, partnerId, partnerName } or null */
-  function getCurrentUser() {
-    const s = getSession();
-    if (!s) return null;
-    return {
-      token: s.token,
-      role: s.role,
-      userId: s.userId || null,
-      name: s.name || null,
-      email: s.email || null,
-      partnerId: s.partnerId || null,
-      partnerName: s.partnerName || null,
+    var me = document.currentScript;
+    var isPublic = me && me.getAttribute('data-public') === 'true';
+    if (isPublic) return;                                          // login page: nothing else to do
+
+    // Guard: protected pages need a session.
+    if (!(get() && get().token)) { goLogin(); return; }
+
+    /* ======================================================================== UI */
+    var NS = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+    var ICONS = {
+        dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect>',
+        quotation: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>',
+        product: '<circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4.5"></line><line x1="12" y1="19.5" x2="12" y2="22"></line><line x1="2" y1="12" x2="4.5" y2="12"></line><line x1="19.5" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"></line><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"></line><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"></line>',
+        customer: '<rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><circle cx="9" cy="11" r="3"></circle><path d="M3 18.5c1.5-2.5 4-4 7-4s5.5 1.5 7 4"></path><path d="M16 9l2 2 4-4"></path>',
+        reports: '<line x1="5" y1="21" x2="5" y2="11"></line><line x1="12" y1="21" x2="12" y2="6"></line><line x1="19" y1="21" x2="19" y2="14"></line><line x1="3" y1="21" x2="21" y2="21"></line>',
+        project: '<path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>',
+        user_management: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
+        channel_partner: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+        calculator: '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="10" x2="8.01" y2="10"></line><line x1="12" y1="10" x2="12.01" y2="10"></line><line x1="16" y1="10" x2="16.01" y2="10"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="8" y1="18" x2="16" y2="18"></line>',
+        approval: '<path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>',
+        settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
+        _default: '<circle cx="12" cy="12" r="9"></circle>'
     };
-  }
-  function getToken() { const s = getSession(); return s ? s.token : null; }
-  function getRole() { const s = getSession(); return s ? s.role : null; }
-  function getModules() { const s = getSession(); return s ? s.modules || [] : []; }
 
-  // ------------------------------------------------------------
-  // Guard: no session -> login. NO default role is ever assumed.
-  // ------------------------------------------------------------
-  function requireAuth() {
-    if (getSession()) return true;
-    global.location.replace(LOGIN_PAGE);
-    return false;
-  }
-
-  // ------------------------------------------------------------
-  // API helper — Bearer token + 401 handling.
-  // Set window.API_BASE = "http://localhost:8080" if the backend runs
-  // on a different origin.
-  // ------------------------------------------------------------
-  function apiBase() { return global.API_BASE || ""; }
-
-  async function authFetch(path, options) {
-    const opts = Object.assign({}, options || {});
-    const headers = Object.assign({ Accept: "application/json" }, opts.headers || {});
-    const token = getToken();
-    if (token) headers.Authorization = "Bearer " + token;
-    if (opts.body !== undefined && opts.body !== null && typeof opts.body === "object" &&
-        !(opts.body instanceof FormData) && !(opts.body instanceof Blob)) {
-      headers["Content-Type"] = "application/json";
-      opts.body = JSON.stringify(opts.body);
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
     }
-    opts.headers = headers;
-    const res = await fetch(/^https?:\/\//i.test(path) ? path : apiBase() + path, opts);
-    if (res.status === 401) {
-      logout();
-      throw Object.assign(new Error("Session expired. Please log in again."), { status: 401 });
+    function safePath(p) { return typeof p === 'string' && /^\/(?!\/)/.test(p) ? p : null; }
+    function ready(fn) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn); else fn();
     }
-    return res;
-  }
 
-  /** authFetch + JSON parse + throws Error(message) on non-2xx. */
-  async function api(path, options) {
-    const res = await authFetch(path, options);
-    let data = null;
-    const text = await res.text();
-    if (text) { try { data = JSON.parse(text); } catch (e) { data = text; } }
-    if (!res.ok) {
-      const msg = (data && (data.message || data.error)) || ("Request failed (" + res.status + ")");
-      throw Object.assign(new Error(msg), { status: res.status, data });
+    function buildSidebar() {
+        var nav = document.getElementById('sidebarNav');
+        var s = get();
+        if (!nav || !s) return;
+        var active = nav.getAttribute('data-active') || '';
+        var here = location.pathname.toLowerCase();
+        var html = (s.modules || []).filter(function (m) { return safePath(m.path); }).map(function (m) {
+            var p = safePath(m.path);
+            var isActive = m.key === active || (!active && here === p.toLowerCase());
+            return '<a class="nav-item' + (isActive ? ' active' : '') + '" href="' + esc(p) + '" id="menu-' + esc(m.key) +
+                '" data-module="' + esc(m.key) + '" data-label="' + esc(m.label) + '" aria-label="' + esc(m.label) +
+                '"' + (isActive ? ' aria-current="page"' : '') + ' style="text-decoration:none;">' +
+                '<svg ' + NS + '>' + (ICONS[m.key] || ICONS._default) + '</svg><span>' + esc(m.label) + '</span></a>';
+        }).join('');
+        nav.innerHTML = html;
     }
-    return data;
-  }
 
-  // ------------------------------------------------------------
-  // Sidebar — generated from session.modules.
-  // Pages only contain:  <nav id="sidebarNav" class="nav-list ..." data-active="quotation"></nav>
-  // ------------------------------------------------------------
-  function injectSidebarStyles() {
-    if (document.getElementById("sqmsSidebarStyles")) return;
-    const st = document.createElement("style");
-    st.id = "sqmsSidebarStyles";
-    st.textContent = ".nav-list a.nav-item{text-decoration:none;}";
-    document.head.appendChild(st);
-  }
-
-  function renderSidebar() {
-    const nav = document.getElementById("sidebarNav");
-    if (!nav || nav.getAttribute("data-rendered") === "1") return; // already built; keep bound listeners
-    const session = getSession();
-    if (!session) return;
-    const modules = session.modules || [];
-    const activeKey = (nav.getAttribute("data-active") || "").toLowerCase();
-
-    injectSidebarStyles();
-    nav.textContent = "";
-    modules.forEach((m) => {
-      const a = document.createElement("a");
-      a.className = "nav-item" + (m.key === activeKey ? " active" : "");
-      a.href = m.path;
-      a.id = "menu_" + m.key;
-      a.setAttribute("data-label", m.label);
-      a.setAttribute("aria-label", m.label);
-      if (m.key === activeKey) a.setAttribute("aria-current", "page");
-      a.innerHTML = ICONS[m.key] || ICONS._default;
-      const span = document.createElement("span");
-      span.textContent = m.label;
-      a.appendChild(span);
-      nav.appendChild(a);
-    });
-    nav.setAttribute("data-rendered", "1");
-  }
-
-  /**
-   * If the page declares its module (nav data-active) and the user's
-   * modules array does not contain it, send them to a page they may open.
-   */
-  function enforceModuleAccess() {
-    const nav = document.getElementById("sidebarNav");
-    if (!nav) return true;
-    const key = (nav.getAttribute("data-active") || "").toLowerCase();
-    if (!key) return true;
-    const modules = getModules();
-    if (modules.some((m) => m.key === key)) return true;
-    const target = modules.length ? modules[0].path : LOGIN_PAGE;
-    global.location.replace(target);
-    return false;
-  }
-
-  // ------------------------------------------------------------
-  // In-page [data-role] elements (non-sidebar). Fail-CLOSED:
-  // requireAuth() has already sent anonymous users to the login page.
-  // ------------------------------------------------------------
-  function applyRoleBasedMenu(root) {
-    const role = getRole();
-    (root || document).querySelectorAll("[data-role]").forEach((el) => {
-      const allowed = el.getAttribute("data-role").split(",").map((r) => r.trim()).filter(Boolean);
-      el.style.display = role && allowed.includes(role) ? "" : "none";
-    });
-  }
-
-  function applyProfileRoleLabel() {
-    const user = getCurrentUser();
-    if (!user) return;
-    const roleLabelEl = document.getElementById("profileRoleLabel");
-    const partnerLabelEl = document.getElementById("profilePartnerLabel");
-    if (roleLabelEl) roleLabelEl.textContent = "Logged in as: " + (user.role || "-");
-    if (partnerLabelEl) {
-      if ((user.role || "").startsWith("CHANNEL_PARTNER") && user.partnerName) {
-        partnerLabelEl.textContent = user.partnerName;
-        partnerLabelEl.classList.remove("hidden");
-      } else {
-        partnerLabelEl.classList.add("hidden");
-      }
+    function prettyRole(code) {
+        return String(code || '').toLowerCase().split('_').map(function (w) {
+            return w ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+        }).join(' ');
     }
-  }
 
-  // ------------------------------------------------------------
-  // Boot
-  // ------------------------------------------------------------
-  const Session = {
-    KEY: SESSION_KEY,
-    save: saveSession,
-    get: getSession,
-    clear: clearSession,
-    logout,
-    requireAuth,
-    getUser: getCurrentUser,
-    getToken,
-    getRole,
-    getModules,
-    renderSidebar,
-    api,
-    authFetch,
-  };
-  global.Session = Session;
-  global.getCurrentUser = getCurrentUser;
-  global.applyRoleBasedMenu = applyRoleBasedMenu;
-  global.applyProfileRoleLabel = applyProfileRoleLabel;
-  global.authFetch = authFetch;
-  global.logout = logout;
+    function applyRoleBasedVisibility() {
+        var role = window.currentUserRole;
+        var els = document.querySelectorAll('[data-role]');
+        for (var i = 0; i < els.length; i++) {
+            var roles = els[i].getAttribute('data-role').split(',').map(function (r) { return r.trim(); });
+            els[i].style.display = roles.indexOf(role) !== -1 ? '' : 'none';
+        }
+    }
 
-  if (IS_PUBLIC_PAGE) return; // login page: expose helpers only
+    function applyProfileRoleLabel() {
+        var s = get();
+        if (!s) return;
+        var roleEl = document.getElementById('profileRoleLabel');
+        if (roleEl) roleEl.textContent = 'Logged in as: ' + (s.roleName || prettyRole(s.role));
+        var pEl = document.getElementById('profilePartnerLabel');
+        if (pEl) {
+            var show = s.role !== 'SUPER_ADMIN' && !!s.partnerName;
+            pEl.textContent = show ? s.partnerName : '';
+            pEl.classList.toggle('hidden', !show);
+        }
+        var name = s.name || (s.email ? s.email.split('@')[0] : '');
+        var g = document.getElementById('greetingName'); if (g && name) g.textContent = name;
+        var i = document.getElementById('profileInitial'); if (i && name) i.textContent = name.charAt(0).toUpperCase();
+    }
 
-  // Read-only globals for module scripts (replaces the old
-  // `window.currentUserRole = window.currentUserRole || 'SUPER_ADMIN'` lines).
-  Object.defineProperty(global, "currentUserRole", {
-    configurable: false,
-    get: function () { return getRole(); },
-  });
-  Object.defineProperty(global, "currentUserPartnerName", {
-    configurable: false,
-    get: function () { const u = getCurrentUser(); return u ? u.partnerName : null; },
-  });
-  Object.defineProperty(global, "currentUserPartnerId", {
-    configurable: false,
-    get: function () { const u = getCurrentUser(); return u ? u.partnerId : null; },
-  });
+    function wireLogout() {
+        var btn = document.getElementById('profileLogoutBtn');
+        if (!btn) return;
+        btn.addEventListener('click', function (e) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            logout();
+        }, true);
+    }
 
-  if (!requireAuth()) return;       // redirecting to login
-  if (!enforceModuleAccess()) return; // redirecting to an allowed page
+    // Keep the stored modules/permissions in step with the server (role changes show without a new login).
+    function refreshFromServer() {
+        api.get('/api/auth/me').then(function (me) {
+            var cur = get();
+            if (!cur || !me || !me.modules) return;
+            var fresh = normModules(me.modules);
+            if (JSON.stringify(fresh) !== JSON.stringify(cur.modules)) {
+                cur.modules = fresh;
+                if (me.permissions) cur.permissions = me.permissions;
+                write(store(), cur);
+                buildSidebar();
+            }
+        }).catch(function () { /* offline / expired: keep what we have */ });
+    }
 
-  // Scripts sit at the end of <body>, so the nav already exists and the
-  // sidebar can be built right now — before the module JS binds its
-  // click handlers to `.nav-list .nav-item`.
-  renderSidebar();
+    window.applyRoleBasedMenu = buildSidebar;
+    window.applyProfileRoleLabel = applyProfileRoleLabel;
+    window.applyRoleBasedVisibility = applyRoleBasedVisibility;
 
-  function initSessionUI() {
-    renderSidebar(); // no-op if already built at boot
-    applyRoleBasedMenu();
-    applyProfileRoleLabel();
-  }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initSessionUI);
-  } else {
-    initSessionUI();
-  }
+    function paint() {
+        buildSidebar();
+        applyRoleBasedVisibility();
+        applyProfileRoleLabel();
+    }
 
-  // Every page's Logout button goes through Session.logout(); capture phase so
-  // it runs before the module's own (toast-only / redirect-only) handlers.
-  document.addEventListener("click", function (e) {
-    const btn = e.target.closest && e.target.closest("#profileLogoutBtn");
-    if (!btn) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    logout();
-  }, true);
-})(window);
+    // session.js sits at the end of <body>, so the markup above it already exists: paint NOW, before the
+    // page's own script runs (it attaches click handlers to the nav items). Repeat once the DOM is complete
+    // in case the script was placed in <head>.
+    paint();
+    wireLogout();
+    document.addEventListener('DOMContentLoaded', function () { paint(); refreshFromServer(); });
+    if (document.readyState !== 'loading') refreshFromServer();
+})();

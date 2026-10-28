@@ -2,50 +2,76 @@
    Project Management — extends dashboard.css theme
    Reuses: cream/peach palette, Poppins, cards, table, modal
    patterns already defined in /dashboard/dashboard.css
+   (dashboard.css must be loaded first — it defines the shell,
+   sidebar, responsive rules and the dark border tokens)
    ============================================================ */
 
-/* ============ Search & filter bar ============ */
-.filter-input {
-  font-size: 12.5px;
-  color: #374151;
-  background: #fff;
-  border: 1px solid #DCC3AA;
-  border-radius: 10px;
-  padding: 9px 12px;
-  font-family: inherit;
-  height: 38px;
+:root {
+  --border-strong: #BFA07C; /* cards, inputs, dropdowns, modal */
+  --border-soft:   #D3B999; /* dividers, row lines */
+  --field-bg:      #EFE1D2; /* modal (overlay) field background */
 }
-.filter-input::placeholder { color: #B3A69A; }
-.filter-input:focus { outline: none; border-color: #541A1A; box-shadow: 0 0 0 3px rgba(84,26,26,0.12); }
 
-.filter-select {
-  min-width: 140px;
-  cursor: pointer;
+/* ============ Search & filter bar (compact) ============ */
+.filter-input {
+  font-size: 12px;
+  color: #374151;
+  background: #EFE1D2;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 6px 11px;
+  font-family: inherit;
+  height: 34px;
 }
+.filter-input::placeholder { color: #A8998A; }
+.filter-input:focus { outline: none; border-color: #541A1A; box-shadow: 0 0 0 3px rgba(84,26,26,0.15); }
+.filter-select { min-width: 130px; cursor: pointer; }
 
 .filter-reset-btn {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #810B38;
   background: #F1E2D1;
-  border: 1px solid #DCC3AA;
-  border-radius: 10px;
-  padding: 9px 14px;
-  height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 6px 13px;
+  height: 34px;
   cursor: pointer;
   transition: background-color .15s ease;
   white-space: nowrap;
 }
 .filter-reset-btn:hover { background: #E4CBAE; }
 
-/* ============ Wide table: horizontal scroll on desktop instead of
-   squeezing 12 columns, mobile keeps the existing card-stack look ============ */
+/* ============ Export dropdown ============ */
+.export-wrap { position: relative; }
+.btn-export {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; color: #374151;
+  background: #F7ECE1; border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 6px 12px; cursor: pointer;
+  transition: background-color .15s ease;
+}
+.btn-export svg { width: 14px; height: 14px; }
+.btn-export:hover { background: #F1E2D1; border-color: #810B38; color: #541A1A; }
+.export-menu { min-width: 160px; padding: 5px; }
+.export-menu-item {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 500; color: #374151;
+  background: transparent; border: none; border-radius: 8px;
+  padding: 7px 9px; cursor: pointer; text-align: left; font-family: inherit;
+}
+.export-menu-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+.export-menu-item:hover { background: #EFE1D2; color: #541A1A; }
+
+/* ============ Wide table: horizontal scroll instead of squeezing
+   12–13 columns; mobile keeps the card-stack look ============ */
 .table-scope-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 @media (min-width: 721px) {
   .wide-table { table-layout: auto; min-width: 1180px; }
   .wide-table th, .wide-table td { white-space: nowrap; }
   .wide-table td[data-label="Project Name"],
   .wide-table td[data-label="Remarks"] { white-space: normal; }
+  .wide-table td:nth-child(2) { max-width: 260px; }
 }
 
 /* project type pills */
@@ -54,155 +80,137 @@
 .type-pill-commercial { background: #E0F2FE; color: #0369A1; }
 .type-pill-industrial { background: #EDE9FE; color: #6D28D9; }
 
-/* project status pills (extends pill-pending/accepted/rejected naming) */
+/* project status pills */
 .pill-planning { background: #FEF3C7; color: #B45309; }
 .pill-inprogress { background: #E0F2FE; color: #0369A1; }
 .pill-completed { background: #D1FAE5; color: #047857; }
 .pill-onhold { background: #FFE4E6; color: #E11D48; }
 
 /* empty state */
-.empty-state { text-align: center; padding: 34px 10px; }
+.empty-state { text-align: center; padding: 28px 10px; }
 .empty-state.hidden { display: none; }
 
-/* ============ Modal variants ============ */
-.modal-panel-wide { max-width: 640px; }
-.modal-panel-sm { max-width: 380px; }
+/* ============ Modal variants (compact) ============ */
+.modal-panel-wide { max-width: 620px; }
+.modal-panel-sm { max-width: 360px; }
 .modal-body-single { grid-template-columns: 1fr !important; }
-.modal-body-scroll { max-height: 62vh; }
+.modal-body-scroll { max-height: 62vh; max-height: 62dvh; }
 .field-group-full { grid-column: 1 / -1; }
 
-.field-textarea {
-  resize: vertical;
-  min-height: 70px;
-  font-family: inherit;
+.field-textarea { resize: vertical; min-height: 64px; font-family: inherit; }
+
+/* ===== Overlay (modal) fields: #EFE1D2 instead of white ===== */
+.modal-panel .field-input,
+.modal-panel select,
+.modal-panel textarea {
+  background: var(--field-bg);
+  color: #1F2937;
 }
+.modal-panel .field-input:disabled { background: #F1E2D1; color: #9CA3AF; }
+.modal-panel .field-input::placeholder,
+.modal-panel textarea::placeholder { color: #8A7660; opacity: 1; }
+.modal-panel .field-input:not(:disabled):focus { background: var(--field-bg); }
 
 .read-value {
-  font-size: 13px;
+  font-size: 12.5px;
   color: #1F2937;
   background: #F1E2D1;
-  border-radius: 10px;
-  padding: 7px 10px;
-  min-height: 34px;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  padding: 6px 10px;
+  min-height: 32px;
   display: flex;
   align-items: center;
+  word-break: break-word;
 }
-.read-value-block {
-  min-height: 54px;
-  align-items: flex-start;
-  line-height: 1.5;
-}
+.read-value-block { min-height: 50px; align-items: flex-start; line-height: 1.5; }
 
 /* form error banner */
 .form-error {
-  margin: 0 16px 4px;
+  margin: 0 15px 4px;
   font-size: 11.5px;
   font-weight: 500;
   color: #E11D48;
   background: #FFE4E6;
   border-radius: 9px;
-  padding: 7px 10px;
+  padding: 6px 10px;
 }
 .form-error.hidden { display: none; }
 
 /* delete modal icon */
 .delete-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 999px;
-  background: #FFE4E6;
-  color: #E11D48;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 12px;
+  width: 44px; height: 44px; border-radius: 999px;
+  background: #FFE4E6; color: #E11D48;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 10px;
 }
 
 .btn-danger {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 10px;
-  cursor: pointer;
-  border: none;
-  background: #E11D48;
-  color: #fff;
-  transition: opacity .15s ease;
+  font-size: 11.5px; font-weight: 600; padding: 7px 14px;
+  border-radius: 9px; cursor: pointer; border: none;
+  background: #E11D48; color: #fff; transition: opacity .15s ease;
 }
 .btn-danger:hover { opacity: .85; }
 
 /* ============ Project Details card (inside View modal) ============ */
 .project-details-card {
-  border: 1px solid #DCC3AA;
-  border-radius: 18px;
-  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 13px;
   background: linear-gradient(135deg, #810B38, #541A1A);
   color: #fff;
 }
-.project-details-title { font-size: 12.5px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: .03em; }
-.project-details-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
-}
-.project-detail-item { display: flex; flex-direction: column; gap: 3px; }
+.project-details-title { font-size: 12px; font-weight: 700; margin-bottom: 10px; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: .03em; }
+.project-details-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.project-detail-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .project-detail-label { font-size: 10px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: .02em; }
-.project-detail-value { font-size: 14px; font-weight: 700; color: #fff; }
-@media (max-width: 560px) {
-  .project-details-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 380px) {
-  .project-details-grid { grid-template-columns: 1fr; }
-}
+.project-detail-value { font-size: 13px; font-weight: 700; color: #fff; word-break: break-word; }
+@media (max-width: 560px) { .project-details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 380px) { .project-details-grid { grid-template-columns: 1fr; } }
 
 /* ============================================================
-   Responsive — mirrors dashboard.css's breakpoint scale so
-   Project Management feels identical to Dashboard on every
-   device (tablet 768–1023, phone 481–767, small phone ≤480,
-   extra-small ≤360)
+   Responsive — mirrors dashboard.css breakpoints
    ============================================================ */
 
 /* ---- Tablets (768–1023px) ---- */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .filter-input, .filter-select, .filter-reset-btn { height: 36px; font-size: 12px; }
-  .project-details-grid { grid-template-columns: repeat(3, 1fr); }
+  .project-details-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-/* ---- Phones (large — 481–767px) ---- */
+/* ---- Phones (≤767px) ---- */
 @media (max-width: 767px) {
-  .filter-input, .filter-reset-btn { height: 36px; font-size: 12px; }
+  .filter-input, .filter-reset-btn { height: 34px; font-size: 12px; }
 
-  /* Search & filter bar: let each field take a comfortable width and
-     wrap onto its own row instead of squeezing to unreadable widths.
-     !important is needed to beat Tailwind's flex-1 / min-w-[160px]
-     utility classes on the wrapper divs (same pattern dashboard.css
-     uses for its own responsive overrides). */
-  #searchProjectName, #searchCustomerName, #searchLocation {
-    width: 100% !important;
-  }
-  .filter-field {
-    flex: 1 1 100% !important;
-    min-width: 100% !important;
-  }
+  /* each search field gets its own full-width row; !important beats
+     Tailwind's flex-1 / min-w-[160px] utility classes on the wrappers */
+  #searchProjectName, #searchCustomerName, #searchLocation { width: 100% !important; }
+  .filter-field { flex: 1 1 100% !important; min-width: 100% !important; }
   .filter-select { flex: 1 1 calc(50% - 5px) !important; min-width: 0 !important; }
-  .filter-reset-btn { flex: 1 1 calc(50% - 5px) !important; justify-content: center; text-align: center; }
+  .filter-reset-btn { flex: 1 1 calc(50% - 5px) !important; text-align: center; }
 
-  .project-details-grid { gap: 10px; }
+  .project-details-grid { gap: 9px; }
 }
 
-/* ---- Small phones (≤480px, e.g. iPhone SE/mini) ---- */
+/* ---- Small phones (≤480px) ---- */
 @media (max-width: 480px) {
-  .filter-select { min-width: 0; flex: 1 1 100%; }
-  .filter-reset-btn { flex: 1 1 100%; }
-  .type-pill, .pill-planning, .pill-inprogress, .pill-completed, .pill-onhold {
-    font-size: 10px;
-    padding: 3px 7px;
-  }
-  .project-details-card { padding: 13px; }
-  .project-detail-value { font-size: 13px; }
+  .filter-select { flex: 1 1 100% !important; }
+  .filter-reset-btn { flex: 1 1 100% !important; }
+  .type-pill, .pill-planning, .pill-inprogress, .pill-completed, .pill-onhold { font-size: 10px; padding: 3px 7px; }
+  .project-details-card { padding: 11px; }
+  .project-detail-value { font-size: 12.5px; }
 }
 
 /* ---- Extra small screens (≤360px) ---- */
 @media (max-width: 360px) {
-  .filter-input, .filter-reset-btn { font-size: 11.5px; padding: 8px 10px; }
+  .filter-input, .filter-reset-btn { font-size: 11.5px; padding: 6px 9px; }
+}
+
+
+/* ============ Print (Print button prints the project table only) ============ */
+@media print {
+  html, body { overflow: visible; height: auto; }
+  .app-sidebar, .sidebar-backdrop, .actions-th, .row-actions,
+  .modal-overlay, #toast-container, #exportWrap, #addProjectBtn { display: none !important; }
+  .app-main { height: auto; overflow: visible; }
+  .wide-table { min-width: 0; }
 }

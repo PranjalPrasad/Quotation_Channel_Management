@@ -9,81 +9,105 @@
     'use strict';
 
     // ---------------------------------------------------
-    // 0. Auth guard (wire to your auth.js)
+    // 0. Logged-in user ka naam (avatar initial + profile dropdown)
+    //    Session object / sessionStorage / JWT — jahan bhi naam mile, wahan se uthata hai.
     // ---------------------------------------------------
+    function decodeJwtPayload(token) {
+        try {
+            const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            return JSON.parse(decodeURIComponent(escape(atob(b64))));
+        } catch (_) { return null; }
+    }
+
+    function getLoggedInUserName() {
+        const sources = [];
+        try {
+            if (window.Session) {
+                if (typeof Session.getUser === 'function') sources.push(Session.getUser());
+                if (typeof Session.getSession === 'function') sources.push(Session.getSession());
+                if (Session.user) sources.push(Session.user);
+            }
+        } catch (_) {}
+        try {
+            if (typeof getAdminInfo === 'function') sources.push(getAdminInfo());
+        } catch (_) {}
+        try {
+            const raw = sessionStorage.getItem('sqms_session');
+            if (raw) sources.push(JSON.parse(raw));
+        } catch (_) {}
+
+        for (const s of sources.filter(Boolean)) {
+            const u = s.user || s.data?.user || s.data || s;
+            const name =
+                u.fullName || u.name || u.userName || u.username ||
+                [u.firstName, u.lastName].filter(Boolean).join(' ') ||
+                (u.email ? u.email.split('@')[0] : '');
+            if (name) return String(name).trim();
+
+            const token = s.token || s.accessToken || u.token;
+            const claims = token ? decodeJwtPayload(token) : null;
+            const fromJwt = claims && (claims.name || claims.fullName || claims.username || claims.sub);
+            if (fromJwt) return String(fromJwt).trim();
+        }
+        return 'User';
+    }
+
     (async function initAuth() {
         try {
             if (typeof requireAuth === 'function') await requireAuth();
-            if (typeof getAdminInfo === 'function') {
-                const admin = getAdminInfo();
-                const profileBtn = document.getElementById('profileBtn');
-                if (profileBtn && admin?.name) profileBtn.textContent = admin.name.charAt(0).toUpperCase();
-            }
         } catch (e) { /* auth.js not wired yet in this preview */ }
+        const name = getLoggedInUserName();
+        const initial = document.getElementById('profileInitial');
+        const label = document.getElementById('profileNameLabel');
+        if (initial) initial.textContent = name.charAt(0).toUpperCase();
+        if (label) label.textContent = name;
     })();
 
     // ---------------------------------------------------
     // 1. Sidebar (collapse / expand + mobile drawer) — identical to dashboard.js
+    //    Desktop (>=1024px): open by default on every page load.
+    //    Phone/tablet: open as overlay drawer (see OPEN_BY_DEFAULT_ON_DRAWER).
     // ---------------------------------------------------
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const toggleIcon = document.getElementById('toggleIcon');
     const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 
-    let sidebarExpanded = false;
+    const drawerMQ = window.matchMedia('(max-width: 1023px)');
+    const isDrawerViewport = () => drawerMQ.matches;
 
-    function isMobile() {
-        return window.innerWidth < 1024;
+    // Phone/tablet par bhi page load par open? true = open drawer, false = icon rail
+    const OPEN_BY_DEFAULT_ON_DRAWER = true;
+    const defaultSidebarState = () => (isDrawerViewport() ? OPEN_BY_DEFAULT_ON_DRAWER : true);
+
+    let sidebarExpanded = defaultSidebarState();
+
+    function setSidebarExpanded(next) {
+        sidebarExpanded = next;
+        sidebar?.classList.toggle('expanded', next);
+        sidebar?.classList.toggle('collapsed', !next);
+        if (toggleIcon) toggleIcon.style.transform = next ? 'rotate(180deg)' : 'rotate(0deg)';
+
+        // backdrop only exists as an overlay on phone/tablet
+        const showBackdrop = next && isDrawerViewport();
+        sidebarBackdrop?.classList.toggle('visible', showBackdrop);
+        sidebarBackdrop?.classList.toggle('hidden', !showBackdrop);
     }
 
-    function updateChevron() {
-        if (!toggleIcon) return;
-        toggleIcon.style.transform = sidebarExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
-    }
+    // apply initial state on page load
+    setSidebarExpanded(sidebarExpanded);
 
-    function openSidebar() {
-        sidebarExpanded = true;
-        sidebar?.classList.add('expanded');
-        sidebar?.classList.remove('collapsed');
-        if (isMobile()) {
-            sidebarBackdrop?.classList.remove('hidden');
-            sidebarBackdrop?.classList.add('visible');
-        }
-        updateChevron();
-    }
+    sidebarToggle?.addEventListener('click', () => setSidebarExpanded(!sidebarExpanded));
+    sidebarBackdrop?.addEventListener('click', () => setSidebarExpanded(false));
 
-    function closeSidebar() {
-        sidebarExpanded = false;
-        sidebar?.classList.remove('expanded');
-        sidebar?.classList.add('collapsed');
-        sidebarBackdrop?.classList.remove('visible');
-        sidebarBackdrop?.classList.add('hidden');
-        updateChevron();
-    }
+    // when crossing the 1024px breakpoint, reset to that size's default
+    drawerMQ.addEventListener('change', () => setSidebarExpanded(defaultSidebarState()));
 
-    sidebarToggle?.addEventListener('click', () => {
-        sidebarExpanded ? closeSidebar() : openSidebar();
+    // nav items are generated by session.js AFTER load, so use event delegation.
+    // Tapping a nav item closes the mobile drawer.
+    document.getElementById('sidebarNav')?.addEventListener('click', (e) => {
+        if (e.target.closest('.nav-item') && isDrawerViewport()) setSidebarExpanded(false);
     });
-
-    sidebarBackdrop?.addEventListener('click', closeSidebar);
-
-    // Auto-close mobile drawer when a nav item is clicked / resized to desktop
-    document.querySelectorAll('.nav-item').forEach((item) => {
-        item.addEventListener('click', () => {
-            if (isMobile()) closeSidebar();
-        });
-    });
-
-    window.addEventListener('resize', () => {
-        if (!isMobile() && sidebarExpanded) {
-            // keep expanded state but drop the mobile-only backdrop
-            sidebarBackdrop?.classList.remove('visible');
-            sidebarBackdrop?.classList.add('hidden');
-        }
-    });
-
-    // Sidebar starts collapsed by default (icon rail), same as dashboard
-    closeSidebar();
 
     // ---------------------------------------------------
     // 2. Topbar dropdowns (notification / profile) — identical to dashboard.js
@@ -113,8 +137,12 @@
 
     profileLogoutBtn?.addEventListener('click', async (e) => {
         e.preventDefault();
-        if (typeof logout === 'function') await logout();
-        else window.location.href = '../index.html';
+        try {
+            if (window.Session && typeof Session.logout === 'function') Session.logout();
+            else if (typeof logout === 'function') await logout();
+            else sessionStorage.removeItem('sqms_session');
+        } catch (_) {}
+        window.location.href = '../index.html';
     });
 
     // ---------------------------------------------------
@@ -153,7 +181,7 @@
     //    Pricing: mrp (₹), price = selling price (₹), discount (%)
     //    BOQ:     qtyPerKw = default quantity of this product required
     //             per 1 kW of system capacity (unit follows p.unit)
-    //    NEW: hsn (HSN Code), gst (GST Rate %), warranty (Years)
+    //    hsn (HSN Code), gst (GST Rate %), warranty (Years)
     // ---------------------------------------------------
     const CATEGORY_META = {
         'Solar Panel': { icon: 'fa-solar-panel', cls: 'bg-panel' },
@@ -196,7 +224,7 @@
         search: '',
         category: '',
         status: '',
-        gst: '', // NEW: GST filter
+        gst: '',
         sortKey: 'name',
         sortDir: 'asc',
         page: 1,
@@ -229,7 +257,6 @@
             const matchesCategory = !state.category || p.category === state.category;
             const label = computeStatusLabel(p);
             const matchesStatus = !state.status || label === state.status;
-            // NEW: GST filter
             const matchesGst = !state.gst || (p.gst !== undefined && String(p.gst) === state.gst);
             return matchesSearch && matchesCategory && matchesStatus && matchesGst;
         });
@@ -244,7 +271,6 @@
                 case 'price': av = a.price; bv = b.price; break;
                 case 'stock': av = a.stock; bv = b.stock; break;
                 case 'status': av = computeStatusLabel(a); bv = computeStatusLabel(b); break;
-                // NEW: sort by HSN and GST
                 case 'hsn': av = a.hsn || ''; bv = b.hsn || ''; break;
                 case 'gst': av = a.gst || 0; bv = b.gst || 0; break;
                 default: av = a.name; bv = b.name;
@@ -320,9 +346,7 @@
                 <td data-label="Brand">${escapeHtml(p.brand)}</td>
                 <td data-label="Specification">${escapeHtml(p.spec || '—')}</td>
                 <td data-label="Qty / kW">${formatQtyPerKw(p)}</td>
-                <!-- NEW: HSN Code column -->
                 <td data-label="HSN Code">${escapeHtml(p.hsn || '—')}</td>
-                <!-- NEW: GST % column -->
                 <td data-label="GST %">${p.gst !== undefined ? p.gst + '%' : '—'}</td>
                 <td data-label="Selling Price">
                     <div class="price-cell">
@@ -404,7 +428,6 @@
         render();
     });
 
-    // NEW: GST filter
     document.getElementById('filter-gst').addEventListener('change', (e) => {
         state.gst = e.target.value;
         state.page = 1;
@@ -458,7 +481,6 @@
         sku: document.getElementById('pf-sku'),
         spec: document.getElementById('pf-spec'),
         unit: document.getElementById('pf-unit'),
-        // NEW fields
         hsn: document.getElementById('pf-hsn'),
         gst: document.getElementById('pf-gst'),
         warranty: document.getElementById('pf-warranty'),
@@ -520,7 +542,6 @@
             form.sku.value = product.sku;
             form.spec.value = product.spec;
             form.unit.value = product.unit;
-            // NEW fields
             form.hsn.value = product.hsn || '';
             form.gst.value = product.gst !== undefined ? product.gst : 18;
             form.warranty.value = product.warranty !== undefined ? product.warranty : '';
@@ -616,7 +637,6 @@
             sku: form.sku.value.trim(),
             spec: form.spec.value.trim(),
             unit: form.unit.value,
-            // NEW fields
             hsn: form.hsn.value.trim(),
             gst: Number(form.gst.value) || 0,
             warranty: form.warranty.value !== '' ? Number(form.warranty.value) : 0,

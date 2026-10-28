@@ -1,37 +1,77 @@
 /* ============================================================
-   channel-partner.css
+   channel.css
    Module-specific additions only — base look (sidebar, topbar,
    data-table, modal, pill, pagination, etc.) is inherited from
    the shared /dashboard/dashboard.css design system so every
    module stays visually consistent.
+   (dashboard.css must be loaded first.)
    ============================================================ */
 
-/* ---- Wider modal variant for the View Partner / View Team dialogs,
-        which need room for the stat grid + mini table ---- */
-.modal-panel--wide {
-  max-width: 560px;
+:root {
+  --border-strong: #BFA07C; /* cards, inputs, dropdowns, modal */
+  --border-soft:   #D3B999; /* dividers, row lines */
+  --field-bg:      #EFE1D2; /* modal (overlay) field background */
 }
 
-/* the view/team modals don't use the 2-col form grid — stack instead */
-.modal-body--block {
-  display: block;
+/* ---- Search + status filter above the table ---- */
+.partner-filter-input {
+  font-size: 12px;
+  color: #374151;
+  background: #EFE1D2;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 6px 11px;
+  height: 34px;
+  font-family: inherit;
 }
+.partner-filter-input::placeholder { color: #A8998A; }
+.partner-filter-input:focus { outline: none; border-color: #541A1A; box-shadow: 0 0 0 3px rgba(84,26,26,0.15); }
+.partner-filter-select { min-width: 140px; cursor: pointer; }
+
+/* ---- Partners table: 10 columns -> auto layout + horizontal scroll on
+        desktop/tablet (mobile keeps the card-stack look from dashboard.css) ---- */
+@media (min-width: 721px) {
+  #partnersTable { table-layout: auto; min-width: 1100px; }
+  #partnersTable th, #partnersTable td { white-space: nowrap; }
+}
+
+/* ---- Wider modal variants ---- */
+.modal-panel--wide { max-width: 560px; }
+.modal-panel--xwide { max-width: 680px; }
+
+/* the view/team/mark-paid modals don't use the 2-col form grid — stack instead */
+.modal-body--block { display: block; }
+
+/* mark-paid form: labels + fields stacked with a little rhythm */
+.mp-form .field-label { display: block; margin: 8px 0 4px; }
+.mp-form .field-label:first-child { margin-top: 0; }
+
+/* ===== Overlay (modal) fields: #EFE1D2 instead of white ===== */
+.modal-panel .field-input,
+.modal-panel select,
+.modal-panel textarea {
+  background: var(--field-bg);
+  color: #1F2937;
+}
+.modal-panel .field-input:disabled { background: #F1E2D1; color: #9CA3AF; }
+.modal-panel .field-input::placeholder { color: #8A7660; opacity: 1; }
+.modal-panel .field-input:not(:disabled):focus { background: var(--field-bg); }
 
 /* ---- Read-only partner info block inside the View Partner modal ---- */
 .partner-view-info {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 9px;
+  margin-bottom: 12px;
 }
 .partner-view-value {
   font-size: 12.5px;
   color: #1F2937;
   font-weight: 500;
-  padding: 7px 9px;
+  padding: 6px 9px;
   background: #F1E2D1;
   border-radius: 9px;
-  border: 1px solid #E9D9C6;
+  border: 1px solid var(--border-soft);
   min-height: 32px;
   display: flex;
   align-items: center;
@@ -47,44 +87,39 @@
   color: #9CA3AF;
   text-transform: uppercase;
   letter-spacing: .04em;
-  margin-bottom: 8px;
+  margin-bottom: 7px;
 }
+.partner-view-section-title--spaced { margin-top: 14px; }
 
 /* ---- KPI-style stat cards inside the View Partner modal ---- */
 .partner-stat-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 9px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 @media (min-width: 420px) {
-  .partner-stat-grid { grid-template-columns: repeat(4, 1fr); }
+  .partner-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .partner-stat-card {
   background: linear-gradient(135deg, #810B38, #541A1A);
+  border: 1px solid var(--border-strong);
   border-radius: 12px;
-  padding: 10px 8px;
+  padding: 9px 8px;
   text-align: center;
   color: #fff;
   box-shadow: 0 4px 10px rgba(84,26,26,0.14);
 }
-.partner-stat-value {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-.partner-stat-label {
-  font-size: 9.5px;
-  color: rgba(255,255,255,0.85);
-  margin-top: 2px;
-}
+.partner-stat-value { font-size: 16px; font-weight: 700; line-height: 1.2; }
+.partner-stat-label { font-size: 9.5px; color: rgba(255,255,255,0.85); margin-top: 2px; }
 
 /* ---- View Team empty state ---- */
 .team-empty-state {
   text-align: center;
   font-size: 11.5px;
   color: #9CA3AF;
-  padding: 24px 8px 8px;
+  padding: 20px 8px 8px;
 }
+.team-empty-state.hidden { display: none; }
 
 /* ---- Partner code shown as a soft badge in the table ---- */
 .partner-code-badge {
@@ -93,6 +128,7 @@
   font-weight: 700;
   color: #541A1A;
   background: #F1E2D1;
+  border: 1px solid var(--border-soft);
   padding: 2px 8px;
   border-radius: 7px;
   letter-spacing: .01em;
@@ -108,82 +144,63 @@
    ============================================================ */
 
 /* ---- Referral Code field + "Generate Code" button (partner form) ---- */
-.referral-code-row {
-  display: flex;
-  gap: 6px;
-}
-.referral-code-row .field-input {
-  flex: 1 1 auto;
-  min-width: 0;
-}
+.referral-code-row { display: flex; gap: 6px; }
+.referral-code-row .field-input { flex: 1 1 auto; min-width: 0; }
 .btn-generate-code {
   flex-shrink: 0;
   font-size: 10.5px;
   font-weight: 600;
   white-space: nowrap;
-  padding: 7px 10px;
+  padding: 6px 10px;
   border-radius: 9px;
-  border: 1px solid #DCC3AA;
+  border: 1px solid var(--border-strong);
   background: #F1E2D1;
   color: #541A1A;
   cursor: pointer;
   transition: background-color .15s ease, opacity .15s ease;
 }
-.btn-generate-code:hover { background: #E9D9C6; }
-
-/* ---- Extra-wide modal variant for the View Partner modal, which now
-        carries the Referral Activity table alongside partner stats ---- */
-.modal-panel--xwide {
-  max-width: 680px;
-}
-
-.partner-view-section-title--spaced {
-  margin-top: 18px;
-}
+.btn-generate-code:hover { background: #E4CBAE; }
 
 /* ---- Referral KPI mini-cards inside View Partner modal ---- */
 .referral-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(1, 1fr);
-  gap: 9px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
 }
 @media (min-width: 480px) {
-  .referral-kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  .referral-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .referral-kpi-card {
   background: #F1E2D1;
-  border: 1px solid #E9D9C6;
+  border: 1px solid var(--border-strong);
   border-radius: 12px;
-  padding: 9px 10px;
+  padding: 8px 10px;
 }
-.referral-kpi-value {
-  font-size: 15px;
-  font-weight: 700;
-  color: #541A1A;
-  line-height: 1.2;
-}
-.referral-kpi-label {
-  font-size: 9.5px;
-  color: #8A7460;
-  margin-top: 2px;
-}
+.referral-kpi-value { font-size: 14.5px; font-weight: 700; color: #541A1A; line-height: 1.2; }
+.referral-kpi-label { font-size: 9.5px; color: #8A7460; margin-top: 2px; }
 
 .referral-table-wrap {
   max-height: 220px;
   overflow-y: auto;
-  border: 1px solid #E9D9C6;
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
 }
+.referral-table-wrap.hidden { display: none; }
 .referral-table-wrap .data-table thead th {
   position: sticky;
   top: 0;
   background: #F7ECE1;
   z-index: 1;
 }
+@media (min-width: 721px) {
+  #referralActivityTable { min-width: 760px; }
+  #teamTable { min-width: 560px; }
+}
 
 /* ---- Referral status pills reuse the same pill/pill-* look ---- */
 .pill-approved { background: #DBEAFE; color: #1D4ED8; }
+.pill-rejected { background: #FEE2E2; color: #B91C1C; }
 
 /* ---- Small "Mark as Paid" action button inside the referral table ---- */
 .btn-mark-paid {
@@ -204,4 +221,23 @@
   color: #fff;
   cursor: not-allowed;
   opacity: .7;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 767px) {
+  .partner-filter-input { font-size: 12px; }
+  .partner-filter-select { flex: 1 1 100%; }
+  #addPartnerBtn { width: 100%; justify-content: center; }
+  .btn-mark-paid { padding: 6px 12px; }
+}
+
+/* ============ Print (Ctrl+P prints the partners table only) ============ */
+@media print {
+  html, body { overflow: visible; height: auto; }
+  .app-sidebar, .sidebar-backdrop, #addPartnerBtn, .partner-filter-row,
+  .actions-th, .row-actions, .modal-overlay, #toast-container { display: none !important; }
+  .app-main { height: auto; overflow: visible; }
+  #partnersTable { min-width: 0; }
 }

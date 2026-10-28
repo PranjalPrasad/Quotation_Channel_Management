@@ -1,22 +1,23 @@
-/* ============ Page header ============ */
+/* ============================================================
+   Customer Management — extends dashboard.css theme
+   (dashboard.css must be loaded first — it defines the shell,
+   sidebar, responsive rules, shared table / modal / buttons)
+   ============================================================ */
+
+:root {
+  --border-strong: #BFA07C; /* cards, inputs, dropdowns, modal */
+  --border-soft:   #D3B999; /* dividers, row lines */
+  --field-bg:      #EFE1D2; /* modal (overlay) field background */
+}
+
+/* ============ Actions row (Export + Add Customer) ============ */
 .cm-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 24px;
-}
-.cm-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1F2937;
-  margin: 0 0 4px;
-}
-.cm-subtitle {
-  font-size: 12.5px;
-  color: #9CA3AF;
-  margin: 0;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 .cm-header-actions {
   display: flex;
@@ -24,11 +25,7 @@
   gap: 10px;
   flex-wrap: wrap;
 }
-.btn-icon-leading {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
+.btn-icon-leading { display: inline-flex; align-items: center; gap: 6px; }
 .btn-icon-leading svg { width: 14px; height: 14px; }
 
 /* export dropdown wrapper */
@@ -38,72 +35,65 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 600;
-  padding: 9px 16px;
-  border-radius: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 8px;
   background: #F7ECE1;
-  color: #541A1A;
-  border: 1px solid #DCC3AA;
+  color: #374151;
+  border: 1px solid var(--border-strong);
   cursor: pointer;
   transition: background-color .15s ease, border-color .15s ease;
 }
-.btn-export:hover { background: #F1E2D1; border-color: #810B38; }
-.btn-export svg { width: 13px; height: 13px; }
-.export-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  min-width: 170px;
-}
+.btn-export:hover { background: #F1E2D1; border-color: #810B38; color: #541A1A; }
+.btn-export svg { width: 14px; height: 14px; }
+.export-menu { position: absolute; top: calc(100% + 8px); right: 0; min-width: 160px; padding: 5px; }
 .export-menu-item {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   color: #374151;
   background: transparent;
   border: none;
-  padding: 8px;
-  border-radius: 10px;
+  padding: 7px 9px;
+  border-radius: 8px;
   cursor: pointer;
   text-align: left;
+  font-family: inherit;
 }
-.export-menu-item svg { width: 14px; height: 14px; color: #9CA3AF; }
-.export-menu-item:hover { background: #F1E2D1; color: #810B38; }
+.export-menu-item svg { width: 14px; height: 14px; color: #9CA3AF; flex-shrink: 0; }
+.export-menu-item:hover { background: #EFE1D2; color: #810B38; }
 .export-menu-item:hover svg { color: #810B38; }
 
-/* ============ Summary cards ============ */
+/* ============ Summary cards (compact, same size as Dashboard stat cards) ============ */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
 }
-@media (max-width: 1100px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px) { .summary-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 360px) { .summary-grid { grid-template-columns: 1fr; } }
 
 .summary-card {
   background: #F7ECE1;
-  border: 1px solid #DCC3AA;
-  border-radius: 1.75rem;
-  padding: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 12px;
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
   box-shadow: 0 1px 2px rgba(84,26,26,0.06);
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  transition: box-shadow .18s ease, border-color .18s ease;
 }
-.summary-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 28px rgba(84,26,26,0.14);
-  border-color: #810B38;
-}
+.summary-card:hover { box-shadow: 0 6px 16px rgba(84,26,26,0.12); border-color: #810B38; }
 .summary-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -111,37 +101,32 @@
   background: #810B38;
   color: #fff;
 }
-.summary-icon svg { width: 20px; height: 20px; }
+.summary-icon svg { width: 16px; height: 16px; }
 .summary-icon.tint-residential { background: #FEF3C7; color: #B45309; }
 .summary-icon.tint-commercial { background: #E0F2FE; color: #0369A1; }
 .summary-icon.tint-industrial { background: #D1FAE5; color: #047857; }
 
-.summary-title { font-size: 11.5px; color: #9CA3AF; font-weight: 600; margin: 0 0 4px; }
-.summary-count { font-size: 22px; font-weight: 700; color: #1F2937; margin: 0 0 4px; line-height: 1.1; }
-.summary-trend { font-size: 11px; color: #9CA3AF; margin: 0; display: flex; align-items: center; gap: 4px; }
+.summary-count { font-size: 14px; font-weight: 600; color: #1F2937; margin: 0; line-height: 1.15; }
+.summary-title { font-size: 10px; color: #9CA3AF; font-weight: 500; margin: 1px 0 0; }
+.summary-trend { font-size: 9.5px; color: #9CA3AF; margin: 1px 0 0; display: flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .summary-trend.up { color: #047857; }
-.summary-trend svg { width: 11px; height: 11px; }
+.summary-trend svg { width: 10px; height: 10px; flex-shrink: 0; }
 
 /* ============ Filter bar ============ */
 .filter-card {
   background: #F7ECE1;
-  border: 1px solid #DCC3AA;
-  border-radius: 1.75rem;
-  padding: 18px 20px;
-  margin-bottom: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
   box-shadow: 0 1px 2px rgba(84,26,26,0.06);
 }
-.filter-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.filter-group { display: flex; flex-direction: column; gap: 5px; }
-.filter-group.grow { flex: 1 1 220px; min-width: 200px; }
-.filter-group.fixed { flex: 0 0 170px; min-width: 150px; }
+.filter-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group.grow { flex: 1 1 220px; min-width: 180px; }
+.filter-group.fixed { flex: 0 0 160px; min-width: 140px; }
 .filter-label {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   color: #9CA3AF;
   text-transform: uppercase;
@@ -150,7 +135,7 @@
 .filter-search-wrap { position: relative; }
 .filter-search-wrap svg {
   position: absolute;
-  left: 12px;
+  left: 11px;
   top: 50%;
   transform: translateY(-50%);
   width: 14px;
@@ -158,18 +143,13 @@
   color: #9CA3AF;
   pointer-events: none;
 }
-.filter-search-wrap .field-input { padding-left: 34px; }
-.btn-reset {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
+.filter-search-wrap .field-input { padding-left: 32px; }
+.btn-reset { display: inline-flex; align-items: center; gap: 6px; }
 .btn-reset svg { width: 13px; height: 13px; }
 
-/* ============ Custom dropdown (replaces native <select> for filters) ============
-   Positioned via normal in-flow CSS (relative wrapper + absolute panel), so it
-   scrolls together with the page/container instead of detaching like a native
-   <select> popup does when the page scrolls while it's open. */
+/* ============ Custom dropdown (replaces native <select>) ============
+   In-flow (relative wrapper + absolute panel) so it scrolls with the page
+   instead of detaching like a native <select> popup. */
 .custom-select { position: relative; }
 .custom-select-trigger {
   width: 100%;
@@ -181,8 +161,8 @@
   text-align: left;
   font-family: inherit;
 }
-.custom-select-trigger .cs-label { font-size: 13px; color: #1F2937; }
-.custom-select-trigger .cs-chevron { width: 13px; height: 13px; color: #9CA3AF; flex-shrink: 0; transition: transform .15s ease; }
+.custom-select-trigger .cs-label { font-size: 12px; color: #1F2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.custom-select-trigger .cs-chevron { width: 13px; height: 13px; color: #6B5A47; flex-shrink: 0; transition: transform .15s ease; }
 .custom-select-trigger[aria-expanded="true"] .cs-chevron { transform: rotate(180deg); }
 .custom-select-trigger:focus { outline: none; border-color: #541A1A; box-shadow: 0 0 0 3px rgba(84,26,26,0.2); }
 
@@ -192,18 +172,19 @@
   left: 0;
   right: 0;
   background: #F7ECE1;
-  border: 1px solid #DCC3AA;
-  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
   box-shadow: 0 12px 30px rgba(84,26,26,0.15);
-  padding: 6px;
+  padding: 5px;
   z-index: 50;
   max-height: 220px;
   overflow-y: auto;
 }
+.custom-select-panel.hidden { display: none; }
 .custom-select-option {
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-size: 12.5px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  font-size: 12px;
   color: #374151;
   cursor: pointer;
   transition: background-color .12s ease, color .12s ease;
@@ -214,55 +195,39 @@
 /* ============ Table card wrapper ============ */
 .table-card {
   background: #F7ECE1;
-  border: 1px solid #DCC3AA;
-  border-radius: 1.75rem;
-  padding: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 14px;
   box-shadow: 0 1px 2px rgba(84,26,26,0.06);
-  margin-bottom: 20px;
+  margin-bottom: 10px;
+  min-width: 0;
 }
 .table-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
   gap: 8px;
 }
-.table-card-head h2 { font-size: 14px; font-weight: 700; color: #1F2937; margin: 0; }
-.table-card-head p { font-size: 11px; color: #9CA3AF; margin: 2px 0 0; }
-.table-scroll { width: 100%; overflow-x: auto; }
-.table-scroll .data-table { min-width: 980px; }
+.table-card-head h2 { font-size: 12px; font-weight: 600; color: #374151; margin: 0; }
+.table-card-head p { font-size: 10.5px; color: #9CA3AF; margin: 2px 0 0; }
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .data-table thead th { position: sticky; top: 0; background: #F7ECE1; z-index: 2; cursor: default; }
 
-/* ----------------------------------------------------------------
-   IMPORTANT: dashboard.css defines .data-table th:nth-child(1..7)
-   widths tuned for the 7-column Quotations table. The Customer
-   table has 10 columns, so those inherited rules squeeze/shift
-   columns (Customer Type, Status, Created Date, Actions in
-   particular). Reset + redefine widths scoped to #customerTable
-   only, so the shared .data-table look/feel is kept but the
-   column proportions are correct for this table.
-   ---------------------------------------------------------------- */
-#customerTable th,
-#customerTable td { width: auto; }
-#customerTable th:nth-child(1),  #customerTable td:nth-child(1)  { width: 9%; }   /* Customer ID */
-#customerTable th:nth-child(2),  #customerTable td:nth-child(2)  { width: 12%; }  /* Customer Name */
-#customerTable th:nth-child(3),  #customerTable td:nth-child(3)  { width: 10%; }  /* Mobile Number */
-#customerTable th:nth-child(4),  #customerTable td:nth-child(4)  { width: 13%; }  /* Email */
-#customerTable th:nth-child(5),  #customerTable td:nth-child(5)  { width: 8%; }   /* City */
-#customerTable th:nth-child(6),  #customerTable td:nth-child(6)  { width: 10%; }  /* Customer Type */
-#customerTable th:nth-child(7),  #customerTable td:nth-child(7)  { width: 14%; }  /* Project Location */
-#customerTable th:nth-child(8),  #customerTable td:nth-child(8)  { width: 8%; }   /* Status */
-#customerTable th:nth-child(9),  #customerTable td:nth-child(9)  { width: 9%; }   /* Created Date */
-#customerTable th:nth-child(10), #customerTable td:nth-child(10) { width: 7%; }   /* Actions */
-
-/* Same problem applies to the 5-column Follow-up table */
-#followupTable th, #followupTable td { width: auto; }
-#followupTable th:nth-child(1), #followupTable td:nth-child(1) { width: 18%; }
-#followupTable th:nth-child(2), #followupTable td:nth-child(2) { width: 20%; }
-#followupTable th:nth-child(3), #followupTable td:nth-child(3) { width: 32%; }
-#followupTable th:nth-child(4), #followupTable td:nth-child(4) { width: 18%; }
-#followupTable th:nth-child(5), #followupTable td:nth-child(5) { width: 12%; }
+/* Customer table: 11 columns (10 + Channel Partner for Super Admin) and the
+   Follow-up table (5 columns) — auto layout + horizontal scroll on
+   desktop/tablet instead of the old fixed % widths, which broke whenever
+   the Channel Partner column was shown. Mobile keeps the card-stack look. */
+@media (min-width: 721px) {
+  #customerTable { table-layout: auto; min-width: 1100px; }
+  #followupTable { table-layout: auto; min-width: 640px; }
+  #customerTable th, #customerTable td,
+  #followupTable th, #followupTable td { width: auto; white-space: nowrap; }
+  #customerTable td:nth-child(2) { max-width: 200px; }
+  #customerTable td:nth-child(4), #customerTable td:nth-child(7) { max-width: 210px; }
+  #followupTable td:nth-child(3) { white-space: normal; min-width: 220px; }
+}
 
 /* extra type / status pill colors, layered on top of existing .pill class */
 .pill-residential { background: #FEF3C7; color: #B45309; }
@@ -281,39 +246,41 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 56px 20px;
+  padding: 36px 16px;
 }
-.empty-state svg { width: 96px; height: 96px; margin-bottom: 16px; }
-.empty-state h3 { font-size: 14px; font-weight: 700; color: #1F2937; margin: 0 0 4px; }
-.empty-state p { font-size: 12px; color: #9CA3AF; margin: 0 0 18px; }
+.empty-state.hidden { display: none; }
+.empty-state svg { width: 72px; height: 72px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 13px; font-weight: 700; color: #1F2937; margin: 0 0 4px; }
+.empty-state p { font-size: 11.5px; color: #9CA3AF; margin: 0 0 14px; }
 
 /* ============ Pagination footer ============ */
 .table-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 14px;
+  margin-top: 10px;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
-.table-footer .rows-label { font-size: 11px; color: #9CA3AF; }
+.table-footer .rows-label { font-size: 10.5px; color: #9CA3AF; }
 
 /* ============ History accordion ============ */
-.history-list { display: flex; flex-direction: column; gap: 10px; }
-.history-card { border: 1px solid #DCC3AA; border-radius: 16px; overflow: hidden; }
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-card { border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden; }
 .history-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 10px 14px;
   cursor: pointer;
   background: #F7ECE1;
   transition: background-color .15s ease;
 }
 .history-card-head:hover { background: #F1E2D1; }
-.history-card-name { font-size: 13px; font-weight: 600; color: #1F2937; }
-.history-card-sub { font-size: 11px; color: #9CA3AF; margin-top: 2px; }
-.history-chevron { width: 16px; height: 16px; color: #9CA3AF; transition: transform .2s ease; flex-shrink: 0; }
+.history-card-name { font-size: 12.5px; font-weight: 600; color: #1F2937; margin: 0; }
+.history-card-sub { font-size: 10.5px; color: #9CA3AF; margin: 2px 0 0; }
+.history-chevron { width: 15px; height: 15px; color: #9CA3AF; transition: transform .2s ease; flex-shrink: 0; }
 .history-card.open .history-chevron { transform: rotate(180deg); }
 .history-card-body {
   max-height: 0;
@@ -321,21 +288,23 @@
   transition: max-height .25s ease;
   background: #F1E2D1;
 }
-.history-card.open .history-card-body { max-height: 320px; }
-.history-timeline { list-style: none; margin: 0; padding: 14px 20px 16px; display: flex; flex-direction: column; gap: 12px; }
-.history-timeline li { display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px; color: #374151; }
+.history-card.open .history-card-body { max-height: 320px; border-top: 1px solid var(--border-soft); }
+.history-timeline { list-style: none; margin: 0; padding: 11px 16px 13px; display: flex; flex-direction: column; gap: 10px; }
+.history-timeline li { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: #374151; }
 .history-dot { width: 8px; height: 8px; border-radius: 50%; background: #810B38; margin-top: 4px; flex-shrink: 0; }
-.history-timeline .h-when { color: #9CA3AF; font-size: 11px; display: block; margin-top: 1px; }
+.history-timeline .h-when { color: #9CA3AF; font-size: 10.5px; display: block; margin-top: 1px; }
 
 /* ============ Follow-up section ============ */
-.followup-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.followup-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+.followup-title { font-size: 12px; font-weight: 600; color: #374151; margin: 0; }
+.followup-sub { font-size: 10.5px; color: #9CA3AF; margin: 2px 0 0; }
 
 /* ============ Buttons: danger (delete confirm) ============ */
 .btn-danger {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  padding: 9px 18px;
-  border-radius: 12px;
+  padding: 7px 14px;
+  border-radius: 9px;
   cursor: pointer;
   border: none;
   background: #EF4444;
@@ -345,59 +314,72 @@
 .btn-danger:hover { opacity: .88; }
 
 /* delete modal centered content */
-.delete-body { padding: 22px 20px 6px; text-align: center; }
-.delete-body svg { width: 44px; height: 44px; color: #EF4444; margin: 0 auto 12px; }
-.delete-body p { font-size: 13px; color: #374151; margin: 0; }
-.delete-body .sub { font-size: 11.5px; color: #9CA3AF; margin-top: 6px; }
+.delete-body { padding: 18px 16px 6px; text-align: center; }
+.delete-body svg { width: 40px; height: 40px; color: #EF4444; margin: 0 auto 10px; }
+.delete-body p { font-size: 12.5px; color: #374151; margin: 0; }
+.delete-body .sub { font-size: 11px; color: #9CA3AF; margin-top: 5px; }
 
 /* view modal read-only detail grid */
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 4px 2px; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; padding: 14px 16px; overflow-y: auto; }
 @media (max-width: 480px) { .detail-grid { grid-template-columns: 1fr; } }
-.detail-item { display: flex; flex-direction: column; gap: 3px; }
-.detail-item .d-label { font-size: 10.5px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: .02em; }
-.detail-item .d-value { font-size: 13px; color: #1F2937; font-weight: 500; }
+.detail-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.detail-item .d-label { font-size: 10px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: .02em; }
+.detail-item .d-value { font-size: 12.5px; color: #1F2937; font-weight: 500; word-break: break-word; }
 .detail-item.full { grid-column: 1 / -1; }
 
 /* field-group full width helper for this module's forms */
 .field-group.full { grid-column: 1 / -1; }
 
-/* required marker */
+/* required marker + validation */
 .req { color: #EF4444; }
 .field-input.invalid { border-color: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
-.field-error { font-size: 10.5px; color: #EF4444; min-height: 13px; }
+.field-error { font-size: 10px; color: #EF4444; }
+.field-error:empty { display: none; }
+
+/* ===== Overlay (modal) fields: #EFE1D2 instead of white ===== */
+.modal-panel .field-input,
+.modal-panel select,
+.modal-panel textarea {
+  background: var(--field-bg);
+  color: #1F2937;
+}
+.modal-panel .field-input:disabled { background: #F1E2D1; color: #9CA3AF; }
+.modal-panel .field-input::placeholder { color: #8A7660; opacity: 1; }
+.modal-panel .field-input:not(:disabled):focus { background: var(--field-bg); }
 
 /* ============================================================
-   Responsive fixes — tablet & mobile
-   (mirrors the breakpoints dashboard.css uses for the sidebar,
-   nav rail and shared .data-table so this module tracks it
-   exactly instead of drifting on its own breakpoints)
+   Responsive — mirrors dashboard.css breakpoints
    ============================================================ */
 
-/* Header: stack title/actions and let the export+add buttons wrap
-   onto their own row once the header can't fit on one line. */
-@media (max-width: 640px) {
-  .cm-header { flex-direction: column; align-items: stretch; }
-  .cm-header-actions { justify-content: flex-start; }
-  .cm-header-actions .btn-primary,
-  .cm-header-actions .btn-export { flex: 1 1 auto; justify-content: center; }
+/* Phones (≤767px) */
+@media (max-width: 767px) {
+  .cm-header { justify-content: stretch; }
+  .cm-header-actions { width: 100%; }
+  .cm-header-actions .btn-primary { flex: 1 1 auto; justify-content: center; }
+  .followup-head-row .btn-primary { width: 100%; justify-content: center; }
+  .table-footer { flex-direction: column; align-items: stretch; text-align: center; }
+  .table-footer #paginationControls { justify-content: center; }
 }
 
-/* Filter bar: search takes full width first, reset button follows
-   on its own line rather than squeezing next to a shrunk search box. */
+/* Filter bar: search full width, reset on its own line */
 @media (max-width: 560px) {
   .filter-row { flex-direction: column; align-items: stretch; }
   .filter-group.grow,
   .filter-group.fixed { flex: 1 1 auto; min-width: 0; width: 100%; }
+  .btn-reset { justify-content: center; width: 100%; }
 }
 
 @media (max-width: 720px) {
-  .table-scroll .data-table { min-width: 0; }
-  .table-card { padding: 16px; }
-  .history-card-head { padding: 12px; }
+  .table-card { padding: 12px; }
+  .history-card-head { padding: 10px 12px; }
 }
 
-@media (max-width: 480px) {
-  .cm-title { font-size: 17px; }
-  .summary-card { padding: 16px; border-radius: 1.25rem; }
-  .filter-card, .table-card { padding: 14px; border-radius: 1.25rem; }
+/* ============ Print (Print button prints the customer table only) ============ */
+@media print {
+  html, body { overflow: visible; height: auto; }
+  .app-sidebar, .sidebar-backdrop, .cm-header, .summary-grid, .filter-card,
+  .actions-th, .row-actions, .modal-overlay, #toast-container,
+  .table-footer, #historyList, .followup-head-row { display: none !important; }
+  .app-main { height: auto; overflow: visible; }
+  #customerTable { min-width: 0; }
 }

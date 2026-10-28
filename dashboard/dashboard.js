@@ -1,260 +1,133 @@
-// TODO: quotationsForSizeChart() / statusCounts below still use a mock array —
-// once GET /api/quotations is wired up, replace those two mock sources with
-// the real quotation list (loadDashboardData() below already pulls the
-// aggregate numbers from /api/dashboard/summary; the per-record chart inputs
-// are a separate call because the summary endpoint intentionally stays light).
+// ============================================================
+// Dashboard — integrated with the Spring Boot backend (port 8091)
+//
+//   GET    /api/dashboard/summary                  KPIs, charts, recent rows, top partners
+//   GET    /api/quotations?page&size&sort          "Recent Quotations" table (server-side paging/sorting)
+//   GET    /api/quotations/{id}                    full quotation (used by Duplicate)
+//   PATCH  /api/quotations/{id}/status             Edit modal -> status
+//   POST   /api/quotations                         Duplicate
+//   GET    /api/notifications/...                  bell dropdown
+//
+// Every response is wrapped as ApiResponse { success, message, data }.
+// Session.authFetch (session.js) prepends window.API_BASE and adds the Bearer token.
+// The backend scopes every number by the logged-in user's role / partner,
+// so this file never filters by role itself — it only decides what to SHOW.
+// ============================================================
+
+// ---------------- small shared helpers ----------------
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function showToast(message) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast-animate bg-gray-800 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg';
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 2800);
+}
+
+/** Calls the API, unwraps ApiResponse and throws Error(message) on any failure. */
+async function apiCall(path, options) {
+  if (!window.Session || typeof Session.authFetch !== 'function') {
+    throw new Error('Session.authFetch is not available (is session.js loaded?)');
+  }
+  const res = await Session.authFetch(path, options);
+  let body = null;
+  try { body = await res.json(); } catch (_) { /* non-JSON error page */ }
+  if (!res.ok || !body || body.success === false) {
+    const fieldMsg = body && Array.isArray(body.errors) && body.errors.length
+      ? body.errors.map((e) => e.message).join(', ') : '';
+    const err = new Error((body && body.message) || fieldMsg || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+  return body.data;
+}
+
+/** True when the logged-in user holds a permission such as "QUOTATION:EDIT". Unknown -> true (backend still enforces). */
+function can(code) {
+  try {
+    if (window.Session && typeof Session.can === 'function') return !!Session.can(code);
+    if (window.Session && typeof Session.hasPermission === 'function') return !!Session.hasPermission(code);
+    const raw = sessionStorage.getItem('sqms_session');
+    const perms = raw ? JSON.parse(raw).permissions : null;
+    if (Array.isArray(perms)) return perms.includes(code);
+  } catch (_) {}
+  return true;
+}
 
 // ============================================================
 // Sidebar collapse / expand
-// Below 1024px (phone + tablet) the expanded sidebar becomes an
-// overlay drawer with a backdrop, so it never squeezes the
-// dashboard content — matching CSS lives in the
-// "Mobile / tablet sidebar drawer" block in dashboard.css.
 // ============================================================
-const sidebar = document.getElementById("sidebar");
-const sidebarToggle = document.getElementById("sidebarToggle");
-const toggleIcon = document.getElementById("toggleIcon");
-const sidebarBackdrop = document.getElementById("sidebarBackdrop");
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const toggleIcon = document.getElementById('toggleIcon');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 
-const drawerMQ = window.matchMedia("(max-width: 1023px)");
+const drawerMQ = window.matchMedia('(max-width: 1023px)');
 const isDrawerViewport = () => drawerMQ.matches;
 
-let sidebarExpanded = !isDrawerViewport();
+// On phone/tablet: open the sidebar drawer on page load? (true = open with backdrop, false = icon rail only)
+const OPEN_BY_DEFAULT_ON_DRAWER = true;
+const defaultSidebarState = () => (isDrawerViewport() ? OPEN_BY_DEFAULT_ON_DRAWER : true);
+let sidebarExpanded = defaultSidebarState();
 
 function setSidebarExpanded(next) {
   sidebarExpanded = next;
-  sidebar.classList.toggle("expanded", next);
-  sidebar.classList.toggle("collapsed", !next);
-  toggleIcon.style.transform = next ? "rotate(180deg)" : "rotate(0deg)";
-
-  // backdrop only exists as an overlay on phone/tablet
-  // (the HTML ships it with the "hidden" class, so toggle both classes)
+  sidebar.classList.toggle('expanded', next);
+  sidebar.classList.toggle('collapsed', !next);
+  toggleIcon.style.transform = next ? 'rotate(180deg)' : 'rotate(0deg)';
   const showBackdrop = next && isDrawerViewport();
-  sidebarBackdrop?.classList.toggle("visible", showBackdrop);
-  sidebarBackdrop?.classList.toggle("hidden", !showBackdrop);
+  sidebarBackdrop?.classList.toggle('visible', showBackdrop);
+  sidebarBackdrop?.classList.toggle('hidden', !showBackdrop);
 }
 
-// apply initial state on page load
 setSidebarExpanded(sidebarExpanded);
+sidebarToggle.addEventListener('click', () => setSidebarExpanded(!sidebarExpanded));
+sidebarBackdrop?.addEventListener('click', () => setSidebarExpanded(false));
+drawerMQ.addEventListener('change', () => setSidebarExpanded(defaultSidebarState()));
 
-sidebarToggle.addEventListener("click", () => setSidebarExpanded(!sidebarExpanded));
-sidebarBackdrop?.addEventListener("click", () => setSidebarExpanded(false));
-
-// when crossing the 1024px breakpoint, reset to that size's default
-drawerMQ.addEventListener("change", () => setSidebarExpanded(!isDrawerViewport()));
-
-// nav items are generated by session.js AFTER load, so use event delegation.
-document.getElementById("sidebarNav")?.addEventListener("click", (e) => {
-  if (e.target.closest(".nav-item") && isDrawerViewport()) setSidebarExpanded(false);
+// nav items are generated by session.js AFTER load -> event delegation
+document.getElementById('sidebarNav')?.addEventListener('click', (e) => {
+  if (e.target.closest('.nav-item') && isDrawerViewport()) setSidebarExpanded(false);
 });
 
 // ============================================================
-// Logout (shared) — clears the session, then goes to login page
+// Logout
 // ============================================================
 function logoutUser() {
   try {
-    if (window.Session && typeof Session.logout === "function") Session.logout();
-    else sessionStorage.removeItem("sqms_session");
-  } catch (_) {}
-  window.location.href = "../index.html";
+    if (window.Session && typeof Session.logout === 'function') Session.logout();   // session.js also redirects
+    else { sessionStorage.removeItem('sqms_session'); window.location.href = '/index.html'; }
+  } catch (_) { window.location.href = '/index.html'; }
 }
 
 // ============================================================
-// Nav item active state
-// (Dashboard is marked active in the HTML since this is the
-// dashboard module — clicking another item navigates away, so
-// we don't need to move the active state around this page.)
+// Formatting
 // ============================================================
-
-// ============================================================
-// Quotation Status Distribution + System Size Distribution
-// — Chart.js charts, recoloured to the Color Hunt
-// palette (#810B38 / #F1E2D1 / #DCC3AA / #541A1A)
-// ============================================================
-Chart.defaults.font.family = "'Poppins', sans-serif";
-Chart.defaults.font.size = 11;
-
-const paletteBerry = "#810B38";
-const paletteMaroon = "#541A1A";
-const paletteTan = "#DCC3AA";
-const paletteCream = "#F1E2D1";
-
-const donutTooltipOpts = {
-  backgroundColor: "#fff",
-  titleColor: "#1F2937",
-  bodyColor: "#6B7280",
-  borderColor: "#F1F1F1",
-  borderWidth: 1,
-  padding: 10,
-  cornerRadius: 10,
-  displayColors: true,
-  boxWidth: 8,
-  boxHeight: 8,
-  boxPadding: 4,
-};
-
-// ---- Chart 1: Quotation Status Distribution (doughnut) ----
-const statusCounts = { Pending: 58, Accepted: 156, Rejected: 34 };
-
-window.statusPieChart = new Chart(document.getElementById("chartStatusDistribution"), {
-  type: "doughnut",
-  data: {
-    labels: Object.keys(statusCounts),
-    datasets: [{
-      data: Object.values(statusCounts),
-      backgroundColor: [paletteTan, paletteBerry, paletteMaroon],
-      borderColor: "#F1E2D1",
-      borderWidth: 3,
-      hoverOffset: 6,
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: "62%",
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: { color: "#6B7280", boxWidth: 8, boxHeight: 8, padding: 8, font: { size: 10 }, usePointStyle: true, pointStyle: "circle" }
-      },
-      tooltip: donutTooltipOpts,
-    }
-  }
-});
-
-// ---- Chart 2: Quotations by System Size Category — bar/histogram ----
-function sizeCategory(sizeStr) {
-  const kw = parseFloat(sizeStr);
-  if (kw <= 5) return "Small (≤5 kW)";
-  if (kw <= 20) return "Medium (6–20 kW)";
-  return "Large (>20 kW)";
-}
-
-const sizeBuckets = {};
-quotationsForSizeChart().forEach((q) => {
-  const cat = sizeCategory(q.size);
-  sizeBuckets[cat] = (sizeBuckets[cat] || 0) + 1;
-});
-
-function quotationsForSizeChart() {
-  // Mirrors the same records used by the full quotations table below
-  return [
-    { size: '3 kW' }, { size: '10 kW' }, { size: '5 kW' }, { size: '25 kW' },
-    { size: '4 kW' }, { size: '50 kW' }, { size: '3 kW' }, { size: '7 kW' },
-    { size: '15 kW' }, { size: '30 kW' }, { size: '3 kW' }, { size: '20 kW' },
-    { size: '6 kW' }, { size: '4 kW' }, { size: '40 kW' },
-  ];
-}
-
-const sizeCategoryOrder = ["Small (≤5 kW)", "Medium (6–20 kW)", "Large (>20 kW)"];
-const sizeLabels = sizeCategoryOrder.filter((c) => c in sizeBuckets);
-const sizeValues = sizeLabels.map((c) => sizeBuckets[c]);
-
-window.sizeBarChart = new Chart(document.getElementById("chartSizeDistribution"), {
-  type: "bar",
-  data: {
-    labels: sizeLabels,
-    datasets: [{
-      label: "Quotations",
-      data: sizeValues,
-      backgroundColor: [paletteBerry, paletteTan, paletteMaroon],
-      borderRadius: 8,
-      maxBarThickness: 46,
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: donutTooltipOpts,
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { color: "#6B7280" },
-      },
-      y: {
-        beginAtZero: true,
-        ticks: { color: "#6B7280", precision: 0 },
-        grid: { color: "#F0E4D6" },
-      },
-    },
-  }
-});
-
-// ============================================================
-// Recent Quotations (right panel) — same records as the
-// reference Recent Quotations table, most recent first
-// ============================================================
-const recentQuotations = [
-  { no: "SQ-1001", customer: "Amit Sharma", size: "3 kW", status: "Pending", date: "2026-07-15" },
-  { no: "SQ-1000", customer: "Priya Enterprises", size: "10 kW", status: "Accepted", date: "2026-07-14" },
-  { no: "SQ-0999", customer: "Ravi Constructions", size: "5 kW", status: "Rejected", date: "2026-07-14" },
-  { no: "SQ-0998", customer: "Meena Textiles", size: "25 kW", status: "Accepted", date: "2026-07-13" },
-];
-
-const statusInitial = { Pending: "P", Accepted: "A", Rejected: "R" };
-const statusBadgeBg = { Pending: "bg-amber-100 text-amber-600", Accepted: "bg-emerald-100 text-emerald-600", Rejected: "bg-rose-100 text-rose-500" };
-const statusPillClass = { Pending: "pending", Accepted: "accepted", Rejected: "rejected" };
-
-function formatDate(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
-}
-
-function renderRecentQuotations() {
-  const list = document.getElementById("recentQuotationsList");
-  if (!list) return;
-  list.innerHTML = recentQuotations
-    .map(
-      (q) => `
-      <div class="quote-row">
-        <div class="w-9 h-9 rounded-full ${statusBadgeBg[q.status]} flex items-center justify-center text-xs font-bold">${statusInitial[q.status]}</div>
-        <div class="quote-info">
-          <p>${q.no} · ${q.customer}</p>
-          <p>${q.size} · ${formatDate(q.date)}</p>
-        </div>
-        <span class="quote-pill ${statusPillClass[q.status]}">${q.status}</span>
-      </div>`
-    )
-    .join("");
-}
-
-renderRecentQuotations();
-
-// ============================================================
-// Recent Quotations — full table (sort, paginate, view/edit,
-// print, PDF export, duplicate) — same behaviour as the
-// reference dashboard, recoloured to the palette theme
-// ============================================================
-let quotations = [
-  { no: 'SQ-1001', customer: 'Amit Sharma', size: '3 kW', amount: 165000, status: 'Pending', date: '2026-07-15', channelPartner: 'CP-0001' },
-  { no: 'SQ-1000', customer: 'Priya Enterprises', size: '10 kW', amount: 540000, status: 'Accepted', date: '2026-07-14', channelPartner: 'CP-0002' },
-  { no: 'SQ-0999', customer: 'Ravi Constructions', size: '5 kW', amount: 275000, status: 'Rejected', date: '2026-07-14', channelPartner: 'CP-0001' },
-  { no: 'SQ-0998', customer: 'Meena Textiles', size: '25 kW', amount: 1320000, status: 'Accepted', date: '2026-07-13', channelPartner: 'CP-0003' },
-  { no: 'SQ-0997', customer: 'Suresh Patel', size: '4 kW', amount: 210000, status: 'Pending', date: '2026-07-12', channelPartner: 'CP-0002' },
-  { no: 'SQ-0996', customer: 'Global Foods Pvt Ltd', size: '50 kW', amount: 2650000, status: 'Accepted', date: '2026-07-12', channelPartner: 'CP-0001' },
-  { no: 'SQ-0995', customer: 'Anita Deshmukh', size: '3 kW', amount: 158000, status: 'Rejected', date: '2026-07-11', channelPartner: 'CP-0003' },
-  { no: 'SQ-0994', customer: 'Rajesh Traders', size: '7 kW', amount: 372000, status: 'Pending', date: '2026-07-11', channelPartner: 'CP-0002' },
-  { no: 'SQ-0993', customer: 'Sunrise Apartments', size: '15 kW', amount: 795000, status: 'Accepted', date: '2026-07-10', channelPartner: 'CP-0001' },
-  { no: 'SQ-0992', customer: 'Vikram Industries', size: '30 kW', amount: 1580000, status: 'Pending', date: '2026-07-09', channelPartner: 'CP-0002' },
-  { no: 'SQ-0991', customer: 'Kavita Rao', size: '3 kW', amount: 162000, status: 'Accepted', date: '2026-07-08', channelPartner: 'CP-0003' },
-  { no: 'SQ-0990', customer: 'Deepak Motors', size: '20 kW', amount: 1050000, status: 'Pending', date: '2026-07-08', channelPartner: 'CP-0001' },
-  { no: 'SQ-0989', customer: 'Farha Textiles', size: '6 kW', amount: 318000, status: 'Rejected', date: '2026-07-07', channelPartner: 'CP-0002' },
-  { no: 'SQ-0988', customer: 'Nikhil Joshi', size: '4 kW', amount: 205000, status: 'Accepted', date: '2026-07-06', channelPartner: 'CP-0001' },
-  { no: 'SQ-0987', customer: 'Star Cold Storage', size: '40 kW', amount: 2120000, status: 'Pending', date: '2026-07-05', channelPartner: 'CP-0003' },
-];
-
-const tableStatusPillClass = { Pending: 'pill-pending', Accepted: 'pill-accepted', Rejected: 'pill-rejected' };
+const STATUS_LABEL = { PENDING: 'Pending', ACCEPTED: 'Accepted', REJECTED: 'Rejected' };
+const statusLabel = (s) => STATUS_LABEL[String(s || '').toUpperCase()] || s || '—';
+const statusKey = (s) => String(s || '').toLowerCase();
 
 function formatINR(n) {
-  return '₹' + n.toLocaleString('en-IN');
+  if (n === null || n === undefined || isNaN(Number(n))) return '—';
+  return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 
-// Compact format for big KPI numbers, e.g. 39000000 -> "₹3.9Cr", 450000 -> "₹4.5L"
+// 39000000 -> "₹3.9Cr", 450000 -> "₹4.5L"
 function formatCompactINR(n) {
-  if (n === null || n === undefined || isNaN(n)) return '—';
+  if (n === null || n === undefined || isNaN(Number(n))) return '—';
+  n = Number(n);
   const abs = Math.abs(n);
   if (abs >= 1e7) return '₹' + (n / 1e7).toFixed(1) + 'Cr';
   if (abs >= 1e5) return '₹' + (n / 1e5).toFixed(1) + 'L';
@@ -262,37 +135,283 @@ function formatCompactINR(n) {
   return '₹' + n.toLocaleString('en-IN');
 }
 
+function formatSize(kw) {
+  if (kw === null || kw === undefined || isNaN(Number(kw))) return '—';
+  return Number(kw) + ' kW';
+}
+
+// quoteDate arrives as "YYYY-MM-DD" -> parse by parts so no timezone shift can move the day
+function parseIsoDate(iso) {
+  if (!iso) return null;
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+  return y ? new Date(y, m - 1, d) : null;
+}
+function formatDate(iso) {
+  const d = parseIsoDate(iso);
+  return d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—';
+}
+function formatDateLong(iso) {
+  const d = parseIsoDate(iso);
+  return d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+}
+
+// ============================================================
+// Greeting + avatar
+// ============================================================
+function decodeJwtPayload(token) {
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(escape(atob(b64))));
+  } catch (_) { return null; }
+}
+
+function getLoggedInUserName() {
+  const sources = [];
+  try {
+    if (window.Session) {
+      if (typeof Session.getUser === 'function') sources.push(Session.getUser());
+      if (typeof Session.getSession === 'function') sources.push(Session.getSession());
+      if (Session.user) sources.push(Session.user);
+    }
+  } catch (_) {}
+  try {
+    const raw = sessionStorage.getItem('sqms_session');
+    if (raw) sources.push(JSON.parse(raw));
+  } catch (_) {}
+
+  for (const s of sources.filter(Boolean)) {
+    const u = s.user || s.data?.user || s.data || s;
+    const name = u.fullName || u.name || u.userName || u.username ||
+      [u.firstName, u.lastName].filter(Boolean).join(' ') ||
+      (u.email ? u.email.split('@')[0] : '');
+    if (name) return String(name).trim();
+    const token = s.token || s.accessToken || u.token;
+    const claims = token ? decodeJwtPayload(token) : null;
+    const fromJwt = claims && (claims.name || claims.fullName || claims.username || claims.sub);
+    if (fromJwt) return String(fromJwt).trim();
+  }
+  return 'User';
+}
+
+(function renderUserName() {
+  const name = getLoggedInUserName();
+  setText('greetingName', name);
+  setText('profileInitial', name.charAt(0).toUpperCase());
+})();
+
+// ============================================================
+// Role visibility (data-role="A,B")
+// window.currentUserRole is defined by session.js from the login session.
+// ============================================================
+function applyRoleBasedVisibility() {
+  const userRole = window.currentUserRole;
+  document.querySelectorAll('[data-role]').forEach((el) => {
+    const roles = el.getAttribute('data-role').split(',').map((r) => r.trim());
+    el.style.display = roles.includes(userRole) ? '' : 'none';
+  });
+}
+applyRoleBasedVisibility();
+
+const isSuperAdmin = () => window.currentUserRole === 'SUPER_ADMIN';
+
+// ============================================================
+// Charts (Chart.js) — created empty, filled from /api/dashboard/summary
+// ============================================================
+Chart.defaults.font.family = "'Poppins', sans-serif";
+Chart.defaults.font.size = 11;
+
+const paletteBerry = '#810B38';
+const paletteMaroon = '#541A1A';
+const paletteTan = '#DCC3AA';
+
+const chartTooltipOpts = {
+  backgroundColor: '#fff', titleColor: '#1F2937', bodyColor: '#6B7280',
+  borderColor: '#D3B999', borderWidth: 1, padding: 10, cornerRadius: 10,
+  displayColors: true, boxWidth: 8, boxHeight: 8, boxPadding: 4,
+};
+
+window.statusPieChart = new Chart(document.getElementById('chartStatusDistribution'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Pending', 'Accepted', 'Rejected'],
+    datasets: [{
+      data: [0, 0, 0],
+      backgroundColor: [paletteTan, paletteBerry, paletteMaroon],
+      borderColor: '#F1E2D1', borderWidth: 3, hoverOffset: 6,
+    }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '62%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#6B7280', boxWidth: 8, boxHeight: 8, padding: 8, font: { size: 10 }, usePointStyle: true, pointStyle: 'circle' } },
+      tooltip: chartTooltipOpts,
+    },
+  },
+});
+
+window.sizeBarChart = new Chart(document.getElementById('chartSizeDistribution'), {
+  type: 'bar',
+  data: {
+    labels: ['Small (≤5 kW)', 'Medium (6–20 kW)', 'Large (>20 kW)'],
+    datasets: [{
+      label: 'Quotations',
+      data: [0, 0, 0],
+      backgroundColor: [paletteBerry, paletteTan, paletteMaroon],
+      borderRadius: 8, maxBarThickness: 46,
+    }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: chartTooltipOpts },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#6B7280' } },
+      y: { beginAtZero: true, ticks: { color: '#6B7280', precision: 0 }, grid: { color: '#D3B999' } },
+    },
+  },
+});
+
+// ============================================================
+// Dashboard summary  ->  GET /api/dashboard/summary
+// ============================================================
+const dashError = document.getElementById('dashError');
+
+async function loadDashboardData() {
+  try {
+    const data = await apiCall('/api/dashboard/summary');
+    dashError.classList.add('hidden');
+    renderDashboardSummary(data);
+  } catch (err) {
+    console.warn('loadDashboardData() failed:', err.message);
+    setText('dashErrorMsg', err.status === 403
+      ? 'You do not have permission to view dashboard data.'
+      : `Couldn’t load dashboard data: ${err.message}`);
+    dashError.classList.remove('hidden');
+  }
+}
+document.getElementById('dashRetryBtn')?.addEventListener('click', () => { loadDashboardData(); loadQuotations(); });
+
+function renderDashboardSummary(d) {
+  const total = d.totalQuotations ?? 0;
+
+  // ---- hero ----
+  setText('kpiTotalQuotations', total.toLocaleString('en-IN'));
+  setText('kpiTotalValue', formatCompactINR(d.totalQuotationValue));
+  setText('kpiTotalValue2', formatCompactINR(d.totalQuotationValue));
+  setText('kpiAcceptedInline', `${(d.acceptedQuotations ?? 0).toLocaleString('en-IN')} quotations`);
+
+  // ---- this month ----
+  setText('kpiMonthQuotations', (d.monthQuotations ?? 0).toLocaleString('en-IN'));
+  setText('kpiMonthLabel', new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }));
+  const monthPct = total > 0 ? Math.min(100, Math.round((d.monthQuotations ?? 0) * 100 / total)) : 0;
+  const bar = document.getElementById('kpiMonthBar');
+  if (bar) bar.style.width = monthPct + '%';
+
+  // ---- stat cards ----
+  setText('kpiTodayQuotations', d.todayQuotations ?? 0);
+  setText('kpiAccepted', d.acceptedQuotations ?? 0);
+  setText('kpiRejected', d.rejectedQuotations ?? 0);
+  setText('kpiPending', d.pendingQuotations ?? 0);
+
+  // ---- common: pending approvals ----
+  setText('kpiPendingApprovals', d.pendingApprovals ?? '—');
+  setText('kpiPendingApprovalsLabel', isSuperAdmin() ? 'Pending Approvals (All Partners)' : 'Pending Approvals');
+
+  // ---- win rate (right panel) ----
+  setText('kpiWinRate', `${d.winRatePercent ?? 0}% accepted`);
+  setText('kpiWinRateSub', `${d.acceptedQuotations ?? 0} of ${total} quotations`);
+
+  // ---- charts ----
+  window.statusPieChart.data.datasets[0].data = [d.pendingQuotations ?? 0, d.acceptedQuotations ?? 0, d.rejectedQuotations ?? 0];
+  window.statusPieChart.update();
+  window.sizeBarChart.data.datasets[0].data = [d.smallSystems ?? 0, d.mediumSystems ?? 0, d.largeSystems ?? 0];
+  window.sizeBarChart.update();
+
+  // ---- Super Admin only ----
+  if (isSuperAdmin()) {
+    setText('kpiTotalPartners', d.totalPartners ?? '—');
+    setText('kpiActivePartnersSuffix', d.activePartners != null ? `(${d.activePartners} active)` : '');
+    setText('kpiPlatformRevenue', formatCompactINR(d.totalQuotationValue));
+    setText('kpiReferralPayoutsPending', formatCompactINR(d.platformPendingReferralPayouts));
+    renderTopPartners(d.topPartners || []);
+  }
+
+  // ---- Channel Partner roles only ----
+  if (window.currentUserRole === 'CHANNEL_PARTNER_ADMIN' || window.currentUserRole === 'CHANNEL_PARTNER_SALES') {
+    setText('kpiMyCustomers', d.totalCustomers ?? '—');
+    setText('kpiMyQuotations', d.totalQuotations ?? '—');
+    setText('kpiMyRevenueMonth', formatCompactINR(d.monthQuotationValue));   // real this-month figure from backend
+    setText('kpiMyReferralIncome', formatCompactINR(d.totalReferralIncome));
+  }
+
+  renderRecentQuotations(d.recentQuotations || []);
+  applyRoleBasedVisibility();
+}
+
+function renderTopPartners(list) {
+  const tbody = document.getElementById('topPartnersTbody');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="state-row"><td colspan="4" class="text-center text-gray-400 py-3">No partner data yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map((p, i) => `
+    <tr class="state-row">
+      <td data-label="Rank">#${i + 1}</td>
+      <td data-label="Partner Name" class="font-medium">${esc(p.partnerName)} <span class="text-gray-400">(${esc(p.partnerCode)})</span></td>
+      <td data-label="Total Quotations">${esc(p.totalQuotations)}</td>
+      <td data-label="Total Revenue">${formatCompactINR(p.totalRevenue)}</td>
+    </tr>`).join('');
+}
+
+// ---- right-panel recent list (from summary.recentQuotations) ----
+const statusInitial = { PENDING: 'P', ACCEPTED: 'A', REJECTED: 'R' };
+const statusBadgeBg = { PENDING: 'bg-amber-100 text-amber-600', ACCEPTED: 'bg-emerald-100 text-emerald-600', REJECTED: 'bg-rose-100 text-rose-500' };
+
+function renderRecentQuotations(rows) {
+  const list = document.getElementById('recentQuotationsList');
+  if (!list) return;
+  if (!rows.length) {
+    list.innerHTML = '<p class="text-[11px] text-gray-400">No quotations yet</p>';
+    return;
+  }
+  list.innerHTML = rows.slice(0, 6).map((q) => {
+    const st = String(q.status || '').toUpperCase();
+    return `
+      <div class="quote-row">
+        <div class="w-9 h-9 rounded-full ${statusBadgeBg[st] || ''} flex items-center justify-center text-xs font-bold">${statusInitial[st] || '?'}</div>
+        <div class="quote-info">
+          <p>${esc(q.code)} · ${esc(q.customerName)}</p>
+          <p>${formatSize(q.systemSizeKw)} · ${formatDate(q.quoteDate)}</p>
+        </div>
+        <span class="quote-pill ${statusKey(st)}">${esc(statusLabel(st))}</span>
+      </div>`;
+  }).join('');
+}
+
+// ============================================================
+// Recent Quotations table — server-side paging + sorting
+//   GET /api/quotations?page=<0-based>&size=<n>&sort=<field>,<asc|desc>
+// ============================================================
+const tableStatusPillClass = { PENDING: 'pill-pending', ACCEPTED: 'pill-accepted', REJECTED: 'pill-rejected' };
+
+// table column key -> backend sort field (null = backend cannot sort it, so we sort inside the loaded page)
+const SORT_FIELD = { no: 'code', size: 'systemSizeKw', amount: 'totalAmount', status: 'status', date: 'quoteDate', customer: null, channelPartner: null };
+
 let sortKey = 'date';
 let sortDir = 'desc';
-let currentPage = 1;
+let currentPage = 1;            // 1-based in the UI
 let rowsPerPage = 10;
+let totalRows = 0;
+let totalPages = 1;
+let pageRows = [];              // current page, already mapped to table shape
+let tableLoading = false;
+let tableError = '';
+let tableSeq = 0;
 
 const qTbody = document.getElementById('quotationsTbody');
 const paginationControls = document.getElementById('paginationControls');
 const rowsRangeLabel = document.getElementById('rowsRangeLabel');
 const rowsPerPageSelect = document.getElementById('rowsPerPage');
-
-// Channel Partner Filter (Super Admin only widget)
-let activeChannelPartnerFilter = 'all'; // 'all' or specific CP code
-
-function sortedQuotations() {
-  let list = [...quotations];
-
-  if (activeChannelPartnerFilter !== 'all') {
-    list = list.filter(q => q.channelPartner === activeChannelPartnerFilter);
-  }
-
-  list.sort((a, b) => {
-    let av = a[sortKey], bv = b[sortKey];
-    if (sortKey === 'amount') { /* numeric already */ }
-    else if (sortKey === 'date') { av = new Date(av).getTime(); bv = new Date(bv).getTime(); }
-    else { av = String(av).toLowerCase(); bv = String(bv).toLowerCase(); }
-    if (av < bv) return sortDir === 'asc' ? -1 : 1;
-    if (av > bv) return sortDir === 'asc' ? 1 : -1;
-    return 0;
-  });
-  return list;
-}
 
 const ICONS = {
   view: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
@@ -302,119 +421,166 @@ const ICONS = {
   duplicate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
 };
 
-function actionIconsHtml(no) {
+function mapListItem(q) {
+  return {
+    id: q.id,
+    no: q.code,
+    customer: q.customer?.name || '—',
+    channelPartner: q.partner?.code || '—',
+    size: q.systemSizeKw,
+    amount: q.totalAmount,
+    status: String(q.status || '').toUpperCase(),
+    date: q.quoteDate,
+  };
+}
+
+function actionIconsHtml(id) {
+  const editBtn = can('QUOTATION:EDIT')
+    ? `<button class="action-icon-btn icon-edit" data-action="edit" data-id="${id}" title="Edit status">${ICONS.edit}</button>` : '';
+  const dupBtn = can('QUOTATION:CREATE')
+    ? `<button class="action-icon-btn icon-duplicate" data-action="duplicate" data-id="${id}" title="Duplicate">${ICONS.duplicate}</button>` : '';
   return `
     <div class="row-actions">
-      <button class="action-icon-btn icon-view" data-action="view" data-no="${no}" title="View">${ICONS.view}</button>
-      <button class="action-icon-btn icon-edit" data-action="edit" data-no="${no}" title="Edit">${ICONS.edit}</button>
-      <button class="action-icon-btn icon-print" data-action="print" data-no="${no}" title="Print">${ICONS.print}</button>
-      <button class="action-icon-btn icon-pdf" data-action="pdf" data-no="${no}" title="Download PDF">${ICONS.pdf}</button>
-      <button class="action-icon-btn icon-duplicate" data-action="duplicate" data-no="${no}" title="Duplicate">${ICONS.duplicate}</button>
+      <button class="action-icon-btn icon-view" data-action="view" data-id="${id}" title="View">${ICONS.view}</button>
+      ${editBtn}
+      <button class="action-icon-btn icon-print" data-action="print" data-id="${id}" title="Print">${ICONS.print}</button>
+      <button class="action-icon-btn icon-pdf" data-action="pdf" data-id="${id}" title="Download PDF">${ICONS.pdf}</button>
+      ${dupBtn}
     </div>`;
 }
 
+function visibleRows() {
+  // customer / channel partner cannot be sorted by the backend -> sort within the loaded page
+  const rows = [...pageRows];
+  if (SORT_FIELD[sortKey] === null) {
+    const k = sortKey === 'customer' ? 'customer' : 'channelPartner';
+    rows.sort((a, b) => String(a[k]).toLowerCase().localeCompare(String(b[k]).toLowerCase()) * (sortDir === 'asc' ? 1 : -1));
+  }
+  return rows;
+}
+
+function colCount() { return isSuperAdmin() ? 8 : 7; }
+
 function renderTable() {
-  const data = sortedQuotations();
-  const totalRows = data.length;
-  const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
-  if (currentPage > totalPages) currentPage = totalPages;
+  if (tableLoading && !pageRows.length) {
+    qTbody.innerHTML = `<tr class="state-row"><td colspan="${colCount()}" class="text-center text-gray-400 py-4">Loading…</td></tr>`;
+  } else if (tableError && !pageRows.length) {
+    qTbody.innerHTML = `<tr class="state-row"><td colspan="${colCount()}" class="text-center text-rose-500 py-4">${esc(tableError)} <button type="button" class="underline font-semibold" data-retry>Try again</button></td></tr>`;
+  } else if (!pageRows.length) {
+    qTbody.innerHTML = `<tr class="state-row"><td colspan="${colCount()}" class="text-center text-gray-400 py-4">No quotations yet</td></tr>`;
+  } else {
+    qTbody.innerHTML = visibleRows().map((q) => `
+      <tr data-id="${q.id}">
+        <td data-label="Quotation No." class="font-medium">${esc(q.no)}</td>
+        <td data-label="Customer">${esc(q.customer)}</td>
+        ${isSuperAdmin() ? `<td data-label="Channel Partner">${esc(q.channelPartner)}</td>` : ''}
+        <td data-label="System Size">${formatSize(q.size)}</td>
+        <td data-label="Amount">${formatINR(q.amount)}</td>
+        <td data-label="Status"><span class="pill ${tableStatusPillClass[q.status] || ''}">${esc(statusLabel(q.status))}</span></td>
+        <td data-label="Date">${formatDate(q.date)}</td>
+        <td data-label="Actions">${actionIconsHtml(q.id)}</td>
+      </tr>`).join('');
+  }
 
   const start = (currentPage - 1) * rowsPerPage;
-  const pageRows = data.slice(start, start + rowsPerPage);
-
-  const rows = pageRows.map((q) => {
-    const channelPartnerCell = `<td data-label="Channel Partner">${q.channelPartner || '—'}</td>`;
-    return `
-      <tr data-no="${q.no}">
-        <td data-label="Quotation No." class="font-medium">${q.no}</td>
-        <td data-label="Customer">${q.customer}</td>
-        ${window.currentUserRole === 'SUPER_ADMIN' ? channelPartnerCell : ''}
-        <td data-label="System Size">${q.size}</td>
-        <td data-label="Amount">${formatINR(q.amount)}</td>
-        <td data-label="Status"><span class="pill ${tableStatusPillClass[q.status]}">${q.status}</span></td>
-        <td data-label="Date">${formatDate(q.date)}</td>
-        <td data-label="Actions">${actionIconsHtml(q.no)}</td>
-      </tr>
-    `;
-  }).join('');
-
-  qTbody.innerHTML = rows;
-
   rowsRangeLabel.textContent = totalRows === 0
     ? 'No records'
-    : `${start + 1}–${Math.min(start + rowsPerPage, totalRows)} of ${totalRows}`;
+    : `${start + 1}–${Math.min(start + pageRows.length, totalRows)} of ${totalRows}`;
 
-  renderPagination(totalPages);
+  renderPagination();
   updateSortIcons();
 
-  const channelPartnerHeaders = document.querySelectorAll('#quotationsTable thead th[data-key="channelPartner"]');
-  channelPartnerHeaders.forEach(th => {
-    th.style.display = (window.currentUserRole === 'SUPER_ADMIN') ? '' : 'none';
+  document.querySelectorAll('#quotationsTable thead th[data-key="channelPartner"]').forEach((th) => {
+    th.style.display = isSuperAdmin() ? '' : 'none';
   });
 }
 
-function renderPagination(totalPages) {
+async function loadQuotations() {
+  const mySeq = ++tableSeq;
+  tableLoading = true;
+  tableError = '';
+  renderTable();
+
+  const field = SORT_FIELD[sortKey];
+  const qs = new URLSearchParams({
+    page: String(currentPage - 1),
+    size: String(rowsPerPage),
+    // fall back to newest-first when the chosen column is only sortable in the page
+    sort: `${field || 'quoteDate'},${field ? sortDir : 'desc'}`,
+  });
+
+  try {
+    const data = await apiCall('/api/quotations?' + qs.toString());
+    if (mySeq !== tableSeq) return;
+    pageRows = (data.content || []).map(mapListItem);
+    totalRows = data.totalElements ?? pageRows.length;
+    totalPages = Math.max(1, data.totalPages ?? 1);
+    if (currentPage > totalPages) { currentPage = totalPages; return loadQuotations(); }
+  } catch (err) {
+    if (mySeq !== tableSeq) return;
+    console.warn('loadQuotations() failed:', err.message);
+    pageRows = [];
+    totalRows = 0;
+    tableError = err.status === 403 ? 'You do not have permission to view quotations.' : `Couldn’t load quotations: ${err.message}`;
+  } finally {
+    if (mySeq === tableSeq) { tableLoading = false; renderTable(); }
+  }
+}
+
+function renderPagination() {
   let html = '';
   html += `<span class="pagination-btn ${currentPage === 1 ? 'disabled' : ''}" data-page="prev">‹</span>`;
   for (let p = 1; p <= totalPages; p++) {
     if (totalPages > 7 && p !== 1 && p !== totalPages && Math.abs(p - currentPage) > 1) {
-      if (p === 2 || p === totalPages - 1) html += `<span class="pagination-btn disabled">…</span>`;
+      if (p === 2 || p === totalPages - 1) html += '<span class="pagination-btn disabled">…</span>';
       continue;
     }
     html += `<span class="pagination-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</span>`;
   }
   html += `<span class="pagination-btn ${currentPage === totalPages ? 'disabled' : ''}" data-page="next">›</span>`;
   paginationControls.innerHTML = html;
-
-  paginationControls.querySelectorAll('.pagination-btn:not(.disabled)').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const p = btn.getAttribute('data-page');
-      if (p === 'prev') currentPage = Math.max(1, currentPage - 1);
-      else if (p === 'next') currentPage = Math.min(totalPages, currentPage + 1);
-      else currentPage = parseInt(p, 10);
-      renderTable();
-    });
-  });
 }
 
+paginationControls.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pagination-btn[data-page]');
+  if (!btn || btn.classList.contains('disabled')) return;
+  const p = btn.getAttribute('data-page');
+  if (p === 'prev') currentPage = Math.max(1, currentPage - 1);
+  else if (p === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+  else currentPage = parseInt(p, 10);
+  loadQuotations();
+});
+
 function updateSortIcons() {
-  document.querySelectorAll('#quotationsTable thead th[data-key]').forEach(th => {
+  document.querySelectorAll('#quotationsTable thead th[data-key]').forEach((th) => {
     const icon = th.querySelector('.sort-icon');
     const key = th.getAttribute('data-key');
     th.classList.toggle('sorted', key === sortKey);
-    icon.textContent = key === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '⇅';
+    if (icon) icon.textContent = key === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '⇅';
   });
 }
 
-document.querySelectorAll('#quotationsTable thead th[data-key]').forEach(th => {
+document.querySelectorAll('#quotationsTable thead th[data-key]').forEach((th) => {
   th.addEventListener('click', () => {
     const key = th.getAttribute('data-key');
     if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
     else { sortKey = key; sortDir = 'asc'; }
     currentPage = 1;
-    renderTable();
+    // customer / channel partner sort only reorders the loaded page; others re-query the server
+    if (SORT_FIELD[key] === null) { updateSortIcons(); renderTable(); loadQuotations(); }
+    else loadQuotations();
   });
 });
 
 rowsPerPageSelect?.addEventListener('change', () => {
   rowsPerPage = parseInt(rowsPerPageSelect.value, 10);
   currentPage = 1;
-  renderTable();
+  loadQuotations();
 });
 
-const channelPartnerFilter = document.getElementById('channelPartnerFilter');
-if (channelPartnerFilter) {
-  channelPartnerFilter.addEventListener('change', (e) => {
-    activeChannelPartnerFilter = e.target.value;
-    currentPage = 1;
-    renderTable();
-  });
-}
-
-/* ===========================================================
-   Row actions: View (read-only) / Edit (selective fields) /
-   Print / Download PDF / Duplicate
-   =========================================================== */
+// ============================================================
+// Row actions: View / Edit status / Print / PDF / Duplicate
+// ============================================================
 const quoteModal = document.getElementById('quoteModal');
 const modalTitle = document.getElementById('modalTitle');
 const modalSubtitle = document.getElementById('modalSubtitle');
@@ -430,53 +596,46 @@ const fldAmount = document.getElementById('fldAmount');
 const fldStatus = document.getElementById('fldStatus');
 const fldDate = document.getElementById('fldDate');
 
-const EDITABLE_FIELD_IDS = ['fldCustomer', 'fldSize', 'fldAmount', 'fldStatus'];
+let modalQuoteId = null;
 
-let modalMode = 'view';
-let modalQuoteNo = null;
+const findRow = (id) => pageRows.find((q) => String(q.id) === String(id));
 
-function findQuote(no) {
-  return quotations.find(q => q.no === no);
-}
+function openModal(id, mode) {
+  const q = findRow(id);
+  if (!q) return;
+  modalQuoteId = q.id;
 
-function fillForm(q) {
   fldNo.value = q.no;
   fldCustomer.value = q.customer;
-  fldSize.value = q.size;
-  fldAmount.value = q.amount;
+  fldSize.value = formatSize(q.size);
+  fldAmount.value = formatINR(q.amount);
   fldStatus.value = q.status;
-  fldDate.value = q.date;
-}
+  fldDate.value = (q.date || '').slice(0, 10);
 
-function openModal(no, mode) {
-  const q = findQuote(no);
-  if (!q) return;
-  modalMode = mode;
-  modalQuoteNo = no;
-  fillForm(q);
+  quoteForm.querySelectorAll('.field-input').forEach((el) => { el.disabled = true; });
 
   if (mode === 'view') {
     modalTitle.textContent = 'Quotation Details';
     modalSubtitle.textContent = `${q.no} · Read-only`;
-    quoteForm.querySelectorAll('.field-input').forEach(el => el.disabled = true);
     modalSaveBtn.classList.add('hidden');
     modalCancelBtn.textContent = 'Close';
   } else {
-    modalTitle.textContent = 'Edit Quotation';
-    modalSubtitle.textContent = `${q.no} · Customer, size, amount & status only`;
-    quoteForm.querySelectorAll('.field-input').forEach(el => {
-      el.disabled = !EDITABLE_FIELD_IDS.includes(el.id);
-    });
+    // Customer, size and amount are calculated from the quotation's items on the server,
+    // so from the dashboard only the status can be changed (PATCH /api/quotations/{id}/status).
+    // Full edits belong in the Quotation module.
+    fldStatus.disabled = false;
+    modalTitle.textContent = 'Update Status';
+    modalSubtitle.textContent = `${q.no} · Only the status can be changed here`;
     modalSaveBtn.classList.remove('hidden');
+    modalSaveBtn.disabled = false;
     modalCancelBtn.textContent = 'Cancel';
   }
-
   quoteModal.classList.remove('hidden');
 }
 
 function closeModal() {
   quoteModal.classList.add('hidden');
-  modalQuoteNo = null;
+  modalQuoteId = null;
 }
 
 modalCloseBtn?.addEventListener('click', closeModal);
@@ -484,40 +643,48 @@ modalCancelBtn?.addEventListener('click', closeModal);
 quoteModal?.addEventListener('click', (e) => { if (e.target === quoteModal) closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !quoteModal.classList.contains('hidden')) closeModal(); });
 
-modalSaveBtn?.addEventListener('click', () => {
-  const q = findQuote(modalQuoteNo);
+modalSaveBtn?.addEventListener('click', async () => {
+  const q = findRow(modalQuoteId);
   if (!q) return;
-  q.customer = fldCustomer.value.trim() || q.customer;
-  q.size = fldSize.value.trim() || q.size;
-  q.amount = parseFloat(fldAmount.value) || q.amount;
-  q.status = fldStatus.value;
-  renderTable();
-  closeModal();
-  showToast(`Saved changes to ${q.no}`);
+  if (fldStatus.value === q.status) { closeModal(); return; }
+  modalSaveBtn.disabled = true;
+  try {
+    await apiCall(`/api/quotations/${q.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: fldStatus.value }),
+    });
+    closeModal();
+    showToast(`${q.no} is now ${statusLabel(fldStatus.value)}`);
+    // counts, charts and the recent list all depend on status -> refresh both sources
+    loadDashboardData();
+    loadQuotations();
+    Notifications.refresh();
+  } catch (err) {
+    modalSaveBtn.disabled = false;
+    showToast(err.status === 403 ? 'You do not have permission to change the status' : err.message);
+  }
 });
 
-/* ---- Print: fills the hidden print slip and opens the browser print dialog ---- */
-function printQuotation(no) {
-  const q = findQuote(no);
+/* ---- Print ---- */
+function printQuotation(id) {
+  const q = findRow(id);
   if (!q) return;
-  document.getElementById('pNo').textContent = q.no;
-  document.getElementById('pCustomer').textContent = q.customer;
-  document.getElementById('pSize').textContent = q.size;
-  document.getElementById('pAmount').textContent = formatINR(q.amount);
-  document.getElementById('pStatus').textContent = q.status;
-  document.getElementById('pDate').textContent = formatDate(q.date);
-  document.getElementById('pGenDate').textContent = new Date().toLocaleString('en-IN');
+  setText('pNo', q.no);
+  setText('pCustomer', q.customer);
+  setText('pSize', formatSize(q.size));
+  setText('pAmount', formatINR(q.amount));
+  setText('pStatus', statusLabel(q.status));
+  setText('pDate', formatDateLong(q.date));
+  setText('pGenDate', new Date().toLocaleString('en-IN'));
   window.print();
 }
 
-/* ---- Download PDF: generates a real .pdf file client-side with jsPDF ---- */
-function downloadQuotationPdf(no) {
-  const q = findQuote(no);
+/* ---- PDF (jsPDF). The built-in Helvetica font has no ₹ glyph, so the PDF uses "Rs." ---- */
+function downloadQuotationPdf(id) {
+  const q = findRow(id);
   if (!q) return;
-  if (!window.jspdf) {
-    showToast('PDF library failed to load — check your connection');
-    return;
-  }
+  if (!window.jspdf) { showToast('PDF library failed to load — check your connection'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
 
@@ -533,12 +700,11 @@ function downloadQuotationPdf(no) {
   const rows = [
     ['Quotation No.', q.no],
     ['Customer', q.customer],
-    ['System Size', q.size],
-    ['Amount', formatINR(q.amount)],
-    ['Status', q.status],
-    ['Date', formatDate(q.date)],
+    ['System Size', formatSize(q.size)],
+    ['Amount', 'Rs. ' + Number(q.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })],
+    ['Status', statusLabel(q.status)],
+    ['Date', formatDateLong(q.date)],
   ];
-
   let y = 110;
   doc.setFontSize(11);
   rows.forEach(([label, value]) => {
@@ -548,7 +714,6 @@ function downloadQuotationPdf(no) {
     doc.text(String(value), 220, y);
     y += 26;
   });
-
   doc.setFontSize(9);
   doc.setTextColor(156, 163, 175);
   doc.text(`Generated on ${new Date().toLocaleString('en-IN')}`, 40, y + 20);
@@ -557,236 +722,382 @@ function downloadQuotationPdf(no) {
   showToast(`Downloaded ${q.no}.pdf`);
 }
 
-/* ---- Duplicate: clones the quotation with a fresh number and inserts it at the top ---- */
-function duplicateQuotation(no) {
-  const q = findQuote(no);
-  if (!q) return;
+/* ---- Duplicate: GET the full quotation, POST it back as a new one (server assigns a new number, PENDING, today) ---- */
+function toNum(v) { return v === null || v === undefined || v === '' ? undefined : Number(v); }
 
-  const maxNum = quotations.reduce((max, item) => {
-    const n = parseInt(item.no.replace(/\D/g, ''), 10);
-    return isNaN(n) ? max : Math.max(max, n);
-  }, 0);
-  const newNo = `SQ-${String(maxNum + 1).padStart(4, '0')}`;
-
-  const copy = {
-    ...q,
-    no: newNo,
-    status: 'Pending',
-    date: new Date().toISOString().slice(0, 10),
+function buildCreateRequestFrom(d) {
+  const req = {
+    customerId: d.customer?.id,
+    projectId: d.projectId ?? undefined,
+    systemSizeKw: toNum(d.systemSizeKw),
+    mounting: d.mounting || undefined,
+    items: (d.items || []).map((it) => ({
+      productId: it.productId ?? undefined,
+      name: it.name,
+      type: it.type || undefined,
+      qty: toNum(it.qty),
+      unit: it.unit,
+      rate: toNum(it.rate),
+    })),
+    installationCost: toNum(d.installationCost),
+    transportCost: toNum(d.transportCost),
+    otherLabel: d.otherLabel || undefined,
+    otherCost: toNum(d.otherCost),
+    gstPercent: toNum(d.gstPercent) ?? 0,
+    discountType: d.discountType || 'FLAT',
+    discountValue: toNum(d.discountValue),
+    tariff: toNum(d.tariff),
+    escalationPercent: toNum(d.escalationPercent),
+    advance: toNum(d.advance),
+    terms: d.terms || undefined,
   };
-  quotations.unshift(copy);
-  sortKey = 'date'; sortDir = 'desc'; currentPage = 1;
-  renderTable();
-  showToast(`Duplicated as ${newNo}`);
+  if (d.paymentTerms) {
+    req.paymentTerms = {
+      advance: toNum(d.paymentTerms.advance), material: toNum(d.paymentTerms.material),
+      installation: toNum(d.paymentTerms.installation), balance: toNum(d.paymentTerms.balance),
+    };
+  }
+  if (d.bank && (d.bank.accountNumber || d.bank.bankName)) {
+    req.bank = {
+      accountName: d.bank.accountName, bankName: d.bank.bankName, accountNumber: d.bank.accountNumber,
+      ifsc: d.bank.ifsc, branch: d.bank.branch,
+    };
+  }
+  // referral is deliberately NOT copied: a duplicate must not create a second referral payout for the same lead
+  return req;
 }
 
-/* ---- Wire up the action icons + row click ---- */
+async function duplicateQuotation(id, btn) {
+  const q = findRow(id);
+  if (!q) return;
+  if (btn) btn.disabled = true;
+  try {
+    const full = await apiCall(`/api/quotations/${q.id}`);
+    const created = await apiCall('/api/quotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildCreateRequestFrom(full)),
+    });
+    showToast(`Duplicated as ${created.code}`);
+    sortKey = 'date'; sortDir = 'desc'; currentPage = 1;
+    loadDashboardData();
+    loadQuotations();
+    Notifications.refresh();
+  } catch (err) {
+    showToast(err.status === 403 ? 'You do not have permission to create quotations' : `Duplicate failed: ${err.message}`);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ---- wire up action icons + row click ---- */
 qTbody?.addEventListener('click', (e) => {
+  if (e.target.closest('[data-retry]')) { loadQuotations(); return; }
+
   const actionBtn = e.target.closest('[data-action]');
   if (actionBtn) {
     e.stopPropagation();
-    const no = actionBtn.getAttribute('data-no');
+    const id = actionBtn.getAttribute('data-id');
     const action = actionBtn.getAttribute('data-action');
-    if (action === 'view') openModal(no, 'view');
-    else if (action === 'edit') openModal(no, 'edit');
-    else if (action === 'print') printQuotation(no);
-    else if (action === 'pdf') downloadQuotationPdf(no);
-    else if (action === 'duplicate') duplicateQuotation(no);
+    if (action === 'view') openModal(id, 'view');
+    else if (action === 'edit') openModal(id, 'edit');
+    else if (action === 'print') printQuotation(id);
+    else if (action === 'pdf') downloadQuotationPdf(id);
+    else if (action === 'duplicate') duplicateQuotation(id, actionBtn);
     return;
   }
-  const row = e.target.closest('tr[data-no]');
-  if (row) {
-    openModal(row.getAttribute('data-no'), 'view');
-  }
+  const row = e.target.closest('tr[data-id]');
+  if (row) openModal(row.getAttribute('data-id'), 'view');
 });
 
-/* ---------------- Toast helper ---------------- */
-function showToast(message) {
-  const container = document.getElementById('toast-container');
-  if (!container) return;
-  const toast = document.createElement('div');
-  toast.className = 'toast-animate bg-gray-800 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg';
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 2500);
-}
-
-/* ---------------- Role helpers ---------------- */
-// window.currentUserRole is a read-only global defined by session.js from the
-// login session (SUPER_ADMIN / CHANNEL_PARTNER_ADMIN / CHANNEL_PARTNER_SALES).
-// There is no fallback role: with no session session.js redirects to login.
-
-// Re-applies data-role visibility. session.js already runs this once on
-// DOMContentLoaded; dashboard.js calls it again after loadDashboardData()
-// populates numbers, so cards that were hidden don't flash stale content.
-function applyRoleBasedVisibility() {
-  const userRole = window.currentUserRole;
-  document.querySelectorAll('[data-role]').forEach(el => {
-    const roles = el.getAttribute('data-role').split(',').map(r => r.trim());
-    const shouldShow = roles.includes(userRole);
-    el.style.display = shouldShow ? '' : 'none';
-  });
-}
-applyRoleBasedVisibility();
-
 // ============================================================
-// NEW: loadDashboardData() — the ONE API call this whole page needs.
-// Works for both Super Admin and Channel Partner logins: the backend
-// (DashboardService -> SecurityUtils.getCurrentPartnerId()) already
-// scopes every number correctly, so this function only has to render
-// whatever it gets back. Super-Admin-only fields (totalPartners,
-// topPartners) come back null for a Channel Partner login — the
-// data-role attributes on the HTML cards already keep those hidden,
-// this function just guards against writing into hidden/absent data.
-// ============================================================
-// API base URL + Bearer token are handled by Session.authFetch (session.js).
-// Set window.API_BASE = 'http://localhost:8080' if frontend and backend run on different ports.
-
-async function loadDashboardData() {
-  try {
-    const res = await Session.authFetch('/api/dashboard/summary');
-    if (!res.ok) throw new Error('Dashboard summary request failed: ' + res.status);
-    const body = await res.json();
-    if (!body.success) throw new Error(body.message || 'Dashboard summary returned an error');
-    renderDashboardSummary(body.data);
-  } catch (err) {
-    // Backend not wired up yet / offline — fall back to mock numbers so the
-    // page still looks complete during frontend-only development.
-    console.warn('loadDashboardData() falling back to mock data:', err.message);
-    renderDashboardSummary(MOCK_DASHBOARD_SUMMARY);
-  }
-}
-
-// Mirrors the shape of DashboardSummaryDto on the backend — used only until
-// the real API response is available; delete once /api/dashboard/summary is live everywhere.
-const MOCK_DASHBOARD_SUMMARY = {
-  totalCustomers: 86,
-  totalProjects: 63,
-  totalQuotations: 248,
-  totalQuotationValue: 39000000,
-  pendingApprovals: 58,
-  totalReferralIncome: 214000,
-  totalPartners: 21,
-  activePartners: 18,
-  platformPendingReferralPayouts: 96000,
-  topPartners: [
-    { partnerName: 'Sunrise Solar Solutions', partnerCode: 'CP-0001', totalQuotations: 62, totalRevenue: 9800000 },
-    { partnerName: 'GreenVolt Energy',       partnerCode: 'CP-0002', totalQuotations: 54, totalRevenue: 8650000 },
-    { partnerName: 'Bright Future Power',    partnerCode: 'CP-0003', totalQuotations: 41, totalRevenue: 6200000 },
-    { partnerName: 'EcoRay Installations',   partnerCode: 'CP-0004', totalQuotations: 33, totalRevenue: 4750000 },
-    { partnerName: 'Solaris Traders',        partnerCode: 'CP-0005', totalQuotations: 28, totalRevenue: 3900000 },
-  ],
-};
-
-function renderDashboardSummary(data) {
-  // ---- Group C: common to every role ----
-  const pendingApprovalsEl = document.getElementById('kpiPendingApprovals');
-  if (pendingApprovalsEl) pendingApprovalsEl.textContent = data.pendingApprovals ?? '—';
-
-  const pendingApprovalsLabelEl = document.getElementById('kpiPendingApprovalsLabel');
-  if (pendingApprovalsLabelEl) {
-    pendingApprovalsLabelEl.textContent = window.currentUserRole === 'SUPER_ADMIN'
-      ? 'Pending Approvals (All Partners)'
-      : 'Pending Approvals';
-  }
-
-  // ---- Group A: Super Admin only ----
-  if (window.currentUserRole === 'SUPER_ADMIN') {
-    setText('kpiTotalPartners', data.totalPartners ?? '—');
-    const activeSuffix = document.getElementById('kpiActivePartnersSuffix');
-    if (activeSuffix && data.activePartners !== null && data.activePartners !== undefined) {
-      activeSuffix.textContent = `(${data.activePartners} active)`;
-    }
-    setText('kpiPlatformRevenue', formatCompactINR(data.totalQuotationValue));
-    setText('kpiReferralPayoutsPending', formatCompactINR(data.platformPendingReferralPayouts));
-
-    renderTopPartners(data.topPartners || []);
-  }
-
-  // ---- Group B: Channel Partner roles only ----
-  if (window.currentUserRole === 'CHANNEL_PARTNER_ADMIN' || window.currentUserRole === 'CHANNEL_PARTNER_SALES') {
-    setText('kpiMyCustomers', data.totalCustomers ?? '—');
-    setText('kpiMyQuotations', data.totalQuotations ?? '—');
-    // NOTE: DashboardSummaryDto currently returns all-time quotation value, not
-    // month-filtered. Swap this for a dedicated "this month" figure once the
-    // backend adds one (see README TODO) — kept as totalQuotationValue for now
-    // so the card isn't left blank.
-    setText('kpiMyRevenueMonth', formatCompactINR(data.totalQuotationValue));
-    setText('kpiMyReferralIncome', formatCompactINR(data.totalReferralIncome));
-  }
-
-  // ---- Re-apply role visibility now that content is populated ----
-  applyRoleBasedVisibility();
-}
-
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
-}
-
-function renderTopPartners(topPartners) {
-  const tbody = document.getElementById('topPartnersTbody');
-  if (!tbody) return;
-
-  if (!topPartners.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-400 py-3">No partner data yet</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = topPartners.map((p, idx) => `
-    <tr>
-      <td data-label="Rank">#${idx + 1}</td>
-      <td data-label="Partner Name" class="font-medium">${p.partnerName} <span class="text-gray-400">(${p.partnerCode})</span></td>
-      <td data-label="Total Quotations">${p.totalQuotations}</td>
-      <td data-label="Total Revenue">${formatCompactINR(p.totalRevenue)}</td>
-    </tr>
-  `).join('');
-}
-
-/* ---------------- Init table + dashboard data ---------------- */
-renderTable();
-loadDashboardData();
-
-// ============================================================
-// New Quotation button — redirects to the Quotation Management module
+// New Quotation button
 // ============================================================
 const newQuotationBtn = document.getElementById('newQuotationBtn');
-newQuotationBtn?.addEventListener('click', () => {
-  window.location.href = '../Quotation/quotation.html';
-});
+if (newQuotationBtn && !can('QUOTATION:CREATE')) newQuotationBtn.classList.add('hidden');
+newQuotationBtn?.addEventListener('click', () => { window.location.href = '/Quotation/quotation.html'; });
 
 // ============================================================
-// Topbar: notification + profile dropdowns
+// Topbar: notification + profile dropdowns (open / close only)
 // ============================================================
-const notifBtn = document.getElementById("notifBtn");
-const notifDropdown = document.getElementById("notifDropdown");
-const profileBtn = document.getElementById("profileBtn");
-const profileDropdown = document.getElementById("profileDropdown");
-const profileLogoutBtn = document.getElementById("profileLogoutBtn");
+const notifBtn = document.getElementById('notifBtn');
+const notifDropdown = document.getElementById('notifDropdown');
+const profileBtn = document.getElementById('profileBtn');
+const profileDropdown = document.getElementById('profileDropdown');
+const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
 function closeAllTopbarDropdowns(except) {
-  [notifDropdown, profileDropdown].forEach((dd) => {
-    if (dd && dd !== except) dd.classList.add("hidden");
-  });
+  [notifDropdown, profileDropdown].forEach((dd) => { if (dd && dd !== except) dd.classList.add('hidden'); });
+  notifBtn?.setAttribute('aria-expanded', String(!notifDropdown.classList.contains('hidden')));
 }
 
-notifBtn?.addEventListener("click", (e) => {
+notifBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  const willOpen = notifDropdown.classList.contains("hidden");
+  const willOpen = notifDropdown.classList.contains('hidden');
   closeAllTopbarDropdowns();
-  notifDropdown.classList.toggle("hidden", !willOpen);
+  notifDropdown.classList.toggle('hidden', !willOpen);
+  notifBtn.setAttribute('aria-expanded', String(willOpen));
+  if (willOpen) Notifications.onOpen();
 });
 
-profileBtn?.addEventListener("click", (e) => {
+profileBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  const willOpen = profileDropdown.classList.contains("hidden");
+  const willOpen = profileDropdown.classList.contains('hidden');
   closeAllTopbarDropdowns();
-  profileDropdown.classList.toggle("hidden", !willOpen);
+  profileDropdown.classList.toggle('hidden', !willOpen);
 });
 
-document.addEventListener("click", () => closeAllTopbarDropdowns());
+notifDropdown?.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeAllTopbarDropdowns());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !notifDropdown.classList.contains('hidden')) {
+    closeAllTopbarDropdowns();
+    notifBtn.focus();
+  }
+});
 
 // ============================================================
-// Logout — redirects to index.html
+// Notifications module
+//   GET    /api/notifications/list?page=&size=&unreadOnly=   -> PageResponse<NotificationResponseDto>
+//   GET    /api/notifications/unread-count                   -> { unread }
+//   PATCH  /api/notifications/{id}/markRead/read             -> { unread }
+//   PATCH  /api/notifications/markAllRead/read-all           -> { unread }
+//   DELETE /api/notifications/delete/{id}                    -> { unread }
 // ============================================================
-profileLogoutBtn?.addEventListener("click", logoutUser);
+const Notifications = (() => {
+  const BASE = '/api/notifications';
+  const PAGE_SIZE = 10;
+  const POLL_MS = 30000;
+
+  // routes match the `module.route` values seeded in data.sql
+  const ENTITY_LINKS = {
+    QUOTATION: '/Quotation/quotation.html',
+    CUSTOMER:  '/customer/customer.html',
+    PROJECT:   '/project/project.html',
+  };
+
+  const listEl    = document.getElementById('notifList');
+  const badgeEl   = document.getElementById('notifBadge');
+  const markAllEl = document.getElementById('notifMarkAllBtn');
+  const moreEl    = document.getElementById('notifLoadMoreBtn');
+  const tabEls    = document.querySelectorAll('#notifDropdown .notif-tab');
+
+  const state = { items: [], page: 0, hasMore: false, unread: 0, unreadOnly: false, loading: false, error: false, loaded: false };
+
+  const CLOSE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+  function timeAgo(iso) {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    if (isNaN(t)) return '';
+    const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (s < 45) return 'Just now';
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${Math.max(m, 1)} min ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} hr ago`;
+    const d = Math.floor(h / 24);
+    if (d < 7) return `${d} day${d > 1 ? 's' : ''} ago`;
+    return new Date(t).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  const call = (path, options) => apiCall(BASE + path, options);
+
+  function renderBadge() {
+    const n = state.unread;
+    badgeEl.textContent = n > 99 ? '99+' : String(n);
+    badgeEl.classList.toggle('hidden', n <= 0);
+    notifBtn.setAttribute('aria-label', n > 0 ? `Notifications, ${n} unread` : 'Notifications');
+    markAllEl.disabled = n <= 0;
+  }
+
+  function itemHtml(n) {
+    const sev = String(n.severity || 'INFO').toLowerCase();
+    return `
+      <div class="notif-item ${n.read ? '' : 'unread'}" role="listitem" data-id="${n.id}">
+        <span class="notif-dot sev-${esc(sev)}"></span>
+        <div class="notif-body">
+          <div class="notif-title">${esc(n.title)}</div>
+          ${n.message ? `<div class="notif-msg">${esc(n.message)}</div>` : ''}
+          <span class="notif-time">${esc(timeAgo(n.createdAt))}</span>
+        </div>
+        <button type="button" class="notif-del" data-del="${n.id}" title="Remove" aria-label="Remove notification">${CLOSE_SVG}</button>
+      </div>`;
+  }
+
+  function renderList() {
+    if (state.loading && !state.items.length) {
+      listEl.innerHTML = '<div class="notif-state">Loading…</div>';
+    } else if (state.error && !state.items.length) {
+      listEl.innerHTML = '<div class="notif-state">Couldn’t load notifications.<br><button type="button" data-retry>Try again</button></div>';
+    } else if (!state.items.length) {
+      listEl.innerHTML = `<div class="notif-state">${state.unreadOnly ? 'You’re all caught up 🎉' : 'No notifications yet'}</div>`;
+    } else {
+      listEl.innerHTML = state.items.map(itemHtml).join('');
+    }
+    moreEl.classList.toggle('hidden', !state.hasMore);
+    moreEl.disabled = state.loading;
+    moreEl.textContent = state.loading ? 'Loading…' : 'Load more';
+  }
+
+  async function fetchUnreadCount() {
+    try {
+      const data = await call('/unread-count');
+      const prev = state.unread;
+      state.unread = data.unread ?? 0;
+      renderBadge();
+      if (state.unread > prev && !notifDropdown.classList.contains('hidden')) load(true);
+    } catch (err) {
+      console.warn('Notifications: unread-count failed:', err.message);
+    }
+  }
+
+  let reqSeq = 0;
+  async function load(reset) {
+    if (state.loading && !reset) return;
+    const mySeq = ++reqSeq;
+    state.loading = true;
+    state.error = false;
+    if (reset) state.page = 0;
+    renderList();
+
+    const nextPage = reset ? 0 : state.page + 1;
+    const qs = new URLSearchParams({ page: String(nextPage), size: String(PAGE_SIZE), unreadOnly: String(state.unreadOnly) });
+
+    try {
+      const data = await call('/list?' + qs.toString());
+      if (mySeq !== reqSeq) return;
+      const incoming = data.content || [];
+      if (reset) state.items = incoming;
+      else {
+        const seen = new Set(state.items.map((i) => i.id));
+        state.items = state.items.concat(incoming.filter((i) => !seen.has(i.id)));
+      }
+      state.page = data.page ?? nextPage;
+      state.hasMore = (data.page ?? nextPage) + 1 < (data.totalPages ?? 0);
+      state.loaded = true;
+    } catch (err) {
+      if (mySeq !== reqSeq) return;
+      console.warn('Notifications: list failed:', err.message);
+      state.error = true;
+      if (!reset) showToast('Couldn’t load more notifications');
+    } finally {
+      if (mySeq === reqSeq) { state.loading = false; renderList(); }
+    }
+  }
+
+  async function markRead(id) {
+    const item = state.items.find((i) => i.id === id);
+    if (!item || item.read) return;
+    item.read = true;
+    state.unread = Math.max(0, state.unread - 1);
+    renderBadge(); renderList();
+    try {
+      const data = await call(`/${id}/markRead/read`, { method: 'PATCH' });
+      state.unread = data.unread ?? state.unread;
+      renderBadge();
+    } catch (err) {
+      item.read = false;
+      fetchUnreadCount();
+      renderList();
+      showToast('Couldn’t mark as read');
+    }
+  }
+
+  async function markAllRead() {
+    if (state.unread <= 0) return;
+    markAllEl.disabled = true;
+    try {
+      const data = await call('/markAllRead/read-all', { method: 'PATCH' });
+      state.unread = data.unread ?? 0;
+      state.items.forEach((i) => { i.read = true; });
+      if (state.unreadOnly) { state.items = []; state.hasMore = false; }
+      renderBadge(); renderList();
+    } catch (err) {
+      showToast('Couldn’t mark all as read');
+      renderBadge();
+    }
+  }
+
+  async function remove(id) {
+    const idx = state.items.findIndex((i) => i.id === id);
+    if (idx === -1) return;
+    const [removed] = state.items.splice(idx, 1);
+    renderList();
+    try {
+      const data = await call(`/delete/${id}`, { method: 'DELETE' });
+      state.unread = data.unread ?? state.unread;
+      renderBadge();
+      if (state.items.length < PAGE_SIZE && state.hasMore) load(true);
+    } catch (err) {
+      state.items.splice(idx, 0, removed);
+      renderList();
+      showToast('Couldn’t remove notification');
+    }
+  }
+
+  function openItem(id) {
+    const n = state.items.find((i) => i.id === id);
+    if (!n) return;
+    markRead(id);
+    const link = ENTITY_LINKS[n.entityType];
+    if (link) window.location.href = link;
+  }
+
+  listEl.addEventListener('click', (e) => {
+    if (e.target.closest('[data-retry]')) { load(true); return; }
+    const del = e.target.closest('[data-del]');
+    if (del) { remove(Number(del.getAttribute('data-del'))); return; }
+    const row = e.target.closest('.notif-item');
+    if (row) openItem(Number(row.getAttribute('data-id')));
+  });
+
+  markAllEl.addEventListener('click', markAllRead);
+  moreEl.addEventListener('click', () => load(false));
+
+  tabEls.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const unreadOnly = tab.getAttribute('data-filter') === 'unread';
+      if (unreadOnly === state.unreadOnly) return;
+      state.unreadOnly = unreadOnly;
+      tabEls.forEach((t) => {
+        const active = t === tab;
+        t.classList.toggle('active', active);
+        t.setAttribute('aria-selected', String(active));
+      });
+      state.items = [];
+      load(true);
+    });
+  });
+
+  let timer = null;
+  function startPolling() {
+    stopPolling();
+    timer = setInterval(() => { if (!document.hidden) fetchUnreadCount(); }, POLL_MS);
+  }
+  function stopPolling() { if (timer) { clearInterval(timer); timer = null; } }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) fetchUnreadCount(); });
+
+  return {
+    init() { renderBadge(); renderList(); fetchUnreadCount(); startPolling(); },
+    onOpen() { load(true); fetchUnreadCount(); },
+    refresh() { fetchUnreadCount(); if (!notifDropdown.classList.contains('hidden')) load(true); },
+    destroy: stopPolling,
+  };
+})();
+
+// ============================================================
+// Logout
+// ============================================================
+profileLogoutBtn?.addEventListener('click', () => {
+  Notifications.destroy();
+  logoutUser();
+});
+
+// ============================================================
+// Init
+// ============================================================
+renderTable();
+loadDashboardData();
+loadQuotations();
+Notifications.init();
