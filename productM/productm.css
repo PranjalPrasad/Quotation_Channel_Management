@@ -523,3 +523,23 @@ select.rows-select {
   .modal-panel { max-height: 98vh; max-height: 98dvh; }
   .ledger-list { max-height: 160px; }
 }
+
+/* =========================================================
+   BACKEND INTEGRATION ADDITIONS (loading / disabled states)
+   ========================================================= */
+.table-state-cell { text-align: center !important; padding: 26px 10px !important; color: #9CA3AF; font-size: 12px; white-space: normal !important; }
+.spinner {
+  display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 8px;
+  border: 2px solid #DCC3AA; border-top-color: #541A1A; border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-primary:disabled, .btn-danger:disabled, .btn-secondary:disabled { opacity: .55; cursor: not-allowed; }
+#load-error .btn-primary { margin-left: auto; margin-right: auto; }
+.topbar-notif-item .notif-empty { color: #9CA3AF; font-weight: 400; }
+
+@media (max-width: 780px) {
+  .data-table tr.table-state-row { border: none; padding: 0; }
+  .data-table td.table-state-cell { display: block; text-align: center; }
+  .data-table td.table-state-cell::before { display: none; }
+}

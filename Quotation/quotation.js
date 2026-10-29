@@ -2,7 +2,9 @@
 // Quotation Management — integrated with the Spring Boot backend (port 8091)
 //   list / view / create / edit / status / delete  ->  /api/quotations
 //   history timeline                               ->  /api/quotations/{id}/history
-//   products                                       ->  /api/products?status=Active
+//   product picker + automatic BOQ                 ->  /api/products/catalog   (Product Management)
+//   customer (find by mobile or create, update)    ->  /api/customers
+//   channel partner dropdown (Super Admin only)    ->  /api/channel-partners/options
 //   referral partners                              ->  /api/referrals/referrer-options  (quotation-referral.js)
 //   company / bank / defaults                      ->  /api/settings/*   (best effort)
 // Load order in quotation.html: session.js, quotation-referral.js, quotation.js
@@ -17,7 +19,7 @@ const COMPANY = {
     gstin: '27ABCDE1234F1Z5',
     state: 'Maharashtra',
     logo: '/img/logo.webp',
-    // Bank Details (will be auto-fetched from Settings later)
+    // Bank Details (auto-fetched from Settings when the role can read them)
     bank: {
         accountName: 'SolarTech Renewables Pvt. Ltd.',
         bankName: 'State Bank of India',
@@ -28,48 +30,34 @@ const COMPANY = {
 };
 
 /* =====================================================================
-   PM SURYA GHAR SUBSIDY CALCULATOR
-   Official CFA (Central Financial Assistance) slabs as per MNRE /
-   pmsuryaghar.gov.in (verified 2026). Keep this config in one place so
-   it's easy to update if the government revises the slabs.
+   PM SURYA GHAR SUBSIDY CALCULATOR (preview only — the server calculates the final subsidy)
    ===================================================================== */
 const SUBSIDY_CONFIG = {
-    residentialPerKwUpto2: 30000,  // ₹30,000 per kW for the first 2 kW
-    residentialThirdKw: 18000,     // ₹18,000 for the 3rd kW
-    residentialMaxCap: 78000,      // capped at ₹78,000 for 3 kW and above
-    ghsPerKw: 18000,                // Group Housing Society / RWA — ₹18,000/kW for common facilities
-    ghsMaxKw: 500                   // GHS/RWA subsidy capped at 500 kW system size
+    residentialPerKwUpto2: 30000,
+    residentialThirdKw: 18000,
+    residentialMaxCap: 78000,
+    ghsPerKw: 18000,
+    ghsMaxKw: 500
 };
 
-/* Consumer Category + System Capacity -> Government Subsidy (₹).
-   Commercial/Institutional consumers are NOT eligible for the central
-   CFA subsidy under PM Surya Ghar (they can separately avail accelerated
-   depreciation + GST input benefits, which this tool does not compute). */
 function computeSubsidy(category, sizeKw) {
     sizeKw = Number(sizeKw) || 0;
     if (category === 'Commercial') return 0;
     if (category === 'GHS') return Math.min(sizeKw, SUBSIDY_CONFIG.ghsMaxKw) * SUBSIDY_CONFIG.ghsPerKw;
-    // Residential (default)
     if (sizeKw <= 0) return 0;
     if (sizeKw <= 2) return sizeKw * SUBSIDY_CONFIG.residentialPerKwUpto2;
     if (sizeKw < 3) return (2 * SUBSIDY_CONFIG.residentialPerKwUpto2) + (sizeKw - 2) * SUBSIDY_CONFIG.residentialThirdKw;
     return SUBSIDY_CONFIG.residentialMaxCap;
 }
 
-/* ---------------- Savings / ROI assumptions ----------------
-   Adjust these constants if your business uses different standard
-   figures (e.g. a different grid emission factor for your state). */
+/* ---------------- Savings / ROI assumptions ---------------- */
 const SAVINGS_CONFIG = {
-    unitsPerKwPerDay: 4,       // avg. generation assumption
-    panelDegradationPct: 0.5,  // annual panel output degradation
-    co2FactorKgPerKwh: 0.82,   // India grid emission factor (kg CO2 / kWh)
+    unitsPerKwPerDay: 4,
+    panelDegradationPct: 0.5,
+    co2FactorKgPerKwh: 0.82,
     projectionYears: 25
 };
 
-/* Projects year-on-year savings across the panel's life, factoring in
-   both tariff escalation (electricity gets costlier) and panel output
-   degradation (panels generate slightly less each year). Returns the
-   cumulative 25-year savings total plus total units generated. */
 function computeMultiYearSavings(annualUnitsYear1, tariff, escalationPct) {
     let totalSavings = 0, totalUnits = 0;
     let units = annualUnitsYear1, rate = tariff;
@@ -84,8 +72,6 @@ function computeMultiYearSavings(annualUnitsYear1, tariff, escalationPct) {
 
 /* =====================================================================
    SIDEBAR / TOPBAR CHROME (shared across all modules)
-   Desktop (>=1024px): expanded by default on every page load.
-   Phone/tablet: slim icon rail by default, expands as overlay drawer.
    ===================================================================== */
 const sidebar = document.getElementById('sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -102,31 +88,22 @@ function setSidebarExpanded(next) {
     sidebar?.classList.toggle('expanded', next);
     sidebar?.classList.toggle('collapsed', !next);
     if (toggleIcon) toggleIcon.style.transform = next ? 'rotate(180deg)' : 'rotate(0deg)';
-
-    // backdrop only exists as an overlay on phone/tablet
-    // (toggle both classes — the HTML may ship it with "hidden")
     const showBackdrop = next && isDrawerViewport();
     sidebarBackdrop?.classList.toggle('visible', showBackdrop);
     sidebarBackdrop?.classList.toggle('hidden', !showBackdrop);
 }
 
-// apply initial state on page load
 setSidebarExpanded(sidebarExpanded);
 
 sidebarToggle?.addEventListener('click', () => setSidebarExpanded(!sidebarExpanded));
 sidebarBackdrop?.addEventListener('click', () => setSidebarExpanded(false));
-
-// when crossing the 1024px breakpoint, reset to that size's default
-// (desktop -> open, phone/tablet -> rail) so a drawer never gets stuck open
 drawerMQ.addEventListener('change', () => setSidebarExpanded(!isDrawerViewport()));
 
-// nav items are generated by session.js AFTER load, so use event delegation.
-// Tapping a nav item closes the mobile drawer.
 document.getElementById('sidebarNav')?.addEventListener('click', (e) => {
     if (e.target.closest('.nav-item') && isDrawerViewport()) setSidebarExpanded(false);
 });
 
-/* ---------------- Logout (shared) — clears the session, then goes to login page ---------------- */
+/* ---------------- Logout (shared) ---------------- */
 function logoutUser() {
     try {
         if (window.Session && typeof Session.logout === 'function') Session.logout();
@@ -136,7 +113,7 @@ function logoutUser() {
 }
 document.getElementById('profileLogoutBtn')?.addEventListener('click', logoutUser);
 
-/* ---------------- Topbar dropdowns (notification / profile) ---------------- */
+/* ---------------- Topbar dropdowns ---------------- */
 function setupDropdown(btnId, menuId) {
     const btn = document.getElementById(btnId);
     const menu = document.getElementById(menuId);
@@ -183,49 +160,86 @@ function formatINR(n) {
     return '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
 }
 
+/* ---------------- Who is logged in ---------------- */
+// session.js stores the role code (SUPER_ADMIN, CHANNEL_PARTNER_ADMIN, ...). Super Admin has no partner of their
+// own, so they must choose the channel partner a new customer/quotation belongs to.
+function isSuperAdminUser() {
+    return String(window.currentUserRole || '').toUpperCase() === 'SUPER_ADMIN';
+}
+function selectedPartnerId() {
+    if (!isSuperAdminUser()) return null;
+    const v = document.getElementById('f-partnerId')?.value;
+    return v ? Number(v) : null;
+}
+
 /* =====================================================================
    REFERRAL — partner list, validation and the save payload come from
    quotation-referral.js (loaded before this file).
    ===================================================================== */
-
-// Calculate referral amount
 function calculateReferralAmount(grandTotal, referralPercent) {
     return grandTotal * (referralPercent / 100);
 }
 
 /* =====================================================================
-   PRODUCT CATALOG — the wizard's Step 2 "Products & Items" picker loads
-   the live product list from the backend (Product Management is the
-   owner of that data):
+   PRODUCT CATALOG  —  GET /api/products/catalog[?partnerId=]
 
-       GET /api/products?status=Active
+   Response:  { success, data: [ { id, name, category, brand, spec, unit, hsn,
+                                   gstPercent, price, qtyPerKw, warrantyYears, stock } ] }
+   `data` is a PLAIN ARRAY of the ACTIVE products of the partner (category is the enum code, e.g. SOLAR_PANEL).
+   A partner user always gets their own partner's products; Super Admin passes ?partnerId= of the chosen partner.
 
-   Accepted response shapes: [ ...products ], { data: [ ... ] },
-   { content: [ ... ] } or { success, data: [ ... ] }.
-   Product fields used: id, name, category, brand, spec, unit, price, status.
-
-   There is no localStorage cache and no hard-coded fallback list any more:
-   quotations must always be priced from the real catalog. If the request
-   fails the picker says so and the user can retry or use "Custom Item".
+   (The old code called /api/products?status=Active, whose data is a paged object { content, totalPages } and
+   not an array — that is what raised "Unexpected product catalog response".)
    ===================================================================== */
-
 let itemIdCounter = 1;
 function newItemId() { return 'it' + (itemIdCounter++); }
 
-/* Loads Active products from the API. Throws on failure. */
-async function fetchProductCatalog() {
-    const body = await Session.api('/api/products?status=Active');
-    const list = Array.isArray(body) ? body
-        : Array.isArray(body && body.data) ? body.data
-        : Array.isArray(body && body.content) ? body.content
-        : null;
-    if (!list) throw new Error('Unexpected product catalog response');
-    return list.filter(p => p && p.status !== 'Inactive');
+const CATEGORY_LABELS = {
+    SOLAR_PANEL: 'Solar Panel',
+    INVERTER: 'Inverter',
+    BATTERY: 'Battery',
+    MOUNTING_STRUCTURE: 'Mounting Structure',
+    CABLE_WIRING: 'Cable & Wiring',
+    ACCESSORY: 'Accessory'
+};
+
+function normalizeCatalogItem(p) {
+    const code = String(p.category || '').toUpperCase();
+    return {
+        id: p.id,
+        name: p.name || '',
+        categoryCode: code,
+        category: CATEGORY_LABELS[code] || p.category || 'Other',
+        brand: p.brand || '',
+        spec: p.spec || '',
+        unit: p.unit || 'Nos',
+        hsn: p.hsn || '',
+        gstPercent: Number(p.gstPercent) || 0,
+        price: Number(p.price) || 0,
+        qtyPerKw: Number(p.qtyPerKw) || 0,
+        warrantyYears: p.warrantyYears == null ? null : Number(p.warrantyYears),
+        stock: Number(p.stock) || 0
+    };
 }
 
-/* Populates the Step 2 product-selection dropdown from the live catalog,
-   grouped by category. Called whenever the wizard is (re)opened so it
-   reflects any changes made in Product Management since it was last built. */
+/* Loads the active products. Throws on failure. Resolves to null when a Super Admin has not chosen a partner yet. */
+async function fetchProductCatalog() {
+    let url = '/api/products/catalog';
+    if (isSuperAdminUser()) {
+        const pid = selectedPartnerId();
+        if (!pid) return null;                       // nothing to show until a partner is chosen (Step 1)
+        url += `?partnerId=${encodeURIComponent(pid)}`;
+    }
+    const res = await Session.api(url);
+    const data = res && res.data !== undefined ? res.data : res;
+    const list = Array.isArray(data) ? data
+        : Array.isArray(data && data.content) ? data.content
+        : null;
+    if (!list) throw new Error('Unexpected product catalog response');
+    return list.map(normalizeCatalogItem);
+}
+
+/* Populates the Step 2 product dropdown from the live catalog, grouped by category. */
 async function populateProductPicker() {
     const select = document.getElementById('product-catalog-select');
     if (!select) return;
@@ -238,26 +252,29 @@ async function populateProductPicker() {
         console.error('Product catalog load failed:', e);
         window.__quotationProductCatalog = [];
         select.innerHTML = `<option value="">Could not load products — reopen this step to retry</option>`;
-        showToast('Could not load the product catalog. You can still add a Custom Item.', 'error');
+        showToast(`Could not load the product catalog${e && e.message ? ': ' + e.message : ''}. You can still add a Custom Item.`, 'error');
+        return;
+    }
+
+    if (catalog === null) {
+        window.__quotationProductCatalog = [];
+        select.innerHTML = `<option value="">Select a channel partner in Step 1 to load its products</option>`;
         return;
     }
     window.__quotationProductCatalog = catalog;
 
     if (!catalog.length) {
-        select.innerHTML = `<option value="">No products found — add some in Product Management</option>`;
+        select.innerHTML = `<option value="">No active products — add some in Product Management</option>`;
         return;
     }
 
     const byCategory = {};
-    catalog.forEach(p => {
-        const cat = p.category || 'Other';
-        (byCategory[cat] = byCategory[cat] || []).push(p);
-    });
+    catalog.forEach(p => { (byCategory[p.category] = byCategory[p.category] || []).push(p); });
 
     select.innerHTML = `<option value="">Select a product to add…</option>` +
         Object.keys(byCategory).sort().map(cat => `
             <optgroup label="${escapeAttr(cat)}">
-                ${byCategory[cat].map(p => `<option value="${escapeAttr(p.id)}">${escapeAttr(p.name)}${p.brand ? ' — ' + escapeAttr(p.brand) : ''} · ₹${Number(p.price || 0).toLocaleString('en-IN')}/${escapeAttr(p.unit || 'Nos')}</option>`).join('')}
+                ${byCategory[cat].map(p => `<option value="${escapeAttr(p.id)}">${escapeAttr(p.name)}${p.brand ? ' — ' + escapeAttr(p.brand) : ''} · ₹${Number(p.price || 0).toLocaleString('en-IN')}/${escapeAttr(p.unit || 'Nos')}${p.stock <= 0 ? ' (out of stock)' : ''}</option>`).join('')}
             </optgroup>
         `).join('');
 }
@@ -272,6 +289,8 @@ document.getElementById('btn-add-catalog-product')?.addEventListener('click', ()
     if (!p) return;
 
     const qty = parseFloat(qtyInput.value) || 1;
+    if (p.stock > 0 && qty > p.stock) showToast(`Only ${p.stock} ${p.unit} of ${p.name} in stock.`, 'error');
+    boqPristine = false;
     wizardItems.push({
         id: newItemId(),
         productId: p.id,
@@ -283,19 +302,20 @@ document.getElementById('btn-add-catalog-product')?.addEventListener('click', ()
     });
     renderItemsTable();
 
-    // Reset the picker so the next product can be selected and added
     select.value = '';
     qtyInput.value = 1;
     showToast(`${p.name} added to quotation`, 'success');
 });
 
 document.getElementById('chip-custom')?.addEventListener('click', () => {
+    boqPristine = false;
     wizardItems.push({ id: newItemId(), name: '', type: '', qty: 1, unit: 'Pcs', rate: 0 });
     renderItemsTable();
 });
 
 /* ---------------- Items table (Step 2) ---------------- */
 let wizardItems = [];
+let boqPristine = true;     // true while the item list is exactly what the automatic BOQ generated (nothing edited by hand)
 
 function itemsSubtotal(items) {
     return items.reduce((sum, it) => sum + (Number(it.qty) || 0) * (Number(it.rate) || 0), 0);
@@ -320,16 +340,16 @@ function renderItemsTable() {
         `).join('');
     }
 
-    // Wire per-row events
     tbody.querySelectorAll('tr[data-id]').forEach(row => {
         const id = row.dataset.id;
         const item = wizardItems.find(i => i.id === id);
-        row.querySelector('.item-name')?.addEventListener('input', e => { item.name = e.target.value; });
-        row.querySelector('.item-type')?.addEventListener('input', e => { item.type = e.target.value; });
-        row.querySelector('.item-unit')?.addEventListener('input', e => { item.unit = e.target.value; });
-        row.querySelector('.item-qty')?.addEventListener('input', e => { item.qty = e.target.value; updateItemAmount(item); });
-        row.querySelector('.item-rate')?.addEventListener('input', e => { item.rate = e.target.value; updateItemAmount(item); });
+        row.querySelector('.item-name')?.addEventListener('input', e => { boqPristine = false; item.name = e.target.value; });
+        row.querySelector('.item-type')?.addEventListener('input', e => { boqPristine = false; item.type = e.target.value; });
+        row.querySelector('.item-unit')?.addEventListener('input', e => { boqPristine = false; item.unit = e.target.value; });
+        row.querySelector('.item-qty')?.addEventListener('input', e => { boqPristine = false; item.qty = e.target.value; updateItemAmount(item); });
+        row.querySelector('.item-rate')?.addEventListener('input', e => { boqPristine = false; item.rate = e.target.value; updateItemAmount(item); });
         row.querySelector('.item-remove')?.addEventListener('click', () => {
+            boqPristine = false;
             wizardItems = wizardItems.filter(i => i.id !== id);
             renderItemsTable();
         });
@@ -356,9 +376,8 @@ function updateItemsSubtotalDisplay() {
 function esc(v) {
     return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-const escapeAttr = esc;   // data now comes from the database, so always escape fully
+const escapeAttr = esc;
 
-// Update referral amount in summary
 function updateReferralAmountInSummary(grandTotal) {
     const referralPercent = parseFloat(document.getElementById('f-referralPercent').value) || 0;
     const isReferred = document.getElementById('f-isReferred').checked;
@@ -367,7 +386,6 @@ function updateReferralAmountInSummary(grandTotal) {
     const summaryEl = document.getElementById('summary-gst');
     if (!summaryEl) return;
 
-    // Check if referral row already exists
     let referralRow = summaryEl.querySelector('.referral-row');
     if (isReferred && referralPercent > 0) {
         if (referralRow) {
@@ -417,13 +435,18 @@ function numberToWordsIndian(num) {
 }
 
 /* =====================================================================
-   AUTOMATIC BOQ (BILL OF QUANTITY) GENERATION
-   Standard per-kW ratios used to auto-populate the Products & Items
-   table the moment a System Capacity is chosen. Items with a fixed
-   quantity (earthing, net meter, accessory set) don't scale with size;
-   everything else scales per kW. User can still freely edit/remove any
-   row afterwards — this only sets sensible defaults.
+   AUTOMATIC BOQ (BILL OF QUANTITY)
+
+   Primary source: the live product catalog. Every product with "Default Qty per kW" > 0 (set in Product
+   Management) takes part:  qty = qtyPerKw x system size.
+     - Solar Panel, Inverter, Mounting Structure, Cable & Wiring: ONE product each (the first one in stock).
+     - Accessory: every accessory that has a Qty per kW.
+     - Battery is never added automatically (not every system has one) — add it from the picker.
+   Fallback (catalog empty / not loaded / no product has a Qty per kW): the built-in template below.
+   The user can still edit/remove any row afterwards.
    ===================================================================== */
+const BOQ_SINGLE_CATEGORIES = ['SOLAR_PANEL', 'INVERTER', 'MOUNTING_STRUCTURE', 'CABLE_WIRING'];
+
 const BOQ_TEMPLATE = [
     { name: 'Solar Panels', type: 'Monocrystalline', unit: 'W', rate: 22, qtyPerKw: 1100, fixedQty: null },
     { name: 'Inverter', type: 'String', unit: 'kW', rate: 6500, qtyPerKw: 1, fixedQty: null },
@@ -434,38 +457,72 @@ const BOQ_TEMPLATE = [
     { name: 'Net Meter', type: 'Accessory / Metering', unit: 'Unit', rate: 3500, qtyPerKw: null, fixedQty: 1 },
 ];
 
-/* Auto-generates the BOQ items table for a given System Capacity (kW).
-   Called whenever the wizard opens (default 3 kW) and whenever the
-   System Size dropdown is changed — this is the "Automatic BOQ
-   Generation" step. Installation Material/labor is tracked separately
-   as a cost line in Step 3 (Cost Calculation). */
+function boqQty(p, sizeKw) {
+    const raw = (Number(p.qtyPerKw) || 0) * sizeKw;
+    const discrete = /^(nos|set|box|pcs|unit|panel)$/i.test(String(p.unit || ''));
+    return discrete ? Math.max(1, Math.ceil(raw - 1e-9)) : Math.max(0.01, Math.round(raw * 100) / 100);
+}
+
+function boqFromCatalog(catalog, sizeKw) {
+    const usable = (catalog || []).filter(p => Number(p.qtyPerKw) > 0);
+    if (!usable.length) return null;
+    const inStockFirst = (a, b) => (a.stock > 0 ? 0 : 1) - (b.stock > 0 ? 0 : 1);
+    const picked = [];
+    BOQ_SINGLE_CATEGORIES.forEach(code => {
+        const list = usable.filter(p => p.categoryCode === code).sort(inStockFirst);
+        if (list.length) picked.push(list[0]);
+    });
+    usable.filter(p => p.categoryCode === 'ACCESSORY').forEach(p => picked.push(p));
+    if (!picked.length) return null;
+    return picked.map(p => ({
+        id: newItemId(),
+        productId: p.id,
+        name: p.name,
+        type: [p.brand, p.spec].filter(Boolean).join(' · ') || p.category || '',
+        qty: boqQty(p, sizeKw),
+        unit: p.unit || 'Nos',
+        rate: Number(p.price) || 0
+    }));
+}
+
 function itemsForSize(sizeKw) {
     sizeKw = Number(sizeKw) || 3;
+    const fromCatalog = boqFromCatalog(window.__quotationProductCatalog, sizeKw);
+    if (fromCatalog) return fromCatalog;
     return BOQ_TEMPLATE.map(t => {
         const qty = t.fixedQty != null ? t.fixedQty : Math.max(1, Math.round(t.qtyPerKw * sizeKw));
         return { id: newItemId(), name: t.name, type: t.type, qty, unit: t.unit, rate: t.rate };
     });
 }
 
+/* Replaces the item list with the automatic BOQ — only while the user has not edited anything by hand. */
+function rebuildAutoBoq() {
+    if (!boqPristine) return;
+    wizardItems = itemsForSize(getSelectedSizeKw());
+    renderItemsTable();
+}
+
 /* =====================================================================
    BACKEND API LAYER  (Spring Boot, port 8091)
-   session.js sets window.API_BASE = http(s)://<host>:8091 and Session.api()
-   adds the Bearer token, refreshes it on 401 and unwraps errors.
-   Every response is  { success, message, data }.
+   session.js sets window.API_BASE = http(s)://<host>:8091 and Session.api() adds the Bearer token, refreshes it
+   on 401 and throws on errors. Every response is { success, message, data }.
 
      GET    /api/quotations?page&size&sort        list  -> data = { content, totalPages, ... }
      GET    /api/quotations/{id}                  full quotation
-     POST   /api/quotations                       create   (server assigns code, date, PENDING, totals, referral)
+     POST   /api/quotations                       create   (needs customerId — see resolveCustomerId)
      PUT    /api/quotations/{id}                  full update
      PATCH  /api/quotations/{id}/status           { status: PENDING|ACCEPTED|REJECTED }
      DELETE /api/quotations/{id}
-     GET    /api/quotations/{id}/history          Quotation History timeline (see backend-quotation-history/)
+     GET    /api/quotations/{id}/history          history timeline
+     GET    /api/customers?search=<mobile>        find an existing customer
+     POST   /api/customers                        create a customer
+     PUT    /api/customers/{id}                   update a customer
 
-   Everything that knows the wire format lives in THIS section
-   (fromApi / toRequest / QuotationApi). If a field name differs on your
-   backend, this is the only place to change.
+   IMPORTANT: the quotation API does NOT accept a nested "customer" object. It requires "customerId" of a customer
+   that already exists. A request without it fails with  400 "Customer is required".
    ===================================================================== */
 const QUOTATION_API = '/api/quotations';
+const CUSTOMER_API = '/api/customers';
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const cap = (s) => { s = String(s || '').toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -473,7 +530,7 @@ const cap = (s) => { s = String(s || '').toLowerCase(); return s.charAt(0).toUpp
 const CATEGORY_OUT = { Residential: 'RESIDENTIAL', GHS: 'GHS', Commercial: 'COMMERCIAL' };
 function categoryIn(v) {
     const s = String(v || '').toUpperCase();
-    return s === 'GHS' ? 'GHS' : s === 'COMMERCIAL' ? 'Commercial' : 'Residential';
+    return s === 'GHS' ? 'GHS' : (s === 'COMMERCIAL' || s === 'INDUSTRIAL') ? 'Commercial' : 'Residential';
 }
 const REFERRER_TYPE_LABEL = { CUSTOMER: 'Customer', CHANNEL_PARTNER: 'Channel Partner', OTHER: 'Other' };
 const REFERRAL_STATUS_LABEL = { PENDING: 'Pending', APPROVED: 'Approved', PAID: 'Paid', REJECTED: 'Rejected' };
@@ -483,12 +540,12 @@ function localISODate(d = new Date()) {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-/** Friendly message from a Session.api error (shows field-level validation errors too). */
+/** Friendly message from a Session.api error (includes the failing field names of a 400). */
 function apiErrorMessage(err) {
     if (!err) return 'Something went wrong';
     if (err.status === 403) return 'You do not have permission to do this.';
     const fields = Array.isArray(err.errors) && err.errors.length
-        ? err.errors.map((e) => e.message).filter(Boolean).join(', ') : '';
+        ? err.errors.map((e) => (e.field ? e.field + ': ' : '') + (e.message || '')).filter(Boolean).join(' • ') : '';
     return fields && !String(err.message).includes(fields) ? `${err.message} — ${fields}` : (err.message || 'Request failed');
 }
 
@@ -517,7 +574,6 @@ function fromApi(d) {
     const discountValue = num(d.discountValue);
     const calc = computeTotals(itemsTotal, costs, gstPercent, discountType, discountValue);
 
-    // the server is the source of truth for money; fall back to a local calculation only if it didn't send a field
     const pick = (...vals) => { const v = vals.find((x) => x !== undefined && x !== null); return v === undefined ? undefined : num(v); };
     const total = pick(d.totalAmount, d.total) ?? calc.total;
     const advance = num(d.advance);
@@ -526,6 +582,7 @@ function fromApi(d) {
     const bank = d.bank || {};
     const pt = d.paymentTerms || {};
     const sizeKw = d.systemSizeKw != null ? num(d.systemSizeKw) : 0;
+    const catRaw = c.consumerCategory || c.type || '';
 
     const rec = {
         id: d.id,
@@ -543,9 +600,11 @@ function fromApi(d) {
             state: c.state || '',
             pincode: c.pincode || '',
             consumerNo: c.consumerNo || '',
-            consumerCategory: categoryIn(c.consumerCategory),
-            commercial: categoryIn(c.consumerCategory) === 'Commercial',
-            gst: c.gst || c.gstNumber || c.gstin || ''
+            consumerCategory: categoryIn(catRaw),
+            consumerCategoryRaw: c.consumerCategory || '',
+            type: c.type || '',
+            commercial: categoryIn(catRaw) === 'Commercial',
+            gst: c.gstNo || c.gst || c.gstNumber || c.gstin || ''
         },
         partner: d.partner || null,
         systemSizeKw: sizeKw,
@@ -562,8 +621,8 @@ function fromApi(d) {
         advance,
         subtotal: pick(d.subtotal, d.subTotal) ?? calc.subtotal,
         discountAmount: pick(d.discountAmount) ?? calc.discountAmount,
-        sgst: pick(d.sgst, d.sgstAmount) ?? calc.sgst,
-        cgst: pick(d.cgst, d.cgstAmount) ?? calc.cgst,
+        sgst: pick(d.sgstAmount, d.sgst) ?? calc.sgst,
+        cgst: pick(d.cgstAmount, d.cgst) ?? calc.cgst,
         total,
         amount: Math.round(total),
         balance: Math.round(total - advance),
@@ -591,8 +650,22 @@ function fromApi(d) {
             referralStatus: r.referralStatus || null
         }
     };
-    // list rows carry no items/bank: keep the paymentTerms/bank blank-safe for the invoice view
-    return attachSubsidyAndSavings(rec);
+    // the server calculates subsidy / net investment / savings: use them when it sent them
+    const sv = d.savings || {};
+    attachSubsidyAndSavings(rec);
+    if (d.subsidyAmount != null) rec.subsidy = num(d.subsidyAmount);
+    if (d.netInvestment != null) rec.netInvestment = num(d.netInvestment);
+    if (d.savings) {
+        if (sv.annualUnits != null) rec.annualUnits = num(sv.annualUnits);
+        if (sv.annualSavings != null) rec.annualSavings = num(sv.annualSavings);
+        if (sv.monthlySavings != null) rec.monthlySavings = num(sv.monthlySavings);
+        if (sv.savings25yr != null) rec.savings25yr = num(sv.savings25yr);
+        if (sv.carbonPerYearKg != null) rec.carbonPerYearKg = num(sv.carbonPerYearKg);
+        if (sv.carbon25yrTonnes != null) rec.carbon25yrTonnes = num(sv.carbon25yrTonnes);
+        if (sv.roiPercent != null) rec.roiPercent = num(sv.roiPercent);
+        if (sv.paybackYears != null) rec.paybackYears = num(sv.paybackYears);
+    }
+    return rec;
 }
 
 /** The `referral` object of POST/PUT, built from a saved record (server owns code, amount and status). */
@@ -607,25 +680,13 @@ function referralPayloadFrom(ref) {
     };
 }
 
-/** record -> POST /api/quotations and PUT /api/quotations/{id} body. */
+/** record -> POST /api/quotations and PUT /api/quotations/{id} body (QuotationRequestDto).
+    customerId is filled in by the caller: resolveCustomerId() on create, the saved id on edit. */
 function toRequest(r) {
     const c = r.customer || {};
     const bank = r.bank || {};
     return {
-        customerId: c.id ?? undefined,                       // known when editing an existing quotation
-        customer: {
-            name: c.name,
-            company: c.company || undefined,
-            mobile: c.mobile,
-            email: c.email,
-            address: c.address,
-            city: c.city || undefined,
-            state: c.state,
-            pincode: c.pincode,
-            consumerNo: c.consumerNo || undefined,
-            consumerCategory: CATEGORY_OUT[c.consumerCategory] || 'RESIDENTIAL',
-            gst: c.gst || undefined
-        },
+        customerId: c.id ?? undefined,
         systemSizeKw: num(r.systemSizeKw),
         mounting: r.mounting || undefined,
         items: (r.items || []).map((it) => ({
@@ -660,13 +721,57 @@ function toRequest(r) {
     };
 }
 
+/* ---------------- Customers (the quotation API needs a customerId) ---------------- */
+function customerTypeFor(category) {
+    return category === 'Commercial' ? 'COMMERCIAL' : 'RESIDENTIAL';
+}
+
+/** Body of POST/PUT /api/customers (CustomerRequestDto) from the customer block of a record. */
+function customerBodyFrom(c) {
+    return {
+        name: c.name,
+        mobile: c.mobile,
+        email: c.email || undefined,
+        address: c.address || undefined,
+        city: c.city || undefined,
+        state: c.state || undefined,
+        pincode: c.pincode || undefined,
+        gstNo: c.gst ? String(c.gst).toUpperCase() : undefined,
+        type: c.type || customerTypeFor(c.consumerCategory),
+        consumerNo: c.consumerNo || undefined,
+        consumerCategory: CATEGORY_OUT[c.consumerCategory] || c.consumerCategoryRaw || undefined
+    };
+}
+
+/** Returns the id of the customer with this mobile number (reusing it) or creates one.
+    Mobile numbers are unique per channel partner on the backend. */
+async function resolveCustomerId(c, partnerId) {
+    const mobile = String(c.mobile || '').trim();
+    const qs = `?page=0&size=100&search=${encodeURIComponent(mobile)}` + (partnerId ? `&partnerId=${encodeURIComponent(partnerId)}` : '');
+    const found = await Session.api(CUSTOMER_API + qs);
+    const data = found && found.data;
+    const rows = Array.isArray(data) ? data : (data && data.content) || [];
+    const hit = rows.find((r) => String(r.mobile || '').trim() === mobile);
+    if (hit) {
+        showToast(`Existing customer ${hit.name} (${hit.code}) used for this quotation.`, 'success');
+        return hit.id;
+    }
+    const body = customerBodyFrom(c);
+    if (partnerId) body.partnerId = partnerId;          // required for Super Admin, ignored for partner users
+    const res = await Session.api(CUSTOMER_API, { method: 'POST', body });
+    return res.data.id;
+}
+
+async function updateCustomerRecord(c) {
+    await Session.api(`${CUSTOMER_API}/${c.id}`, { method: 'PUT', body: customerBodyFrom(c) });
+}
+
 const QuotationApi = {
-    /** Loads every page (200 per request) so search / filters / stat cards cover all quotations. */
     async listAll() {
         const out = [];
         let page = 0, totalPages = 1;
         do {
-            const res = await Session.api(`${QUOTATION_API}?page=${page}&size=200&sort=quoteDate,desc`);
+            const res = await Session.api(`${QUOTATION_API}?page=${page}&size=100&sort=quoteDate,desc`);
             const data = res.data;
             if (Array.isArray(data)) { out.push(...data); totalPages = 1; }
             else { out.push(...((data && data.content) || [])); totalPages = (data && data.totalPages) || 1; }
@@ -684,7 +789,7 @@ const QuotationApi = {
     async history(id) { return (await Session.api(`${QUOTATION_API}/${id}/history`)).data; }
 };
 
-/** True when the logged-in user may do `code` (e.g. QUOTATION:EDIT). No permission list at all -> allowed; the server still enforces. */
+/** True when the logged-in user may do `code` (e.g. QUOTATION:EDIT). */
 function allowed(code) {
     try {
         const s = window.Session && Session.getSession && Session.getSession();
@@ -694,9 +799,7 @@ function allowed(code) {
     } catch (_) { return true; }
 }
 
-/* ---------------- Company / bank / defaults from Settings (best effort) ----------------
-   GET /api/settings/branding | bank-details | quotation-defaults
-   If the user's role cannot read Settings (403) the built-in defaults above are used. */
+/* ---------------- Company / bank / defaults from Settings (best effort) ---------------- */
 const QUOTE_DEFAULTS = { terms: '', validityDays: 30 };
 const FALLBACK_TERMS = `1. Prices are valid for 15 days from the date of quotation.\n2. 50% advance payment is required to confirm the order.\n3. Delivery and installation will be completed within 3–4 weeks of receiving the advance payment.\n4. All government subsidies and incentives will be processed as per applicable schemes.\n5. Warranty terms apply as per manufacturer's guidelines.\n6. Any additional civil work or structural changes will be charged extra.\n7. Taxes and duties as applicable at the time of billing.`;
 function defaultTerms() { return QUOTE_DEFAULTS.terms || FALLBACK_TERMS; }
@@ -766,7 +869,7 @@ function refreshSizeFilterOptions() {
     const sel = document.getElementById('filter-size');
     const current = sel.value;
     const sizes = [...new Set(quotations.map(q => q.systemSizeLabel))];
-    sel.innerHTML = `<option value="">All Sizes</option>` + sizes.map(s => `<option value="${s}">${s}</option>`).join('');
+    sel.innerHTML = `<option value="">All Sizes</option>` + sizes.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
     sel.value = sizes.includes(current) ? current : '';
 }
 
@@ -819,7 +922,6 @@ function updateStats() {
 }
 
 function buildPaginationButtons(totalPages) {
-    // Show all pages up to 7; beyond that, collapse the middle with an ellipsis
     const pages = [];
     if (totalPages <= 7) {
         for (let p = 1; p <= totalPages; p++) pages.push(p);
@@ -876,7 +978,6 @@ function renderTable() {
     `}).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">${quotations.length ? 'No quotations match your filters.' : 'No quotations yet.'}</td></tr>`;
     }
 
-    // Range text ("Showing 1-10 of 34")
     const rangeEl = document.getElementById('table-range');
     if (rangeEl) {
         rangeEl.textContent = filtered.length
@@ -953,7 +1054,6 @@ function buildInvoiceMarkup(q) {
     const paymentTerms = q.paymentTerms || { advance: 50, material: 25, installation: 15, balance: 10 };
     const referral = q.referral || { isReferred: false, referredBy: '', referrerType: '', referralCode: '', referralPercent: 5, referralAmount: 0 };
 
-    // Referral info HTML (only show if referred)
     const referralHtml = referral.isReferred ? `
         <div class="inv-referral-info">
             <div class="inv-label">Referral Information:</div>
@@ -1007,7 +1107,6 @@ function buildInvoiceMarkup(q) {
                 <div class="inv-label">Amount in Words:</div>
                 <div>${numberToWordsIndian(q.total)}</div>
 
-                <!-- Bank Details -->
                 <div class="inv-bank-details">
                     <div class="inv-label">Bank Details:</div>
                     <table>
@@ -1019,7 +1118,6 @@ function buildInvoiceMarkup(q) {
                     </table>
                 </div>
 
-                <!-- Payment Terms -->
                 <div class="inv-payment-terms">
                     <div class="inv-label">Payment Terms:</div>
                     <table>
@@ -1030,10 +1128,8 @@ function buildInvoiceMarkup(q) {
                     </table>
                 </div>
 
-                <!-- Referral Info -->
                 ${referralHtml}
 
-                <!-- Terms & Conditions -->
                 <div class="inv-terms">
                     <div class="inv-label">Terms & Conditions</div>
                     <div class="terms-text">${esc(q.terms || '').replace(/\n/g, '<br>')}</div>
@@ -1077,7 +1173,7 @@ function buildInvoiceMarkup(q) {
     `;
 }
 
-/* ---------------- PDF download (used by wizard "Generate" + view modal + share buttons) ---------------- */
+/* ---------------- PDF download ---------------- */
 function downloadInvoicePDF(elementId, filename) {
     const element = document.getElementById(elementId);
     if (!element || typeof html2pdf === 'undefined') {
@@ -1121,9 +1217,10 @@ document.getElementById('btn-view-history').addEventListener('click', () => {
 });
 
 /* =====================================================================
-   EDIT MODAL — loads the full quotation, saves with PUT (+ PATCH for status)
+   EDIT MODAL — loads the full quotation, updates the customer (PUT /api/customers/{id}) when the name /
+   mobile / email changed, then saves with PUT (+ PATCH for status)
    ===================================================================== */
-let editingRecord = null;   // full record from the server while the edit modal is open
+let editingRecord = null;
 
 async function openEditModal(row) {
     try {
@@ -1201,6 +1298,8 @@ document.getElementById('btn-save-edit').addEventListener('click', async () => {
     const btn = document.getElementById('btn-save-edit');
     btn.disabled = true;
     try {
+        const customerChanged = name !== q.customer.name || mobile !== q.customer.mobile || email !== q.customer.email;
+        if (customerChanged && q.customer.id != null) await updateCustomerRecord(updated.customer);
         await QuotationApi.update(q.id, toRequest(updated));
         if (newStatus !== q.status) await QuotationApi.setStatus(q.id, newStatus);
         closeModal('modal-edit');
@@ -1210,7 +1309,7 @@ document.getElementById('btn-save-edit').addEventListener('click', async () => {
     } catch (err) {
         btn.disabled = false;
         showToast(`Update failed: ${apiErrorMessage(err)}`, 'error');
-        loadQuotations();   // a partial save (PUT ok, PATCH failed) should still show the latest state
+        loadQuotations();
     }
 });
 
@@ -1244,8 +1343,7 @@ document.getElementById('btn-confirm-delete').addEventListener('click', async ()
 });
 
 /* =====================================================================
-   CONVERT TO ORDER MODAL
-   (still a placeholder — there is no orders API in the frontend yet)
+   CONVERT TO ORDER MODAL (placeholder — there is no orders API yet)
    ===================================================================== */
 let convertingQuote = null;
 
@@ -1262,7 +1360,6 @@ function openConvertModal(q) {
 document.getElementById('btn-confirm-convert').addEventListener('click', () => {
     const q = convertingQuote;
     if (!q) return;
-    // Placeholder: In production, this would call an API to create an order
     showToast(`Order created from ${q.quoteNo} successfully! (Backend integration pending)`, 'success');
     closeModal('modal-convert-order');
     convertingQuote = null;
@@ -1270,9 +1367,6 @@ document.getElementById('btn-confirm-convert').addEventListener('click', () => {
 
 /* =====================================================================
    QUOTATION HISTORY — GET /api/quotations/{id}/history
-   One entry per save: CREATED, UPDATED, STATUS_CHANGED, CONVERTED ...
-     { id, version, action, summary, changedBy:{id,name,role}, changedAt,
-       status, totalAmount, changes:[{ field, oldValue, newValue }] }
    ===================================================================== */
 const HISTORY_ACTIONS = {
     CREATED:        { label: 'Created',        cls: 'hist-created',  icon: 'fa-plus' },
@@ -1299,7 +1393,7 @@ function historyFieldLabel(f) {
     const pretty = (seg) => seg.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
     const parts = f.split('.');
     if (parts[0] === 'referral' && HISTORY_FIELD_LABELS[parts[1]]) return HISTORY_FIELD_LABELS[parts[1]];
-    return parts.map(pretty).join(' ');       // e.g. customer.city -> "Customer City", paymentTerms.advance -> "Payment Terms Advance"
+    return parts.map(pretty).join(' ');
 }
 function historyValue(field, v) {
     if (v === null || v === undefined || v === '') return '—';
@@ -1365,7 +1459,6 @@ async function openHistoryModal(q) {
 let currentStep = 1;
 const totalWizardSteps = 6;
 
-// Payment terms validation
 function validatePaymentTerms() {
     const advance = parseFloat(document.getElementById('f-payment-advance').value) || 0;
     const material = parseFloat(document.getElementById('f-payment-material').value) || 0;
@@ -1383,12 +1476,43 @@ function validatePaymentTerms() {
     }
 }
 
-// Set default validity date to 30 days from now
 function setDefaultValidity() {
     const dateInput = document.getElementById('f-validUntil');
     const date = new Date();
     date.setDate(date.getDate() + (QUOTE_DEFAULTS.validityDays || 30));
     dateInput.value = localISODate(date);
+}
+
+/* Super Admin only: a "Channel Partner" dropdown at the top of Step 1. The partner owns the new customer and the
+   quotation, and decides which product catalog Step 2 shows. Partner users never see it. */
+function setupPartnerField() {
+    if (!isSuperAdminUser() || document.getElementById('partner-field')) return;
+    const grid = document.querySelector('.step-panel[data-panel="1"] .form-grid');
+    if (!grid) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'form-field span-2';
+    wrap.id = 'partner-field';
+    wrap.innerHTML = `
+        <label>Channel Partner <span class="req">*</span></label>
+        <select id="f-partnerId" class="select-input"><option value="">Select channel partner</option></select>
+        <span class="field-error" id="err-partnerId"></span>`;
+    grid.insertBefore(wrap, grid.firstChild);
+
+    document.getElementById('f-partnerId').addEventListener('change', async () => {
+        // the catalog belongs to the partner: reload it and rebuild the automatic BOQ from it
+        boqPristine = true;
+        await populateProductPicker();
+        rebuildAutoBoq();
+    });
+
+    Session.api('/api/channel-partners/options').then((res) => {
+        const list = Array.isArray(res.data) ? res.data : (res.data && res.data.content) || [];
+        const sel = document.getElementById('f-partnerId');
+        sel.innerHTML = '<option value="">Select channel partner</option>' + list.map((o) => {
+            const label = o.name || o.code || ('Partner #' + o.id);
+            return `<option value="${esc(o.id)}">${esc(o.code ? `${label} (${o.code})` : label)}</option>`;
+        }).join('');
+    }).catch((err) => showToast(`Could not load channel partners: ${apiErrorMessage(err)}`, 'error'));
 }
 
 function resetWizardForm() {
@@ -1404,47 +1528,44 @@ function resetWizardForm() {
     document.getElementById('f-consumerCategory').value = 'Residential';
     document.getElementById('f-gst').value = '';
     document.getElementById('gst-field').classList.add('hidden');
+    const partnerSel = document.getElementById('f-partnerId');
+    if (partnerSel) partnerSel.value = '';
 
-    // Reset referral fields
     document.getElementById('f-isReferred').checked = false;
     document.getElementById('f-referredBy').value = '';
     document.getElementById('f-referrerType').value = '';
     document.getElementById('f-referralCode').value = '';
-    document.getElementById('f-referralPercent').value = '';     // empty = the partner's default %
+    document.getElementById('f-referralPercent').value = '';
     toggleReferralSection();
     onReferrerTypeChange();
 
-    // Reset bank details to company defaults
     document.getElementById('f-accountName').value = COMPANY.bank.accountName || '';
     document.getElementById('f-bankName').value = COMPANY.bank.bankName || '';
     document.getElementById('f-accountNumber').value = COMPANY.bank.accountNumber || '';
     document.getElementById('f-ifscCode').value = COMPANY.bank.ifscCode || '';
     document.getElementById('f-branch').value = COMPANY.bank.branch || '';
 
-    // Reset payment terms
     document.getElementById('f-payment-advance').value = 50;
     document.getElementById('f-payment-material').value = 25;
     document.getElementById('f-payment-installation').value = 15;
     document.getElementById('f-payment-balance').value = 10;
     validatePaymentTerms();
 
-    // Set default validity
     setDefaultValidity();
-
-    // Reset editable terms
     document.getElementById('edit-terms').value = defaultTerms();
 
-    // Reset mounting radio to default
     document.querySelectorAll('#mount-group .radio-card').forEach((card, i) => card.classList.toggle('active', i === 0));
     document.querySelectorAll('#mount-group input[type="radio"]').forEach((r, i) => r.checked = i === 0);
 
-    // Reset products/items to the default preset for a 3 kW system
+    // Default size is 3 kW. Show the built-in preset straight away, then replace it with the automatic BOQ
+    // built from the live product catalog as soon as that has loaded.
+    document.getElementById('f-systemSize').value = '3';
+    document.getElementById('other-size-wrap').classList.add('hidden');
+    window.__quotationProductCatalog = [];
+    boqPristine = true;
     wizardItems = itemsForSize(3);
     renderItemsTable();
-
-    // Refresh the product picker from Product Management every time the
-    // wizard opens, so newly added/edited products show up immediately.
-    populateProductPicker();
+    populateProductPicker().then(rebuildAutoBoq);
     loadReferrerOptions();
     document.getElementById('product-picker-qty').value = 1;
 
@@ -1484,7 +1605,7 @@ function goToStep(step) {
     document.getElementById('btn-next').classList.toggle('hidden', step === totalWizardSteps);
     document.getElementById('btn-generate').classList.toggle('hidden', step !== totalWizardSteps);
 
-    if (step === 2) populateProductPicker(); // pick up any catalog changes made mid-wizard too
+    if (step === 2) populateProductPicker().then(rebuildAutoBoq);   // pick up catalog changes; keeps manual edits
     if (step === 3) computeCosts();
     if (step === 4) computeGstSummary();
     if (step === 5) computeSavings();
@@ -1495,7 +1616,6 @@ document.getElementById('btn-next').addEventListener('click', () => {
     if (currentStep === 1 && !validateStep1()) return;
     if (currentStep === 2 && !validateStep2()) return;
     if (currentStep === 6) {
-        // Validate payment terms before proceeding to generate
         if (!validatePaymentTerms()) {
             showToast('Payment terms must total 100%.', 'error');
             return;
@@ -1518,8 +1638,16 @@ function markError(fieldId, errId, message) {
     field.classList.remove('invalid'); err.textContent = ''; return true;
 }
 
+// 15-character GSTIN in the format the backend validates (CustomerRequestDto.gstNo)
+const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
 function validateStep1() {
     let ok = true;
+
+    if (isSuperAdminUser()) {
+        ok = markError('f-partnerId', 'err-partnerId', document.getElementById('f-partnerId').value ? '' : 'Please select a channel partner') && ok;
+    }
+
     const name = document.getElementById('f-customerName').value.trim();
     ok = markError('f-customerName', 'err-customerName', name ? '' : 'Customer name is required') && ok;
 
@@ -1539,11 +1667,10 @@ function validateStep1() {
     ok = markError('f-pincode', 'err-pincode', /^\d{6}$/.test(pincode) ? '' : 'Enter a valid 6-digit pincode') && ok;
 
     if (document.getElementById('f-consumerCategory').value === 'Commercial') {
-        const gst = document.getElementById('f-gst').value.trim();
-        ok = markError('f-gst', 'err-gst', /^[0-9A-Z]{15}$/i.test(gst) ? '' : 'Enter a valid 15-character GSTIN') && ok;
+        const gst = document.getElementById('f-gst').value.trim().toUpperCase();
+        ok = markError('f-gst', 'err-gst', GSTIN_RE.test(gst) ? '' : 'Enter a valid 15-character GSTIN (e.g. 27ABCDE1234F1Z5)') && ok;
     }
 
-    // Referral (validateReferral() lives in quotation-referral.js)
     const refError = validateReferral();
     if (refError) { showToast(refError, 'error'); ok = false; }
     const refPct = document.getElementById('f-referralPercent').value;
@@ -1575,19 +1702,15 @@ function validateStep2() {
     return ok;
 }
 
-// Consumer Category -> reveal GST field for Commercial, and refresh the
-// subsidy calculation (since eligibility/slab depends on category)
 document.getElementById('f-consumerCategory').addEventListener('change', (e) => {
     document.getElementById('gst-field').classList.toggle('hidden', e.target.value !== 'Commercial');
     if (currentStep === 5) computeSavings();
 });
 
-// Payment terms validation on input
 ['f-payment-advance', 'f-payment-material', 'f-payment-installation', 'f-payment-balance'].forEach(id => {
     document.getElementById(id).addEventListener('input', validatePaymentTerms);
 });
 
-// Referral UI events
 document.getElementById('f-isReferred')?.addEventListener('change', toggleReferralSection);
 document.getElementById('f-referredBy')?.addEventListener('input', handleReferrerSelection);
 document.getElementById('f-referrerType')?.addEventListener('change', onReferrerTypeChange);
@@ -1595,7 +1718,6 @@ document.getElementById('f-referralPercent')?.addEventListener('input', () => {
     if (currentStep === 4) computeGstSummary();
 });
 
-// Collapsible referral section toggle
 document.getElementById('referralToggle')?.addEventListener('click', () => {
     const body = document.getElementById('referralBody');
     const chevron = document.getElementById('referralChevron');
@@ -1607,18 +1729,14 @@ document.getElementById('referralToggle')?.addEventListener('click', () => {
 /* ---------------- System Size dropdown with custom "Other" add ---------------- */
 const sizeSelect = document.getElementById('f-systemSize');
 
-/* Regenerates the BOQ for the newly selected capacity. If the user has
-   already customised the items (added/removed/edited rows beyond the
-   auto-generated defaults), ask for confirmation before overwriting —
-   otherwise just regenerate silently (fresh wizard / first pick). */
+/* Regenerates the BOQ for the newly selected capacity (from the catalog's Qty per kW when available).
+   If the user has already edited the items by hand, ask before overwriting them. */
 function regenerateBoqForSelectedSize() {
-    const kw = getSelectedSizeKw();
-    const isDefaultSet = wizardItems.length === BOQ_TEMPLATE.length &&
-        wizardItems.every((it, i) => it.name === BOQ_TEMPLATE[i].name);
-    if (!isDefaultSet && wizardItems.length) {
+    if (!boqPristine && wizardItems.length) {
         if (!confirm(`Regenerate the BOQ for ${getSelectedSizeLabel()}? This will replace your current product list with standard quantities for this capacity.`)) return;
     }
-    wizardItems = itemsForSize(kw);
+    wizardItems = itemsForSize(getSelectedSizeKw());
+    boqPristine = true;
     renderItemsTable();
     showToast(`BOQ auto-generated for ${getSelectedSizeLabel()}`, 'success');
 }
@@ -1665,7 +1783,6 @@ function getSelectedSizeKw() {
     return isNaN(n) ? (parseFloat(getSelectedSizeLabel()) || 3) : n;
 }
 
-// Mounting structure highlight
 document.querySelectorAll('#mount-group input[type="radio"]').forEach(radio => {
     radio.addEventListener('change', () => {
         document.querySelectorAll('.radio-card').forEach(card => card.classList.remove('active'));
@@ -1723,7 +1840,6 @@ function computeSavings() {
     const escalation = parseFloat(document.getElementById('f-escalation').value) || 0;
     const { total } = computeGstSummary();
 
-    // ----- Subsidy Calculator -----
     const subsidy = computeSubsidy(category, sizeKw);
     const netInvestment = Math.max(0, total - subsidy);
 
@@ -1743,7 +1859,6 @@ function computeSavings() {
         <div class="row total"><span>Net Investment / Customer Payable Amount</span><b>${formatINR(netInvestment)}</b></div>
     `;
 
-    // ----- Savings Calculator -----
     const annualUnits = sizeKw * SAVINGS_CONFIG.unitsPerKwPerDay * 365;
     const annualSavings = annualUnits * tariff;
     const monthlySavings = annualSavings / 12;
@@ -1779,7 +1894,6 @@ function collectWizardRecord() {
     const discountValue = parseFloat(document.getElementById('f-discountValue').value) || 0;
     const totals = computeTotals(itTotal, costs, gstPercent, discountType, discountValue);
 
-    // Collect bank details
     const bank = {
         accountName: document.getElementById('f-accountName').value.trim() || COMPANY.bank.accountName,
         bankName: document.getElementById('f-bankName').value.trim() || COMPANY.bank.bankName,
@@ -1788,7 +1902,6 @@ function collectWizardRecord() {
         branch: document.getElementById('f-branch').value.trim() || COMPANY.bank.branch
     };
 
-    // Collect payment terms
     const paymentTerms = {
         advance: parseFloat(document.getElementById('f-payment-advance').value) || 0,
         material: parseFloat(document.getElementById('f-payment-material').value) || 0,
@@ -1796,18 +1909,14 @@ function collectWizardRecord() {
         balance: parseFloat(document.getElementById('f-payment-balance').value) || 0
     };
 
-    // Collect editable terms
     const terms = document.getElementById('edit-terms').value.trim() || '';
-
-    // Collect validity date
     const validUntil = document.getElementById('f-validUntil').value || '';
 
-    // Referral: the server owns code / % default / amount / status — we only send who referred
     const referralPayload = getReferralPayload();
     const isReferred = !!referralPayload.referred;
     const rpRaw = document.getElementById('f-referralPercent').value;
     const referralPercent = rpRaw === '' ? null : parseFloat(rpRaw);
-    const referralAmount = isReferred && referralPercent ? calculateReferralAmount(totals.total, referralPercent) : 0;   // estimate for the preview only
+    const referralAmount = isReferred && referralPercent ? calculateReferralAmount(totals.total, referralPercent) : 0;
 
     return {
         quoteNo: '',
@@ -1840,12 +1949,10 @@ function collectWizardRecord() {
         ...totals,
         amount: Math.round(totals.total),
         balance: Math.round(totals.total),
-        // New fields
         bank: bank,
         paymentTerms: paymentTerms,
         terms: terms,
         validUntil: validUntil,
-        // Referral fields
         referralPayload,
         referral: {
             isReferred,
@@ -1858,9 +1965,7 @@ function collectWizardRecord() {
     };
 }
 
-/* Attaches the computed subsidy + savings figures (PM Surya Ghar
-   Subsidy Calculator + Savings Calculator) onto a quotation record so
-   they can be shown on the generated invoice/PDF. */
+/* Attaches the locally computed subsidy + savings figures (used for the wizard preview and as a fallback). */
 function attachSubsidyAndSavings(record) {
     const sizeKw = record.systemSizeKw;
     const subsidy = computeSubsidy(record.customer.consumerCategory, sizeKw);
@@ -1887,6 +1992,7 @@ function renderWizardPreview() {
     document.getElementById('invoice-preview').innerHTML = buildInvoiceMarkup(record);
 }
 
+/* Generate = (1) find or create the customer, (2) POST the quotation with that customerId. */
 document.getElementById('btn-generate').addEventListener('click', async () => {
     const btn = document.getElementById('btn-generate');
     if (!validatePaymentTerms()) { showToast('Payment terms must total 100%.', 'error'); return; }
@@ -1896,14 +2002,16 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 
     let record;
     try {
-        const created = await QuotationApi.create(toRequest(collectWizardRecord()));
-        // use the server's saved copy (code, totals, referral code/amount/status) for the invoice
+        const draft = collectWizardRecord();
+        const customerId = await resolveCustomerId(draft.customer, selectedPartnerId());
+        const created = await QuotationApi.create({ ...toRequest(draft), customerId });
         const saved = created && created.id != null && !(created.items && created.items.length)
             ? await QuotationApi.get(created.id) : created;
         record = fromApi(saved);
     } catch (err) {
         btn.disabled = false;
         btn.innerHTML = label;
+        console.error('Save quotation failed:', err && err.status, err && err.errors, err);
         showToast(`Could not save the quotation: ${apiErrorMessage(err)}`, 'error');
         return;
     }
@@ -1916,14 +2024,12 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
     currentPage = 1;
     loadQuotations();
 
-    // Auto-download the invoice as a PDF as soon as it is generated
     downloadInvoicePDF('invoice-preview', `${record.quoteNo}.pdf`).then(() => {
         showToast(`Quotation ${record.quoteNo} saved & PDF downloaded`, 'success');
     }).catch(() => {
         showToast(`Quotation ${record.quoteNo} saved successfully`, 'success');
     });
 
-    // Wire the share-grid Download PDF button to re-download the same invoice on demand
     document.getElementById('btn-download-pdf').onclick = () => downloadInvoicePDF('invoice-preview', `${record.quoteNo}.pdf`);
     document.getElementById('btn-share-email').onclick = () => {
         const subject = encodeURIComponent(`Solar Quotation ${record.quoteNo}`);
@@ -1943,9 +2049,6 @@ document.getElementById('btn-generate').addEventListener('click', async () => {
 /* =====================================================================
    EXPORT FUNCTIONS (Excel/CSV/PDF/Print)
    ===================================================================== */
-
-// Quote a CSV cell so names/addresses containing commas or quotes
-// don't break the columns
 function csvCell(value) {
     return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
@@ -1967,7 +2070,6 @@ function exportRows() {
     return [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
 }
 
-// Export to CSV
 function exportToCSV() {
     const blob = new Blob([exportRows()], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -1977,9 +2079,7 @@ function exportToCSV() {
     showToast('CSV exported successfully', 'success');
 }
 
-// Export to Excel (using CSV with Excel-compatible format)
 function exportToExcel() {
-    // Excel-compatible CSV with BOM
     const blob = new Blob(['\uFEFF' + exportRows()], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -1988,7 +2088,6 @@ function exportToExcel() {
     showToast('Excel exported successfully', 'success');
 }
 
-// Export to PDF (full table)
 function exportToPDF() {
     const table = document.querySelector('.data-table');
     if (!table || typeof html2pdf === 'undefined') {
@@ -2020,12 +2119,10 @@ function exportToPDF() {
     });
 }
 
-// Print
 function printQuotations() {
     window.print();
 }
 
-// Export buttons
 document.getElementById('btn-export-excel').addEventListener('click', exportToExcel);
 document.getElementById('btn-export-csv').addEventListener('click', exportToCSV);
 document.getElementById('btn-export-pdf').addEventListener('click', exportToPDF);
@@ -2033,8 +2130,9 @@ document.getElementById('btn-print').addEventListener('click', printQuotations);
 
 /* ---------------- Init ---------------- */
 if (!allowed('QUOTATION:CREATE')) document.getElementById('btn-new-quotation')?.classList.add('hidden');
+setupPartnerField();          // Super Admin only: channel partner dropdown in Step 1
 loadCompanySettings();        // best effort: branding, bank details, default terms (Settings API)
-populateProductPicker();
+// (the product catalog is loaded when the wizard opens — see resetWizardForm — not at page load)
 loadReferrerOptions();
 toggleReferralSection();      // referral fields hidden until "referred customer" is ticked
 loadQuotations();

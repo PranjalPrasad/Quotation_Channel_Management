@@ -1,72 +1,134 @@
-// TODO: replace mock data array below with API call to /api/products
-
 /* =========================================================
    Solar Quotation System — Product Management
-   Sidebar / topbar behaviour mirrors dashboard.js exactly.
+   Integrated with the Spring Boot backend (port 8091).
+
+   session.js (loaded before this file) provides:
+     - window.API_BASE   (must be http://localhost:8091)
+     - Session.api(path, { method, body })  -> { success, message, data }
+
+   Endpoints (ProductController):
+     GET    /api/products                     list (PageResponse { content, totalPages })
+     POST   /api/products                     create   (Super Admin must send partnerId)
+     PUT    /api/products/{id}                update
+     DELETE /api/products/{id}                delete
+     GET    /api/products/{id}/stock-history  stock ledger
+     POST   /api/products/{id}/stock-history  { type: IN|OUT, quantity, reason }
+     GET    /api/channel-partners/options     partner dropdown (Super Admin)
    ========================================================= */
 
 (function () {
     'use strict';
 
     // ---------------------------------------------------
-    // 0. Logged-in user ka naam (avatar initial + profile dropdown)
-    //    Session object / sessionStorage / JWT — jahan bhi naam mile, wahan se uthata hai.
+    // 0. API layer
     // ---------------------------------------------------
-    function decodeJwtPayload(token) {
-        try {
-            const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-            return JSON.parse(decodeURIComponent(escape(atob(b64))));
-        } catch (_) { return null; }
-    }
+    const ENDPOINTS = {
+        list: '/api/products',
+        partnerOptions: '/api/channel-partners/options',
+        one: (id) => `/api/products/${encodeURIComponent(id)}`,
+        stockHistory: (id) => `/api/products/${encodeURIComponent(id)}/stock-history`
+    };
 
-    function getLoggedInUserName() {
-        const sources = [];
-        try {
-            if (window.Session) {
-                if (typeof Session.getUser === 'function') sources.push(Session.getUser());
-                if (typeof Session.getSession === 'function') sources.push(Session.getSession());
-                if (Session.user) sources.push(Session.user);
-            }
-        } catch (_) {}
-        try {
-            if (typeof getAdminInfo === 'function') sources.push(getAdminInfo());
-        } catch (_) {}
-        try {
-            const raw = sessionStorage.getItem('sqms_session');
-            if (raw) sources.push(JSON.parse(raw));
-        } catch (_) {}
+    const STOCK_TYPE_TO_API = { in: 'IN', out: 'OUT' };
 
-        for (const s of sources.filter(Boolean)) {
-            const u = s.user || s.data?.user || s.data || s;
-            const name =
-                u.fullName || u.name || u.userName || u.username ||
-                [u.firstName, u.lastName].filter(Boolean).join(' ') ||
-                (u.email ? u.email.split('@')[0] : '');
-            if (name) return String(name).trim();
+    const CATEGORY_TO_API = {
+        'Solar Panel': 'SOLAR_PANEL',
+        'Inverter': 'INVERTER',
+        'Battery': 'BATTERY',
+        'Mounting Structure': 'MOUNTING_STRUCTURE',
+        'Cable & Wiring': 'CABLE_WIRING',
+        'Accessory': 'ACCESSORY'
+    };
+    const catKey = (v) => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const CATEGORY_FROM_API = {};
+    Object.keys(CATEGORY_TO_API).forEach(label => {
+        CATEGORY_FROM_API[catKey(label)] = label;
+        CATEGORY_FROM_API[catKey(CATEGORY_TO_API[label])] = label;
+    });
+    CATEGORY_FROM_API['CABLEWIRING'] = 'Cable & Wiring';
+    CATEGORY_FROM_API['CABLEANDWIRING'] = 'Cable & Wiring';
+    const categoryFromApi = (v) => CATEGORY_FROM_API[catKey(v)] || v || '';
 
-            const token = s.token || s.accessToken || u.token;
-            const claims = token ? decodeJwtPayload(token) : null;
-            const fromJwt = claims && (claims.name || claims.fullName || claims.username || claims.sub);
-            if (fromJwt) return String(fromJwt).trim();
+    // Backend caps page size at 100 (PageFilterRequestDto.MAX_SIZE); all pages are loaded.
+    const FETCH_PAGE_SIZE = 100;
+
+    async function call(path, method, body) {
+        if (!window.Session || typeof Session.api !== 'function') {
+            throw new Error('Session is not available (is session.js loaded?)');
         }
-        return 'User';
+        const opts = { method: method || 'GET' };
+        if (body !== undefined) opts.body = body;
+        const res = await Session.api(path, opts);
+        return res && res.data !== undefined ? res.data : res;
     }
 
-    (async function initAuth() {
-        try {
-            if (typeof requireAuth === 'function') await requireAuth();
-        } catch (e) { /* auth.js not wired yet in this preview */ }
-        const name = getLoggedInUserName();
-        const initial = document.getElementById('profileInitial');
-        const label = document.getElementById('profileNameLabel');
-        if (initial) initial.textContent = name.charAt(0).toUpperCase();
-        if (label) label.textContent = name;
-    })();
+    const toArray = (data) => Array.isArray(data) ? data
+        : Array.isArray(data && data.content) ? data.content
+        : Array.isArray(data && data.items) ? data.items
+        : [];
+
+    const num = (v, fallback) => {
+        const n = Number(v);
+        return v === null || v === undefined || v === '' || isNaN(n) ? fallback : n;
+    };
+
+    function normalizeProduct(r) {
+        const status = String(r.status || 'Active');
+        const price = num(r.price ?? r.sellingPrice, 0);
+        return {
+            id: r.id,
+            partnerId: r.partnerId ?? (r.partner && r.partner.id) ?? null,
+            name: r.name || '',
+            category: categoryFromApi(r.category),
+            brand: r.brand || '',
+            sku: r.sku || '',
+            spec: r.spec ?? r.specification ?? '',
+            unit: r.unit || 'Nos',
+            mrp: num(r.mrp, price),
+            price: price,
+            discount: num(r.discountPercent ?? r.discount, 0),
+            qtyPerKw: num(r.qtyPerKw ?? r.defaultQtyPerKw, 0),
+            stock: num(r.stock ?? r.stockQuantity, 0),
+            threshold: num(r.lowStockThreshold ?? r.threshold, 10),
+            status: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
+            description: r.description || '',
+            hsn: r.hsn ?? r.hsnCode ?? '',
+            gst: num(r.gstPercent ?? r.gst ?? r.gstRate, 18),
+            warranty: num(r.warrantyYears ?? r.warranty, 0)
+        };
+    }
+
+    async function fetchAllProducts() {
+        let all = [];
+        let page = 0;
+        for (;;) {
+            const data = await call(`${ENDPOINTS.list}?page=${page}&size=${FETCH_PAGE_SIZE}`);
+            if (Array.isArray(data)) { all = data; break; }
+            const rows = toArray(data);
+            all = all.concat(rows);
+            const totalPages = num(data && data.totalPages, 1);
+            page++;
+            if (!rows.length || page >= totalPages) break;
+        }
+        return all.map(normalizeProduct);
+    }
+
+    function normalizeLedgerEntry(e) {
+        const t = String(e.type || e.movementType || '').toLowerCase();
+        let date = e.createdAt || e.date || e.movementDate || '';
+        // backend stores UTC (LocalDateTime.now(UTC)) and sends it without 'Z' -> add it so the browser shows local time correctly
+        if (typeof date === 'string' && date.length > 10 && !/[zZ]|[+-]\d\d:?\d\d$/.test(date)) date += 'Z';
+        return {
+            id: e.id,
+            type: t.includes('out') ? 'out' : 'in',
+            qty: num(e.quantity ?? e.qty, 0),
+            reason: e.reason || e.remarks || '',
+            date
+        };
+    }
 
     // ---------------------------------------------------
-    // 1. Sidebar (collapse / expand + mobile drawer) — identical to dashboard.js
-    //    Desktop (>=1024px): open by default on every page load.
-    //    Phone/tablet: open as overlay drawer (see OPEN_BY_DEFAULT_ON_DRAWER).
+    // 1. Sidebar
     // ---------------------------------------------------
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
@@ -76,7 +138,6 @@
     const drawerMQ = window.matchMedia('(max-width: 1023px)');
     const isDrawerViewport = () => drawerMQ.matches;
 
-    // Phone/tablet par bhi page load par open? true = open drawer, false = icon rail
     const OPEN_BY_DEFAULT_ON_DRAWER = true;
     const defaultSidebarState = () => (isDrawerViewport() ? OPEN_BY_DEFAULT_ON_DRAWER : true);
 
@@ -87,36 +148,27 @@
         sidebar?.classList.toggle('expanded', next);
         sidebar?.classList.toggle('collapsed', !next);
         if (toggleIcon) toggleIcon.style.transform = next ? 'rotate(180deg)' : 'rotate(0deg)';
-
-        // backdrop only exists as an overlay on phone/tablet
         const showBackdrop = next && isDrawerViewport();
         sidebarBackdrop?.classList.toggle('visible', showBackdrop);
         sidebarBackdrop?.classList.toggle('hidden', !showBackdrop);
     }
 
-    // apply initial state on page load
     setSidebarExpanded(sidebarExpanded);
-
     sidebarToggle?.addEventListener('click', () => setSidebarExpanded(!sidebarExpanded));
     sidebarBackdrop?.addEventListener('click', () => setSidebarExpanded(false));
-
-    // when crossing the 1024px breakpoint, reset to that size's default
     drawerMQ.addEventListener('change', () => setSidebarExpanded(defaultSidebarState()));
 
-    // nav items are generated by session.js AFTER load, so use event delegation.
-    // Tapping a nav item closes the mobile drawer.
     document.getElementById('sidebarNav')?.addEventListener('click', (e) => {
         if (e.target.closest('.nav-item') && isDrawerViewport()) setSidebarExpanded(false);
     });
 
     // ---------------------------------------------------
-    // 2. Topbar dropdowns (notification / profile) — identical to dashboard.js
+    // 2. Topbar dropdowns
     // ---------------------------------------------------
     const notifBtn = document.getElementById('notifBtn');
     const notifDropdown = document.getElementById('notifDropdown');
     const profileBtn = document.getElementById('profileBtn');
     const profileDropdown = document.getElementById('profileDropdown');
-    const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
     notifBtn?.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -135,18 +187,19 @@
         if (!notifBtn?.contains(e.target) && !notifDropdown?.contains(e.target)) notifDropdown?.classList.add('hidden');
     });
 
-    profileLogoutBtn?.addEventListener('click', async (e) => {
-        e.preventDefault();
+    (function showUserName() {
         try {
-            if (window.Session && typeof Session.logout === 'function') Session.logout();
-            else if (typeof logout === 'function') await logout();
-            else sessionStorage.removeItem('sqms_session');
-        } catch (_) {}
-        window.location.href = '../index.html';
-    });
+            const u = window.Session && Session.getUser ? Session.getUser() : null;
+            const name = (u && (u.name || (u.email ? u.email.split('@')[0] : ''))) || 'User';
+            const label = document.getElementById('profileNameLabel');
+            const initial = document.getElementById('profileInitial');
+            if (label) label.textContent = name;
+            if (initial) initial.textContent = name.charAt(0).toUpperCase();
+        } catch (_) { /* keep defaults */ }
+    })();
 
     // ---------------------------------------------------
-    // 3. Generic modal open/close
+    // 3. Modals
     // ---------------------------------------------------
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
@@ -159,7 +212,7 @@
     });
 
     // ---------------------------------------------------
-    // 4. Toast helper
+    // 4. Toast
     // ---------------------------------------------------
     function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
@@ -167,21 +220,35 @@
         const color = type === 'success' ? 'text-emerald-600' : 'text-rose-500';
         const toast = document.createElement('div');
         toast.className = 'toast-animate bg-cream border border-peach-300 rounded-xl px-3.5 py-2.5 text-xs text-gray-700 shadow-lg flex items-center gap-2';
-        toast.innerHTML = `<i class="fas ${icon} ${color}"></i><span>${message}</span>`;
+        const i = document.createElement('i');
+        i.className = `fas ${icon} ${color}`;
+        const span = document.createElement('span');
+        span.textContent = message;
+        toast.append(i, span);
         container.appendChild(toast);
         setTimeout(() => {
             toast.style.transition = 'opacity .25s ease';
             toast.style.opacity = '0';
             setTimeout(() => toast.remove(), 250);
-        }, 2600);
+        }, 3200);
+    }
+
+    function errorMessage(err, fallback) {
+        if (err && err.status === 403) return 'You do not have permission to do that.';
+        return (err && err.message) || fallback;
+    }
+
+    async function withBusy(btn, fn) {
+        if (!btn || btn.disabled) return;
+        const html = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner" style="margin-right:6px"></span>Please wait…';
+        try { return await fn(); }
+        finally { btn.disabled = false; btn.innerHTML = html; }
     }
 
     // ---------------------------------------------------
-    // 5. Seed data (replace with API call to your backend)
-    //    Pricing: mrp (₹), price = selling price (₹), discount (%)
-    //    BOQ:     qtyPerKw = default quantity of this product required
-    //             per 1 kW of system capacity (unit follows p.unit)
-    //    hsn (HSN Code), gst (GST Rate %), warranty (Years)
+    // 5. Data + state
     // ---------------------------------------------------
     const CATEGORY_META = {
         'Solar Panel': { icon: 'fa-solar-panel', cls: 'bg-panel' },
@@ -192,44 +259,16 @@
         'Accessory': { icon: 'fa-toolbox', cls: 'bg-accessory' }
     };
 
-    let products = [
-        { id: 'P-1001', name: '540W Mono PERC Solar Panel', category: 'Solar Panel', brand: 'Waaree', sku: 'WR-540-MP', spec: '540W, 24V', unit: 'Nos', mrp: 13800, price: 12500, discount: 9, qtyPerKw: 1.85, stock: 84, threshold: 20, status: 'Active', description: '25-year performance warranty, anti-reflective glass.', hsn: '85414300', gst: 18, warranty: 25 },
-        { id: 'P-1002', name: '5kW Hybrid Solar Inverter', category: 'Inverter', brand: 'Luminous', sku: 'LM-HYB-5K', spec: '5kW, MPPT', unit: 'Nos', mrp: 75000, price: 68000, discount: 9, qtyPerKw: 0.2, stock: 6, threshold: 5, status: 'Active', description: 'Dual MPPT hybrid inverter with WiFi monitoring.', hsn: '85044030', gst: 18, warranty: 5 },
-        { id: 'P-1003', name: 'Lithium Battery 10kWh', category: 'Battery', brand: 'Exide', sku: 'EX-LI-10K', spec: '10kWh, 51.2V', unit: 'Nos', mrp: 160000, price: 145000, discount: 9, qtyPerKw: 0.5, stock: 0, threshold: 3, status: 'Active', description: 'LiFePO4 battery, 6000+ cycle life.', hsn: '85076000', gst: 18, warranty: 10 },
-        { id: 'P-1004', name: 'GI Mounting Structure (3kW)', category: 'Mounting Structure', brand: 'Tata Power', sku: 'TP-MS-3K', spec: 'For 6 panels', unit: 'Set', mrp: 9200, price: 8500, discount: 8, qtyPerKw: 0.33, stock: 22, threshold: 5, status: 'Active', description: 'Hot-dip galvanized rooftop structure.', hsn: '73089090', gst: 18, warranty: 10 },
-        { id: 'P-1005', name: 'DC Solar Cable 4mm²', category: 'Cable & Wiring', brand: 'Polycab', sku: 'PC-DC-4MM', spec: '4mm², 1.5kV', unit: 'Meter', mrp: 36, price: 32, discount: 11, qtyPerKw: 5, stock: 1200, threshold: 200, status: 'Active', description: 'UV-resistant single-core DC cable.', hsn: '85444999', gst: 18, warranty: 0 },
-        { id: 'P-1006', name: '440W Mono PERC Solar Panel', category: 'Solar Panel', brand: 'Adani Solar', sku: 'AD-440-MP', spec: '440W, 24V', unit: 'Nos', mrp: 11500, price: 10200, discount: 11, qtyPerKw: 2.27, stock: 15, threshold: 20, status: 'Active', description: '25-year linear performance warranty.', hsn: '85414300', gst: 18, warranty: 25 },
-        { id: 'P-1007', name: '3kW On-Grid Inverter', category: 'Inverter', brand: 'Growatt', sku: 'GW-OG-3K', spec: '3kW, Single Phase', unit: 'Nos', mrp: 35000, price: 32000, discount: 9, qtyPerKw: 0.33, stock: 11, threshold: 5, status: 'Active', description: 'Compact on-grid string inverter.', hsn: '85044030', gst: 18, warranty: 5 },
-        { id: 'P-1008', name: 'MC4 Connector Pair', category: 'Accessory', brand: 'Staubli', sku: 'ST-MC4-P', spec: 'IP68 rated', unit: 'Box', mrp: 520, price: 450, discount: 13, qtyPerKw: 0.1, stock: 3, threshold: 10, status: 'Active', description: 'Weatherproof solar connectors, box of 50 pairs.', hsn: '85444299', gst: 18, warranty: 0 },
-        { id: 'P-1009', name: 'Tubular Battery 150Ah', category: 'Battery', brand: 'Exide', sku: 'EX-TB-150', spec: '150Ah, 12V', unit: 'Nos', mrp: 20000, price: 18500, discount: 8, qtyPerKw: 0.2, stock: 9, threshold: 5, status: 'Inactive', description: 'Discontinued — replaced by lithium range.', hsn: '85072000', gst: 18, warranty: 3 },
-        { id: 'P-1010', name: 'AC Distribution Box', category: 'Accessory', brand: 'Havells', sku: 'HV-ACDB-1', spec: 'Single Phase', unit: 'Nos', mrp: 2500, price: 2200, discount: 12, qtyPerKw: 0.1, stock: 18, threshold: 5, status: 'Active', description: 'With SPD and MCB protection.', hsn: '85371000', gst: 18, warranty: 2 },
-        { id: 'P-1011', name: 'Elevated Structure (10kW)', category: 'Mounting Structure', brand: 'Tata Power', sku: 'TP-MS-10K', spec: 'For 20 panels', unit: 'Set', mrp: 26500, price: 24000, discount: 9, qtyPerKw: 0.1, stock: 4, threshold: 5, status: 'Active', description: 'For ground-mount / elevated rooftop installs.', hsn: '73089090', gst: 18, warranty: 10 },
-        { id: 'P-1012', name: 'AC Cable 6mm²', category: 'Cable & Wiring', brand: 'Polycab', sku: 'PC-AC-6MM', spec: '6mm², 3-core', unit: 'Meter', mrp: 65, price: 58, discount: 11, qtyPerKw: 3, stock: 0, threshold: 100, status: 'Active', description: 'Armoured AC output cable.', hsn: '85444999', gst: 18, warranty: 0 }
-    ];
+    let products = [];
+    let isLoading = true;
+    let loadError = '';
 
-    // ---------------------------------------------------
-    // 5b. Stock Ledger — logs manual stock in / stock out entries
-    // ---------------------------------------------------
-    let stockLedger = [
-        { id: 'SL-1', productId: 'P-1001', type: 'in', qty: 100, reason: 'Initial stock', date: '2026-07-01' },
-        { id: 'SL-2', productId: 'P-1001', type: 'out', qty: 16, reason: 'Used in quotation SQ-0998', date: '2026-07-13' },
-        { id: 'SL-3', productId: 'P-1003', type: 'in', qty: 5, reason: 'Purchase order PO-221', date: '2026-07-05' }
-    ];
-    let ledgerCounter = stockLedger.length;
-
-    // ---------------------------------------------------
-    // 6. State
-    // ---------------------------------------------------
     let state = {
-        search: '',
-        category: '',
-        status: '',
-        gst: '',
-        sortKey: 'name',
-        sortDir: 'asc',
-        page: 1,
-        pageSize: 10
+        search: '', category: '', status: '', gst: '',
+        sortKey: 'name', sortDir: 'asc', page: 1, pageSize: 10
     };
+
+    const sameId = (a, b) => String(a) === String(b);
 
     function computeStatusLabel(p) {
         if (p.status === 'Inactive') return 'Inactive';
@@ -257,7 +296,7 @@
             const matchesCategory = !state.category || p.category === state.category;
             const label = computeStatusLabel(p);
             const matchesStatus = !state.status || label === state.status;
-            const matchesGst = !state.gst || (p.gst !== undefined && String(p.gst) === state.gst);
+            const matchesGst = !state.gst || String(p.gst) === state.gst;
             return matchesSearch && matchesCategory && matchesStatus && matchesGst;
         });
 
@@ -275,7 +314,7 @@
                 case 'gst': av = a.gst || 0; bv = b.gst || 0; break;
                 default: av = a.name; bv = b.name;
             }
-            if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+            if (typeof av === 'string') { av = av.toLowerCase(); bv = String(bv).toLowerCase(); }
             if (av < bv) return state.sortDir === 'asc' ? -1 : 1;
             if (av > bv) return state.sortDir === 'asc' ? 1 : -1;
             return 0;
@@ -285,15 +324,48 @@
     }
 
     // ---------------------------------------------------
+    // 6. Load from backend
+    // ---------------------------------------------------
+    async function loadProducts() {
+        isLoading = true;
+        loadError = '';
+        render();
+        try {
+            products = await fetchAllProducts();
+        } catch (err) {
+            console.error('Failed to load products:', err);
+            products = [];
+            loadError = errorMessage(err, 'Could not load products.');
+        } finally {
+            isLoading = false;
+        }
+        render();
+    }
+
+    async function refreshProducts() {
+        try {
+            products = await fetchAllProducts();
+            loadError = '';
+            render();
+            return true;
+        } catch (err) {
+            showToast(errorMessage(err, 'Saved, but the list could not be refreshed.'), 'error');
+            return false;
+        }
+    }
+
+    // ---------------------------------------------------
     // 7. Render
     // ---------------------------------------------------
     const tbody = document.getElementById('product-tbody');
     const emptyState = document.getElementById('empty-state');
+    const loadErrorEl = document.getElementById('load-error');
     const paginationEl = document.getElementById('pagination');
 
-    function formatINR(num) {
-        if (num >= 100000) return '₹' + (num / 100000).toFixed(1) + 'L';
-        return '₹' + num.toLocaleString('en-IN');
+    function formatINR(n) {
+        if (n >= 10000000) return '₹' + (n / 10000000).toFixed(1) + 'Cr';
+        if (n >= 100000) return '₹' + (n / 100000).toFixed(1) + 'L';
+        return '₹' + n.toLocaleString('en-IN');
     }
 
     function renderStats() {
@@ -304,16 +376,47 @@
         document.getElementById('stat-value').textContent = formatINR(totalValue);
     }
 
+    function renderNotifications() {
+        const list = document.getElementById('notifList');
+        const dot = document.getElementById('notifDot');
+        if (!list) return;
+        const alerts = products
+            .filter(p => ['Out of Stock', 'Low Stock'].includes(computeStatusLabel(p)))
+            .sort((a, b) => a.stock - b.stock)
+            .slice(0, 6);
+
+        dot?.classList.toggle('hidden', alerts.length === 0);
+        if (!alerts.length) {
+            list.innerHTML = '<div class="topbar-notif-item"><p class="notif-empty">All products are well stocked</p></div>';
+            return;
+        }
+        list.innerHTML = alerts.map(p => {
+            const out = computeStatusLabel(p) === 'Out of Stock';
+            return `<div class="topbar-notif-item">
+                <p>${out ? 'Out of stock' : 'Low stock'}: ${escapeHtml(p.name)}</p>
+                <span>${out ? 'No units left' : p.stock + ' ' + escapeHtml(p.unit) + ' left (min ' + p.threshold + ')'}</span>
+            </div>`;
+        }).join('');
+    }
+
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str ?? '';
-        return div.innerHTML;
+        return div.innerHTML.replace(/"/g, '&quot;');
     }
 
     function formatQtyPerKw(p) {
         const val = (p.qtyPerKw ?? 0);
         const formatted = Number.isInteger(val) ? val : val.toFixed(2).replace(/\.?0+$/, '');
         return `<span class="qtykw-value">${formatted}</span><span class="qtykw-unit">${escapeHtml(p.unit)}/kW</span>`;
+    }
+
+    function stateRow(html) {
+        return `<tr class="table-state-row"><td class="table-state-cell" colspan="11">${html}</td></tr>`;
+    }
+
+    function discountLabel(p) {
+        return p.discount || Math.round((p.mrp - p.price) / p.mrp * 100);
     }
 
     function render() {
@@ -325,7 +428,19 @@
         const pageItems = filtered.slice(start, start + state.pageSize);
 
         tbody.innerHTML = '';
-        emptyState.classList.toggle('hidden', pageItems.length > 0);
+        loadErrorEl.classList.toggle('hidden', !loadError);
+        document.getElementById('load-error-msg').textContent = loadError || '';
+
+        if (isLoading) {
+            tbody.innerHTML = stateRow('<span class="spinner"></span>Loading products…');
+            emptyState.classList.add('hidden');
+            paginationEl.innerHTML = '';
+            renderStats();
+            renderNotifications();
+            return;
+        }
+
+        emptyState.classList.toggle('hidden', pageItems.length > 0 || !!loadError);
 
         pageItems.forEach(p => {
             const label = computeStatusLabel(p);
@@ -347,29 +462,30 @@
                 <td data-label="Specification">${escapeHtml(p.spec || '—')}</td>
                 <td data-label="Qty / kW">${formatQtyPerKw(p)}</td>
                 <td data-label="HSN Code">${escapeHtml(p.hsn || '—')}</td>
-                <td data-label="GST %">${p.gst !== undefined ? p.gst + '%' : '—'}</td>
+                <td data-label="GST %">${p.gst}%</td>
                 <td data-label="Selling Price">
                     <div class="price-cell">
                         ${hasDiscount ? `<span class="price-mrp">₹${p.mrp.toLocaleString('en-IN')}</span>` : ''}
-                        <span class="price-selling">₹${p.price.toLocaleString('en-IN')}${hasDiscount ? `<span class="discount-badge">${p.discount || Math.round((p.mrp - p.price) / p.mrp * 100)}% OFF</span>` : ''}</span>
+                        <span class="price-selling">₹${p.price.toLocaleString('en-IN')}${hasDiscount ? `<span class="discount-badge">${discountLabel(p)}% OFF</span>` : ''}</span>
                     </div>
                 </td>
                 <td data-label="Stock">${p.stock} ${escapeHtml(p.unit)}</td>
                 <td data-label="Status"><span class="badge ${badgeClass(label)}">${label}</span></td>
                 <td data-label="Actions">
                     <div class="row-actions">
-                        <button class="action-icon-btn icon-view" data-action="view" data-id="${p.id}" title="View"><i class="fas fa-eye"></i></button>
-                        <button class="action-icon-btn icon-edit" data-action="edit" data-id="${p.id}" title="Edit"><i class="fas fa-pen"></i></button>
-                        <button class="action-icon-btn icon-stock" data-action="stock" data-id="${p.id}" title="Stock History"><i class="fas fa-clock-rotate-left"></i></button>
-                        <button class="action-icon-btn danger" data-action="delete" data-id="${p.id}" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                        <button class="action-icon-btn icon-view" data-action="view" data-id="${escapeHtml(p.id)}" title="View"><i class="fas fa-eye"></i></button>
+                        <button class="action-icon-btn icon-edit" data-action="edit" data-id="${escapeHtml(p.id)}" title="Edit"><i class="fas fa-pen"></i></button>
+                        <button class="action-icon-btn icon-stock" data-action="stock" data-id="${escapeHtml(p.id)}" title="Stock History"><i class="fas fa-clock-rotate-left"></i></button>
+                        <button class="action-icon-btn danger" data-action="delete" data-id="${escapeHtml(p.id)}" title="Delete"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </td>
             `;
             tbody.appendChild(tr);
         });
 
-        renderPagination(totalPages, total);
+        renderPagination(totalPages);
         renderStats();
+        renderNotifications();
     }
 
     function renderPagination(totalPages) {
@@ -404,7 +520,7 @@
     }
 
     // ---------------------------------------------------
-    // 8. Filters / search / sort / pagination wiring
+    // 8. Filters / search / sort / pagination
     // ---------------------------------------------------
     let searchTimer;
     document.getElementById('search-input').addEventListener('input', (e) => {
@@ -417,28 +533,18 @@
     });
 
     document.getElementById('filter-category').addEventListener('change', (e) => {
-        state.category = e.target.value;
-        state.page = 1;
-        render();
+        state.category = e.target.value; state.page = 1; render();
     });
-
     document.getElementById('filter-status').addEventListener('change', (e) => {
-        state.status = e.target.value;
-        state.page = 1;
-        render();
+        state.status = e.target.value; state.page = 1; render();
     });
-
     document.getElementById('filter-gst').addEventListener('change', (e) => {
-        state.gst = e.target.value;
-        state.page = 1;
-        render();
+        state.gst = e.target.value; state.page = 1; render();
     });
-
     document.getElementById('rows-per-page').addEventListener('change', (e) => {
-        state.pageSize = parseInt(e.target.value, 10);
-        state.page = 1;
-        render();
+        state.pageSize = parseInt(e.target.value, 10); state.page = 1; render();
     });
+    document.getElementById('btn-retry-load').addEventListener('click', loadProducts);
 
     document.querySelectorAll('.data-table thead th[data-sort]').forEach(th => {
         th.addEventListener('click', () => {
@@ -455,13 +561,11 @@
         });
     });
 
-    // Row action buttons (View / Edit / Stock History / Delete)
     tbody.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
-        const id = btn.dataset.id;
         const action = btn.dataset.action;
-        const product = products.find(p => p.id === id);
+        const product = products.find(p => sameId(p.id, btn.dataset.id));
         if (!product) return;
 
         if (action === 'view') openViewModal(product);
@@ -471,11 +575,12 @@
     });
 
     // ---------------------------------------------------
-    // 9. Add / Edit modal + validation
+    // 9. Add / Edit modal + validation + save
     // ---------------------------------------------------
     const form = {
         id: document.getElementById('pf-id'),
         name: document.getElementById('pf-name'),
+        partner: document.getElementById('pf-partner'),
         category: document.getElementById('pf-category'),
         brand: document.getElementById('pf-brand'),
         sku: document.getElementById('pf-sku'),
@@ -495,7 +600,6 @@
     };
     const modalTitle = document.getElementById('product-modal-title');
 
-    // ---- Auto-calc: MRP + Discount% -> Selling Price (still manually overridable) ----
     let priceManuallyEdited = false;
 
     function recalcPriceFromDiscount() {
@@ -518,17 +622,51 @@
     }
 
     form.mrp.addEventListener('input', () => {
-        if (priceManuallyEdited && form.price.value !== '') {
-            recalcDiscountFromPrice();
-        } else {
-            recalcPriceFromDiscount();
-        }
+        if (priceManuallyEdited && form.price.value !== '') recalcDiscountFromPrice();
+        else recalcPriceFromDiscount();
     });
     form.discount.addEventListener('input', recalcPriceFromDiscount);
     form.price.addEventListener('input', () => {
         priceManuallyEdited = true;
         recalcDiscountFromPrice();
     });
+
+    // ---- Channel partner ----
+    // Backend rule (TenantResolver.requirePartnerIdForCreate): on CREATE, a Super Admin (data scope ALL)
+    // MUST send the partnerId of a real channel partner. Partner users never send it (the backend uses
+    // their own partner). On EDIT nobody sends it.
+    const isSuperAdmin = () => {
+        try {
+            const role = window.Session && Session.getRole ? Session.getRole() : null;
+            return String(role || '').toUpperCase().replace(/[^A-Z]/g, '') === 'SUPERADMIN';
+        } catch (_) { return false; }
+    };
+    // If the backend ever answers "partnerId is required", this flips on as a safety net.
+    let partnerForced = false;
+    const needsPartnerPick = () => !form.id.value && (partnerForced || isSuperAdmin());
+    let partnerOptions = null;
+
+    async function fillPartnerSelect(selectedId) {
+        const wrap = document.getElementById('pf-partner-wrap');
+        wrap.classList.toggle('hidden', !needsPartnerPick());
+        if (!needsPartnerPick()) return;
+        if (!partnerOptions) {
+            try {
+                partnerOptions = toArray(await call(ENDPOINTS.partnerOptions));
+            } catch (err) {
+                showToast(errorMessage(err, 'Could not load channel partners'), 'error');
+                return;
+            }
+        }
+        // the options endpoint already returns only active PARTNER records (platform is excluded)
+        form.partner.innerHTML = '<option value="">Select channel partner</option>' +
+            partnerOptions.map(o => {
+                const label = o.name || o.label || o.companyName || o.partnerName || '';
+                const text = label && o.code ? `${label} (${o.code})` : (label || o.code || ('Partner #' + o.id));
+                return `<option value="${escapeHtml(o.id)}">${escapeHtml(text)}</option>`;
+            }).join('');
+        form.partner.value = selectedId != null ? String(selectedId) : '';
+    }
 
     function openProductModal(product) {
         clearErrors();
@@ -543,8 +681,8 @@
             form.spec.value = product.spec;
             form.unit.value = product.unit;
             form.hsn.value = product.hsn || '';
-            form.gst.value = product.gst !== undefined ? product.gst : 18;
-            form.warranty.value = product.warranty !== undefined ? product.warranty : '';
+            form.gst.value = product.gst;
+            form.warranty.value = product.warranty || '';
             form.mrp.value = product.mrp ?? '';
             form.discount.value = product.discount ?? '';
             form.price.value = product.price;
@@ -560,17 +698,17 @@
             form.unit.value = 'Nos';
             form.status.value = 'Active';
             form.threshold.value = 10;
-            form.gst.value = 18; // default GST
-            form.warranty.value = ''; // optional
+            form.gst.value = 18;
+            form.warranty.value = '';
         }
         openModal('modal-product');
+        fillPartnerSelect(product ? product.partnerId : null);
     }
 
     document.getElementById('btn-add-product').addEventListener('click', () => openProductModal(null));
 
     function clearErrors() {
-        document.querySelectorAll('#modal-product .field-input')
-            .forEach(f => f.classList.remove('invalid'));
+        document.querySelectorAll('#modal-product .field-input').forEach(f => f.classList.remove('invalid'));
         document.querySelectorAll('#modal-product .field-error').forEach(e => e.textContent = '');
     }
 
@@ -584,82 +722,101 @@
         clearErrors();
         let valid = true;
 
-        if (!form.name.value.trim()) {
-            setFieldError(form.name, 'err-pf-name', 'Product name is required');
-            valid = false;
-        }
-        if (!form.category.value) {
-            setFieldError(form.category, 'err-pf-category', 'Please select a category');
-            valid = false;
-        }
-        if (!form.brand.value.trim()) {
-            setFieldError(form.brand, 'err-pf-brand', 'Brand is required');
-            valid = false;
-        }
-        if (form.mrp.value === '' || Number(form.mrp.value) < 0) {
-            setFieldError(form.mrp, 'err-pf-mrp', 'Enter a valid MRP');
-            valid = false;
-        }
+        if (needsPartnerPick() && !form.partner.value) { setFieldError(form.partner, 'err-pf-partner', 'Please select a channel partner'); valid = false; }
+        if (!form.name.value.trim()) { setFieldError(form.name, 'err-pf-name', 'Product name is required'); valid = false; }
+        if (!form.category.value) { setFieldError(form.category, 'err-pf-category', 'Please select a category'); valid = false; }
+        if (!form.brand.value.trim()) { setFieldError(form.brand, 'err-pf-brand', 'Brand is required'); valid = false; }
+        if (form.mrp.value === '' || Number(form.mrp.value) < 0) { setFieldError(form.mrp, 'err-pf-mrp', 'Enter a valid MRP'); valid = false; }
         if (form.discount.value !== '' && (Number(form.discount.value) < 0 || Number(form.discount.value) > 100)) {
-            setFieldError(form.discount, 'err-pf-discount', 'Discount must be between 0–100%');
-            valid = false;
+            setFieldError(form.discount, 'err-pf-discount', 'Discount must be between 0–100%'); valid = false;
         }
-        if (form.price.value === '' || Number(form.price.value) < 0) {
-            setFieldError(form.price, 'err-pf-price', 'Enter a valid selling price');
-            valid = false;
-        }
+        if (form.price.value === '' || Number(form.price.value) < 0) { setFieldError(form.price, 'err-pf-price', 'Enter a valid selling price'); valid = false; }
         if (form.mrp.value !== '' && form.price.value !== '' && Number(form.price.value) > Number(form.mrp.value)) {
-            setFieldError(form.price, 'err-pf-price', 'Selling price cannot exceed MRP');
-            valid = false;
+            setFieldError(form.price, 'err-pf-price', 'Selling price cannot exceed MRP'); valid = false;
         }
-        if (form.stock.value === '' || Number(form.stock.value) < 0) {
-            setFieldError(form.stock, 'err-pf-stock', 'Enter a valid stock quantity');
-            valid = false;
-        }
+        if (form.stock.value === '' || Number(form.stock.value) < 0) { setFieldError(form.stock, 'err-pf-stock', 'Enter a valid stock quantity'); valid = false; }
         if (form.qtyPerKw.value === '' || Number(form.qtyPerKw.value) < 0) {
-            setFieldError(form.qtyPerKw, 'err-pf-qtyperkw', 'Enter a valid quantity per kW (0 if not applicable)');
-            valid = false;
+            setFieldError(form.qtyPerKw, 'err-pf-qtyperkw', 'Enter a valid quantity per kW (0 if not applicable)'); valid = false;
         }
         return valid;
     }
 
-    document.getElementById('btn-save-product').addEventListener('click', () => {
+    // Field names here match ProductRequestDto exactly.
+    //
+    // IMPORTANT (backend rule, ProductServiceImpl.computePrice): when BOTH mrp and discountPercent are sent,
+    // the backend recomputes price = mrp x (1 - discount/100) and IGNORES the price we send. The form rounds
+    // the discount to 2 decimals, so a price typed by hand (e.g. MRP 13800, price 12500) would be silently
+    // changed by a few paise. So we only send discountPercent when it reproduces the entered price exactly
+    // (to the paisa); otherwise discountPercent is sent as null and the backend stores the typed price.
+    function buildPayload() {
+        const mrp = Number(form.mrp.value);
+        const price = Number(form.price.value);
+        const typedDiscount = form.discount.value !== '' ? Number(form.discount.value) : null;
+
+        let discountPercent = null;
+        if (mrp > 0) {
+            const d = typedDiscount !== null ? typedDiscount : ((mrp - price) / mrp) * 100;
+            const backendPrice = Math.round(mrp * (1 - d / 100) * 100) / 100;
+            if (Math.abs(backendPrice - price) < 0.005) {
+                discountPercent = Math.round(d * 100) / 100;
+            }
+        } else {
+            discountPercent = 0;
+        }
+
+        return {
+            ...(needsPartnerPick() ? { partnerId: Number(form.partner.value) } : {}),
+            name: form.name.value.trim(),
+            category: CATEGORY_TO_API[form.category.value] || form.category.value,
+            brand: form.brand.value.trim(),
+            sku: form.sku.value.trim() || null,
+            spec: form.spec.value.trim() || null,
+            unit: form.unit.value,
+            hsn: form.hsn.value.trim() || null,
+            gstPercent: Number(form.gst.value) || 0,
+            warrantyYears: form.warranty.value !== '' ? Number(form.warranty.value) : 0,
+            mrp: mrp,
+            discountPercent: discountPercent,
+            price: price,
+            stock: Number(form.stock.value),
+            lowStockThreshold: Number(form.threshold.value || 10),
+            qtyPerKw: Number(form.qtyPerKw.value),
+            status: String(form.status.value).toUpperCase(),   // ACTIVE | INACTIVE
+            description: form.description.value.trim() || null
+        };
+    }
+
+    document.getElementById('btn-save-product').addEventListener('click', (e) => {
         if (!validateProductForm()) {
             showToast('Please fill all required fields correctly', 'error');
             return;
         }
         const isEdit = !!form.id.value;
-        const payload = {
-            id: form.id.value || 'P-' + (1000 + products.length + 1),
-            name: form.name.value.trim(),
-            category: form.category.value,
-            brand: form.brand.value.trim(),
-            sku: form.sku.value.trim(),
-            spec: form.spec.value.trim(),
-            unit: form.unit.value,
-            hsn: form.hsn.value.trim(),
-            gst: Number(form.gst.value) || 0,
-            warranty: form.warranty.value !== '' ? Number(form.warranty.value) : 0,
-            mrp: Number(form.mrp.value),
-            discount: form.discount.value !== '' ? Number(form.discount.value) : Math.round(((Number(form.mrp.value) - Number(form.price.value)) / Number(form.mrp.value)) * 100),
-            price: Number(form.price.value),
-            stock: Number(form.stock.value),
-            threshold: Number(form.threshold.value || 10),
-            qtyPerKw: Number(form.qtyPerKw.value),
-            status: form.status.value,
-            description: form.description.value.trim()
-        };
+        const payload = buildPayload();
 
-        if (isEdit) {
-            const idx = products.findIndex(p => p.id === payload.id);
-            if (idx !== -1) products[idx] = payload;
-            showToast('Product updated successfully', 'success');
-        } else {
-            products.unshift(payload);
-            showToast('Product added successfully', 'success');
-        }
-        closeModal('modal-product');
-        render();
+        withBusy(e.currentTarget, async () => {
+            try {
+                if (isEdit) await call(ENDPOINTS.one(form.id.value), 'PUT', payload);
+                else await call(ENDPOINTS.list, 'POST', payload);
+            } catch (err) {
+                console.error('Save product failed:\n' + JSON.stringify({ status: err && err.status, code: err && err.errorCode, message: err && err.message, errors: err && err.errors, sentPayload: payload }, null, 2));
+                const detail = err && Array.isArray(err.errors) && err.errors.length
+                    ? err.errors.map(x => ((x.field || x.fieldName || x.path) ? (x.field || x.fieldName || x.path) + ': ' : '') + (x.message || x.defaultMessage || '')).join(' • ')
+                    : '';
+                // Safety net: backend wants a partner but the dropdown was not shown
+                if (!isEdit && !partnerForced && /partnerid is required|channel partner/i.test((err && err.message) || '')) {
+                    partnerForced = true;
+                    await fillPartnerSelect(null);
+                    showToast('Please select a channel partner and save again.', 'error');
+                    return;
+                }
+                showToast(detail || errorMessage(err, 'Could not save the product'), 'error');
+                return;
+            }
+            closeModal('modal-product');
+            showToast(isEdit ? 'Product updated successfully' : 'Product added successfully', 'success');
+            await refreshProducts();
+        });
     });
 
     // ---------------------------------------------------
@@ -683,10 +840,10 @@
                 <div class="view-item"><div class="view-label">Category</div><div class="view-value">${escapeHtml(p.category)}</div></div>
                 <div class="view-item"><div class="view-label">Specification</div><div class="view-value">${escapeHtml(p.spec || '—')}</div></div>
                 <div class="view-item"><div class="view-label">HSN Code</div><div class="view-value">${escapeHtml(p.hsn || '—')}</div></div>
-                <div class="view-item"><div class="view-label">GST Rate</div><div class="view-value">${p.gst !== undefined ? p.gst + '%' : '—'}</div></div>
-                <div class="view-item"><div class="view-label">Warranty</div><div class="view-value">${p.warranty !== undefined && p.warranty > 0 ? p.warranty + ' Years' : '—'}</div></div>
+                <div class="view-item"><div class="view-label">GST Rate</div><div class="view-value">${p.gst}%</div></div>
+                <div class="view-item"><div class="view-label">Warranty</div><div class="view-value">${p.warranty > 0 ? p.warranty + ' Years' : '—'}</div></div>
                 <div class="view-item"><div class="view-label">MRP</div><div class="view-value">₹${(p.mrp ?? p.price).toLocaleString('en-IN')}</div></div>
-                <div class="view-item"><div class="view-label">Selling Price</div><div class="view-value">₹${p.price.toLocaleString('en-IN')} / ${escapeHtml(p.unit)}${hasDiscount ? ` <span class="discount-badge">${p.discount || Math.round((p.mrp - p.price) / p.mrp * 100)}% OFF</span>` : ''}</div></div>
+                <div class="view-item"><div class="view-label">Selling Price</div><div class="view-value">₹${p.price.toLocaleString('en-IN')} / ${escapeHtml(p.unit)}${hasDiscount ? ` <span class="discount-badge">${discountLabel(p)}% OFF</span>` : ''}</div></div>
                 <div class="view-item"><div class="view-label">Stock</div><div class="view-value">${p.stock} ${escapeHtml(p.unit)}</div></div>
                 <div class="view-item"><div class="view-label">Status</div><div class="view-value"><span class="badge ${badgeClass(label)}">${label}</span></div></div>
                 <div class="view-item"><div class="view-label">Default Qty / kW (BOQ)</div><div class="view-value">${p.qtyPerKw ?? 0} ${escapeHtml(p.unit)}/kW</div></div>
@@ -698,7 +855,7 @@
     }
 
     // ---------------------------------------------------
-    // 10b. Stock History modal (ledger of stock in / out)
+    // 10b. Stock History modal
     // ---------------------------------------------------
     let stockHistoryProduct = null;
     const stockLedgerBody = document.getElementById('stock-ledger-body');
@@ -708,13 +865,31 @@
     const slQty = document.getElementById('sl-qty');
     const slReason = document.getElementById('sl-reason');
 
-    function renderStockLedger(productId) {
-        const entries = stockLedger
-            .filter(e => e.productId === productId)
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    function formatLedgerDate(raw) {
+        if (!raw) return '—';
+        const d = new Date(raw);
+        if (isNaN(d)) return escapeHtml(String(raw).slice(0, 10));
+        const hasTime = String(raw).length > 10;
+        return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
+            (hasTime ? ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '');
+    }
+
+    async function renderStockLedger(productId) {
+        stockLedgerBody.innerHTML = '<div class="ledger-empty"><span class="spinner"></span>Loading…</div>';
+        let entries;
+        try {
+            entries = toArray(await call(ENDPOINTS.stockHistory(productId))).map(normalizeLedgerEntry);
+        } catch (err) {
+            if (!stockHistoryProduct || !sameId(stockHistoryProduct.id, productId)) return;
+            stockLedgerBody.innerHTML = `<div class="ledger-empty">${escapeHtml(errorMessage(err, 'Could not load stock history.'))}</div>`;
+            return;
+        }
+        if (!stockHistoryProduct || !sameId(stockHistoryProduct.id, productId)) return;
+
+        entries.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         if (entries.length === 0) {
-            stockLedgerBody.innerHTML = `<div class="ledger-empty">No stock movements recorded yet.</div>`;
+            stockLedgerBody.innerHTML = '<div class="ledger-empty">No stock movements recorded yet.</div>';
             return;
         }
 
@@ -725,17 +900,22 @@
                 </div>
                 <div class="ledger-info">
                     <div class="ledger-reason">${escapeHtml(e.reason || (e.type === 'in' ? 'Stock added' : 'Stock removed'))}</div>
-                    <div class="ledger-date">${e.date}</div>
+                    <div class="ledger-date">${formatLedgerDate(e.date)}</div>
                 </div>
                 <div class="ledger-qty ${e.type === 'in' ? 'ledger-in' : 'ledger-out'}">${e.type === 'in' ? '+' : '-'}${e.qty}</div>
             </div>
         `).join('');
     }
 
+    function updateStockHeader() {
+        if (!stockHistoryProduct) return;
+        stockHistoryCurrentStock.textContent = `${stockHistoryProduct.stock} ${stockHistoryProduct.unit} in stock`;
+    }
+
     function openStockHistoryModal(product) {
         stockHistoryProduct = product;
         stockHistoryProductName.textContent = product.name;
-        stockHistoryCurrentStock.textContent = `${product.stock} ${product.unit} in stock`;
+        updateStockHeader();
         slType.value = 'in';
         slQty.value = '';
         slReason.value = '';
@@ -743,38 +923,37 @@
         openModal('modal-stock-history');
     }
 
-    document.getElementById('btn-add-stock-entry')?.addEventListener('click', () => {
+    document.getElementById('btn-add-stock-entry')?.addEventListener('click', (e) => {
         if (!stockHistoryProduct) return;
         const qty = parseInt(slQty.value, 10);
-        if (!qty || qty <= 0) {
-            showToast('Enter a valid quantity', 'error');
-            return;
-        }
+        if (!qty || qty <= 0) { showToast('Enter a valid quantity', 'error'); return; }
         const type = slType.value;
-
         if (type === 'out' && qty > stockHistoryProduct.stock) {
             showToast('Cannot remove more than current stock', 'error');
             return;
         }
 
-        ledgerCounter++;
-        stockLedger.unshift({
-            id: 'SL-' + ledgerCounter,
-            productId: stockHistoryProduct.id,
-            type,
-            qty,
-            reason: slReason.value.trim(),
-            date: new Date().toISOString().slice(0, 10)
+        const productId = stockHistoryProduct.id;
+        withBusy(e.currentTarget, async () => {
+            try {
+                await call(ENDPOINTS.stockHistory(productId), 'POST', {
+                    type: STOCK_TYPE_TO_API[type],
+                    quantity: qty,
+                    reason: slReason.value.trim()
+                });
+            } catch (err) {
+                showToast(errorMessage(err, 'Could not update stock'), 'error');
+                return;
+            }
+            slQty.value = '';
+            slReason.value = '';
+            showToast(type === 'in' ? 'Stock added' : 'Stock removed', 'success');
+
+            await refreshProducts();
+            const fresh = products.find(p => sameId(p.id, productId));
+            if (fresh) { stockHistoryProduct = fresh; updateStockHeader(); }
+            renderStockLedger(productId);
         });
-
-        stockHistoryProduct.stock += (type === 'in' ? qty : -qty);
-
-        slQty.value = '';
-        slReason.value = '';
-        renderStockLedger(stockHistoryProduct.id);
-        stockHistoryCurrentStock.textContent = `${stockHistoryProduct.stock} ${stockHistoryProduct.unit} in stock`;
-        render();
-        showToast(type === 'in' ? 'Stock added' : 'Stock removed', 'success');
     });
 
     // ---------------------------------------------------
@@ -788,26 +967,33 @@
         openModal('modal-delete-product');
     }
 
-    document.getElementById('btn-confirm-delete-product').addEventListener('click', () => {
-        if (productToDelete) {
-            products = products.filter(p => p.id !== productToDelete.id);
+    document.getElementById('btn-confirm-delete-product').addEventListener('click', (e) => {
+        const target = productToDelete;
+        if (!target) return;
+        withBusy(e.currentTarget, async () => {
+            try {
+                await call(ENDPOINTS.one(target.id), 'DELETE');
+            } catch (err) {
+                showToast(errorMessage(err, 'Could not delete the product'), 'error');
+                return;
+            }
+            productToDelete = null;
+            closeModal('modal-delete-product');
             showToast('Product deleted', 'success');
-        }
-        productToDelete = null;
-        closeModal('modal-delete-product');
-        render();
+            await refreshProducts();
+        });
     });
 
     // ---------------------------------------------------
-    // 12. Initial render
+    // 12. Initial load
     // ---------------------------------------------------
-    render();
+    loadProducts();
 
-    // Expose product data for BOQ auto-generation logic elsewhere in the app
     window.SolarProducts = {
         getAll: () => products,
-        getById: (id) => products.find(p => p.id === id),
-        getByCategory: (category) => products.filter(p => p.category === category)
+        getById: (id) => products.find(p => sameId(p.id, id)),
+        getByCategory: (category) => products.filter(p => p.category === category),
+        reload: loadProducts
     };
 
 })();

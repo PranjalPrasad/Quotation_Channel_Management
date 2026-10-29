@@ -1,16 +1,22 @@
-// TODO: replace mock data arrays below with API calls to
-//   GET  /api/channel-partners
-//   POST /api/channel-partners
-//   PATCH /api/channel-partners/:code
-//   GET  /api/channel-partners/:code/stats
-//   GET  /api/channel-partners/:code/users
+// ============================================================
+// Channel Partner Management — integrated with the Spring Boot backend (port 8091)
+//
+// session.js (loaded first) provides Session.api(path, { method, body }) which adds the Bearer token,
+// refreshes it on 401 and returns the JSON envelope { success, message, data }.
+// referral.js (loaded before this file) provides window.Referral (referral API layer).
+//
+// Endpoints used:
+//   GET   /api/channel-partners?page=&size=            list (all pages are loaded; search/filter/sort run in the browser)
+//   POST  /api/channel-partners                        create (also creates the first admin user)
+//   PUT   /api/channel-partners/{id}                   update
+//   PATCH /api/channel-partners/{id}/status            { status: ACTIVE | INACTIVE }
+//   GET   /api/channel-partners/{id}/stats             customers / projects / quotations / users
+//   GET   /api/channel-partners/{id}/users             team of the partner
+//   + /api/referrals/...  (see referral.js)
+// ============================================================
 
 // ============================================================
 // Access guard — this module is Super Admin only.
-// session.js sets window.currentUserRole (read-only, from the
-// login session) before this script runs. No role is ever assumed.
-// Throwing after the redirect stops the rest of this script from
-// running (and erroring) while the browser navigates away.
 // ============================================================
 if (window.currentUserRole !== 'SUPER_ADMIN') {
   window.location.replace('../dashboard/dashboard.html');
@@ -18,9 +24,114 @@ if (window.currentUserRole !== 'SUPER_ADMIN') {
 }
 
 // ============================================================
+// API layer
+// ============================================================
+const ENDPOINTS = {
+  list: '/api/channel-partners',
+  one: (id) => `/api/channel-partners/${encodeURIComponent(id)}`,
+  status: (id) => `/api/channel-partners/${encodeURIComponent(id)}/status`,
+  stats: (id) => `/api/channel-partners/${encodeURIComponent(id)}/stats`,
+  users: (id) => `/api/channel-partners/${encodeURIComponent(id)}/users?page=0&size=100`,
+};
+
+// Backend caps the page size at 100 (PageFilterRequestDto.MAX_SIZE)
+const FETCH_PAGE_SIZE = 100;
+
+/** Calls the backend through session.js and returns the unwrapped `data`. */
+async function call(path, method, body) {
+  if (!window.Session || typeof Session.api !== 'function') {
+    throw new Error('Session is not available (is session.js loaded?)');
+  }
+  const opts = { method: method || 'GET' };
+  if (body !== undefined) opts.body = body;
+  const res = await Session.api(path, opts);
+  return res && res.data !== undefined ? res.data : res;
+}
+
+const num = (v, fallback) => {
+  const n = Number(v);
+  return v === null || v === undefined || v === '' || isNaN(n) ? fallback : n;
+};
+
+const toArray = (data) => Array.isArray(data) ? data
+  : Array.isArray(data && data.content) ? data.content
+  : [];
+
+const uiStatus = (s) => {
+  const v = String(s || 'ACTIVE').toLowerCase();
+  return v.charAt(0).toUpperCase() + v.slice(1);   // ACTIVE -> Active
+};
+
+/** Maps one backend ChannelPartnerResponseDto to the shape this screen uses. */
+function normalizePartner(r) {
+  const st = r.stats || {};
+  return {
+    id: r.id,
+    code: r.code || '',
+    name: r.name || '',
+    contact: r.contactPerson || '',
+    phone: r.phone || '',
+    email: r.email || '',
+    gst: r.gstNo || '',
+    address: r.address || '',
+    status: uiStatus(r.status),
+    createdDate: String(r.createdAt || '').slice(0, 10),
+    referralCode: r.referralCode || '',
+    referralPercent: r.referralPercent != null ? Number(r.referralPercent) : 0,
+    stats: {
+      customers: num(st.customers, 0),
+      projects: num(st.projects, 0),
+      quotations: num(st.quotations, 0),
+      users: num(st.users, 0),
+    },
+  };
+}
+
+/** Loads every partner (all pages). */
+async function fetchAllPartners() {
+  let all = [];
+  let page = 0;
+  for (;;) {
+    const data = await call(`${ENDPOINTS.list}?page=${page}&size=${FETCH_PAGE_SIZE}&sort=createdAt,desc`);
+    const rows = toArray(data);
+    all = all.concat(rows);
+    const totalPages = num(data && data.totalPages, 1);
+    page++;
+    if (!rows.length || page >= totalPages) break;
+  }
+  return all.map(normalizePartner);
+}
+
+/** Readable text for a thrown API error (includes field-level validation messages). */
+function errorMessage(err, fallback) {
+  if (err && err.status === 403) return 'You do not have permission to do that.';
+  const detail = err && Array.isArray(err.errors) && err.errors.length
+    ? err.errors.map((x) => {
+        const f = x.field || x.fieldName || x.path;
+        return (f ? f + ': ' : '') + (x.message || x.defaultMessage || '');
+      }).join(' • ')
+    : '';
+  return detail || (err && err.message) || fallback;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML.replace(/"/g, '&quot;');
+}
+
+/** Disables a button + shows "Please wait…" while fn runs, always restores it. */
+async function withBusy(btn, fn) {
+  if (!btn || btn.disabled) return;
+  const html = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="margin-right:6px"></span>Please wait…';
+  try { return await fn(); }
+  finally { btn.disabled = false; btn.innerHTML = html; }
+}
+
+// ============================================================
 // Sidebar collapse / expand (shared across all modules)
-// Desktop (>=1024px): open by default on every page load.
-// Phone/tablet: opens as overlay drawer (see OPEN_BY_DEFAULT_ON_DRAWER).
 // ============================================================
 const sidebar = document.getElementById('sidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -30,7 +141,6 @@ const sidebarBackdrop = document.getElementById('sidebarBackdrop');
 const drawerMQ = window.matchMedia('(max-width: 1023px)');
 const isDrawerViewport = () => drawerMQ.matches;
 
-// Phone/tablet par bhi page load par open? true = open drawer, false = icon rail
 const OPEN_BY_DEFAULT_ON_DRAWER = true;
 const defaultSidebarState = () => (isDrawerViewport() ? OPEN_BY_DEFAULT_ON_DRAWER : true);
 
@@ -41,31 +151,22 @@ function setSidebarExpanded(next) {
   sidebar.classList.toggle('expanded', next);
   sidebar.classList.toggle('collapsed', !next);
   toggleIcon.style.transform = next ? 'rotate(180deg)' : 'rotate(0deg)';
-
-  // backdrop only exists as an overlay on phone/tablet
   const showBackdrop = next && isDrawerViewport();
   sidebarBackdrop?.classList.toggle('visible', showBackdrop);
   sidebarBackdrop?.classList.toggle('hidden', !showBackdrop);
 }
 
-// apply initial state on page load
 setSidebarExpanded(sidebarExpanded);
-
 sidebarToggle.addEventListener('click', () => setSidebarExpanded(!sidebarExpanded));
 sidebarBackdrop?.addEventListener('click', () => setSidebarExpanded(false));
-
-// when crossing the 1024px breakpoint, reset to that size's default
 drawerMQ.addEventListener('change', () => setSidebarExpanded(defaultSidebarState()));
 
-// nav items are generated by session.js AFTER load, so use event delegation.
-// Tapping a nav item closes the mobile drawer.
 document.getElementById('sidebarNav')?.addEventListener('click', (e) => {
   if (e.target.closest('.nav-item') && isDrawerViewport()) setSidebarExpanded(false);
 });
 
 // ============================================================
-// Logged-in user ka naam (avatar initial + profile dropdown)
-// Session object / sessionStorage / JWT — jahan bhi naam mile, wahan se uthata hai.
+// Logged-in user's name (avatar initial + profile dropdown)
 // ============================================================
 function decodeJwtPayload(token) {
   try {
@@ -112,9 +213,6 @@ function getLoggedInUserName() {
   if (label) label.textContent = name;
 })();
 
-// ============================================================
-// Logout (shared) — clears the session, then goes to login page
-// ============================================================
 function logoutUser() {
   try {
     if (window.Session && typeof Session.logout === 'function') Session.logout();
@@ -125,8 +223,6 @@ function logoutUser() {
 
 // ============================================================
 // Role-based visibility for [data-role] elements
-// (session.js also does this globally — re-run here in case
-// this script executes before session.js finishes)
 // ============================================================
 function applyRoleBasedVisibility() {
   const userRole = window.currentUserRole;
@@ -139,76 +235,60 @@ applyRoleBasedVisibility();
 window.addEventListener('DOMContentLoaded', applyRoleBasedVisibility);
 
 // ============================================================
-// Mock data — channel partners
+// Toast
 // ============================================================
-let partners = [
-  {
-    code: 'CP-0001', name: 'Sunrise Solar Solutions', contact: 'Rakesh Mehta',
-    phone: '+91 98765 43210', email: 'rakesh@sunrisesolar.in', gst: '27ABCDE1234F1Z5',
-    address: 'Plot 14, MIDC Industrial Area, Pune, Maharashtra 411019',
-    status: 'Active', createdDate: '2025-03-12',
-    referralCode: 'REF-CP0001', referralPercent: 2.5,
-    stats: { customers: 84, projects: 61, quotations: 132, users: 9 },
-  },
-  {
-    code: 'CP-0002', name: 'Greenline Energy Partners', contact: 'Sneha Kulkarni',
-    phone: '+91 91234 56780', email: 'sneha@greenlineenergy.com', gst: '27PQRSX5678K1Z2',
-    address: '2nd Floor, Baner Road, Pune, Maharashtra 411045',
-    status: 'Active', createdDate: '2025-05-02',
-    referralCode: 'REF-CP0002', referralPercent: 3,
-    stats: { customers: 63, projects: 40, quotations: 98, users: 6 },
-  },
-  {
-    code: 'CP-0003', name: 'Vasudha Renewables', contact: 'Amol Deshpande',
-    phone: '+91 90876 54321', email: 'amol@vasudharenew.in', gst: '27LMNOP4321V1Z8',
-    address: 'Shivaji Nagar, Pune, Maharashtra 411005',
-    status: 'Inactive', createdDate: '2024-11-18',
-    referralCode: 'REF-CP0003', referralPercent: 2,
-    stats: { customers: 29, projects: 15, quotations: 46, users: 3 },
-  },
-  {
-    code: 'CP-0004', name: 'Helios Power Distributors', contact: 'Nikita Rane',
-    phone: '+91 99887 76655', email: 'nikita@heliospower.co.in', gst: '27HELIO9988P1Z4',
-    address: 'Wakad, Pune, Maharashtra 411057',
-    status: 'Active', createdDate: '2026-07-04',
-    referralCode: 'REF-CP0004', referralPercent: 2.5,
-    stats: { customers: 12, projects: 5, quotations: 18, users: 4 },
-  },
-  {
-    code: 'CP-0005', name: 'Suryodaya Systems', contact: 'Prakash Joshi',
-    phone: '+91 98123 45566', email: 'prakash@suryodayasys.com', gst: '27SURYD1122S1Z6',
-    address: 'Kothrud, Pune, Maharashtra 411038',
-    status: 'Active', createdDate: '2026-07-19',
-    referralCode: 'REF-CP0005', referralPercent: 3.5,
-    stats: { customers: 7, projects: 3, quotations: 11, users: 2 },
-  },
-  {
-    code: 'CP-0006', name: 'Bright Future Solar', contact: 'Manisha Kale',
-    phone: '+91 97665 43322', email: 'manisha@brightfuturesolar.in', gst: '27BRTFT3344B1Z9',
-    address: 'Hinjewadi, Pune, Maharashtra 411057',
-    status: 'Inactive', createdDate: '2025-01-27',
-    referralCode: 'REF-CP0006', referralPercent: 2,
-    stats: { customers: 21, projects: 9, quotations: 33, users: 3 },
-  },
-];
-
+function showToast(message) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast-animate bg-gray-800 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg';
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3200);
+}
 
 // ============================================================
-// Mock data — users (shared pool, filtered per-partner for
-// "View Team"; mirrors what User Management would provide,
-// scoped by channelPartner code)
+// Data + state
 // ============================================================
-const partnerUsers = [
-  { name: 'Rakesh Mehta', role: 'Channel Partner Admin', email: 'rakesh@sunrisesolar.in', phone: '+91 98765 43210', status: 'Active', channelPartner: 'CP-0001' },
-  { name: 'Divya Naik', role: 'Channel Partner Sales', email: 'divya@sunrisesolar.in', phone: '+91 98765 11223', status: 'Active', channelPartner: 'CP-0001' },
-  { name: 'Sameer Bhosale', role: 'Channel Partner Sales', email: 'sameer@sunrisesolar.in', phone: '+91 98765 33445', status: 'Active', channelPartner: 'CP-0001' },
-  { name: 'Sneha Kulkarni', role: 'Channel Partner Admin', email: 'sneha@greenlineenergy.com', phone: '+91 91234 56780', status: 'Active', channelPartner: 'CP-0002' },
-  { name: 'Yash Pawar', role: 'Channel Partner Sales', email: 'yash@greenlineenergy.com', phone: '+91 91234 99887', status: 'Active', channelPartner: 'CP-0002' },
-  { name: 'Amol Deshpande', role: 'Channel Partner Admin', email: 'amol@vasudharenew.in', phone: '+91 90876 54321', status: 'Inactive', channelPartner: 'CP-0003' },
-  { name: 'Nikita Rane', role: 'Channel Partner Admin', email: 'nikita@heliospower.co.in', phone: '+91 99887 76655', status: 'Active', channelPartner: 'CP-0004' },
-  { name: 'Rohit Gaikwad', role: 'Channel Partner Sales', email: 'rohit@heliospower.co.in', phone: '+91 99887 22110', status: 'Active', channelPartner: 'CP-0004' },
-  { name: 'Prakash Joshi', role: 'Channel Partner Admin', email: 'prakash@suryodayasys.com', phone: '+91 98123 45566', status: 'Active', channelPartner: 'CP-0005' },
-];
+let partners = [];
+let isLoading = true;
+let loadError = '';
+
+const sameId = (a, b) => String(a) === String(b);
+const findPartner = (id) => partners.find((p) => sameId(p.id, id));
+
+async function loadPartners() {
+  isLoading = true;
+  loadError = '';
+  renderTable();
+  try {
+    partners = await fetchAllPartners();
+  } catch (err) {
+    console.error('Failed to load channel partners:', err);
+    partners = [];
+    loadError = errorMessage(err, 'Could not load channel partners.');
+  } finally {
+    isLoading = false;
+  }
+  renderKpis();
+  renderNotifications();
+  renderTable();
+}
+
+/** Reload quietly after a change (no loading flash). */
+async function refreshPartners() {
+  try {
+    partners = await fetchAllPartners();
+    loadError = '';
+  } catch (err) {
+    showToast(errorMessage(err, 'Saved, but the list could not be refreshed.'));
+    return false;
+  }
+  renderKpis();
+  renderNotifications();
+  renderTable();
+  return true;
+}
 
 // ============================================================
 // KPI calculations
@@ -218,26 +298,25 @@ function currentMonthKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// ---- Referral numbers come from the backend (see referral.js) ----
-// Per-partner totals of the rows currently on screen, filled by loadReferralTotals().
-const referralTotals = {};   // partnerId -> { totalReferrals, totalEarned, pendingPayout, paidAmount }
+function formatINR(n) {
+  return '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
+}
+
+// Per-partner referral totals of the rows currently on screen (partnerId -> totals)
+const referralTotals = {};
 
 async function loadReferralTotals(rows) {
   try {
-    const ids = (await Promise.all(rows.map((p) => Referral.partnerId(p)))).filter((x) => x != null);
+    const ids = rows.map((p) => p.id).filter((x) => x != null);
     Object.assign(referralTotals, await Referral.partnerTotals(ids));
     for (const p of rows) {
-      const id = await Referral.partnerId(p);
-      const cell = document.querySelector(`[data-ref-income="${p.code}"]`);
-      if (cell && id != null) cell.textContent = formatINR(referralTotals[id]?.totalEarned ?? 0);
+      const cell = document.querySelector(`[data-ref-income="${p.id}"]`);
+      if (cell) cell.textContent = formatINR(referralTotals[p.id]?.totalEarned ?? 0);
     }
   } catch (e) {
-    showToast(e.message || 'Could not load referral income');
+    document.querySelectorAll('[data-ref-income]').forEach((c) => { if (c.textContent === '…') c.textContent = '—'; });
+    showToast(errorMessage(e, 'Could not load referral income'));
   }
-}
-
-function formatINR(n) {
-  return '₹' + Math.round(n).toLocaleString('en-IN');
 }
 
 async function loadReferralPayoutKpi() {
@@ -248,18 +327,30 @@ async function loadReferralPayoutKpi() {
 }
 
 function renderKpis() {
-  const total = partners.length;
-  const active = partners.filter((p) => p.status === 'Active').length;
-  const inactive = partners.filter((p) => p.status === 'Inactive').length;
   const monthKey = currentMonthKey();
-  const newThisMonth = partners.filter((p) => p.createdDate.startsWith(monthKey)).length;
-
-  document.getElementById('kpiTotalPartners').textContent = total;
-  document.getElementById('kpiActivePartners').textContent = active;
-  document.getElementById('kpiInactivePartners').textContent = inactive;
-  document.getElementById('kpiNewThisMonth').textContent = newThisMonth;
-
+  document.getElementById('kpiTotalPartners').textContent = partners.length;
+  document.getElementById('kpiActivePartners').textContent = partners.filter((p) => p.status === 'Active').length;
+  document.getElementById('kpiInactivePartners').textContent = partners.filter((p) => p.status === 'Inactive').length;
+  document.getElementById('kpiNewThisMonth').textContent = partners.filter((p) => p.createdDate.startsWith(monthKey)).length;
   loadReferralPayoutKpi();
+}
+
+/** Bell dropdown built from real partner data. */
+function renderNotifications() {
+  const list = document.getElementById('notifList');
+  const dot = document.getElementById('notifDot');
+  if (!list) return;
+  const items = [];
+  [...partners].sort((a, b) => b.createdDate.localeCompare(a.createdDate)).slice(0, 3).forEach((p) => {
+    items.push({ text: `Channel partner "${p.name}" onboarded`, sub: `${p.code} · ${formatDateDisplay(p.createdDate)}` });
+  });
+  partners.filter((p) => p.status === 'Inactive').slice(0, 3).forEach((p) => {
+    items.push({ text: `${p.code} is inactive`, sub: p.name });
+  });
+  dot?.classList.toggle('hidden', items.length === 0);
+  list.innerHTML = items.length
+    ? items.map((i) => `<div class="topbar-notif-item"><p>${escapeHtml(i.text)}</p><span>${escapeHtml(i.sub)}</span></div>`).join('')
+    : '<div class="topbar-notif-item"><p style="color:#9CA3AF;font-weight:400">No notifications</p></div>';
 }
 
 // ============================================================
@@ -282,21 +373,21 @@ const statusFilterSelect = document.getElementById('partnerStatusFilter');
 function filteredSortedPartners() {
   let list = [...partners];
 
-  if (statusFilter !== 'all') {
-    list = list.filter((p) => p.status === statusFilter);
-  }
+  if (statusFilter !== 'all') list = list.filter((p) => p.status === statusFilter);
   if (searchTerm.trim()) {
     const term = searchTerm.trim().toLowerCase();
-    list = list.filter((p) => p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term));
+    list = list.filter((p) =>
+      p.name.toLowerCase().includes(term) ||
+      p.code.toLowerCase().includes(term) ||
+      p.email.toLowerCase().includes(term));
   }
 
-  // Sort by the clicked column (this comparator was empty before, so sorting did nothing)
   list.sort((a, b) => {
     let av = a[sortKey];
     let bv = b[sortKey];
     if (sortKey === 'createdDate') {
-      av = new Date(av).getTime();
-      bv = new Date(bv).getTime();
+      av = new Date(av).getTime() || 0;
+      bv = new Date(bv).getTime() || 0;
     } else {
       av = String(av ?? '').toLowerCase();
       bv = String(bv ?? '').toLowerCase();
@@ -320,25 +411,43 @@ const ICONS = {
 };
 
 function actionIconsHtml(p) {
-  const statusIcon = p.status === 'Active' ? ICONS.deactivate : ICONS.activate;
-  const toggleClass = p.status === 'Active' ? 'icon-deactivate' : 'icon-activate';
-  const toggleTitle = p.status === 'Active' ? 'Deactivate' : 'Activate';
-  const toggleAction = p.status === 'Active' ? 'deactivate' : 'activate';
+  const active = p.status === 'Active';
   return `
     <div class="row-actions">
-      <button class="action-icon-btn icon-view" data-action="view" data-code="${p.code}" title="View">${ICONS.view}</button>
-      <button class="action-icon-btn icon-edit" data-action="edit" data-code="${p.code}" title="Edit">${ICONS.edit}</button>
-      <button class="action-icon-btn icon-team" data-action="team" data-code="${p.code}" title="View Team">${ICONS.team}</button>
-      <button class="action-icon-btn ${toggleClass}" data-action="${toggleAction}" data-code="${p.code}" title="${toggleTitle}">${statusIcon}</button>
+      <button class="action-icon-btn icon-view" data-action="view" data-id="${escapeHtml(p.id)}" title="View">${ICONS.view}</button>
+      <button class="action-icon-btn icon-edit" data-action="edit" data-id="${escapeHtml(p.id)}" title="Edit">${ICONS.edit}</button>
+      <button class="action-icon-btn icon-team" data-action="team" data-id="${escapeHtml(p.id)}" title="View Team">${ICONS.team}</button>
+      <button class="action-icon-btn ${active ? 'icon-deactivate' : 'icon-activate'}" data-action="${active ? 'deactivate' : 'activate'}" data-id="${escapeHtml(p.id)}" title="${active ? 'Deactivate' : 'Activate'}">${active ? ICONS.deactivate : ICONS.activate}</button>
     </div>`;
 }
 
 function formatDateDisplay(iso) {
+  if (!iso) return '—';
   const d = new Date(iso);
+  if (isNaN(d)) return escapeHtml(String(iso));
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function stateRow(html) {
+  return `<tr class="table-state-row"><td class="table-state-cell" colspan="10">${html}</td></tr>`;
+}
+
 function renderTable() {
+  // loading / error states
+  if (isLoading) {
+    pTbody.innerHTML = stateRow('<span class="spinner"></span>Loading channel partners…');
+    rowsRangeLabel.textContent = '';
+    paginationControls.innerHTML = '';
+    return;
+  }
+  if (loadError) {
+    pTbody.innerHTML = stateRow(`${escapeHtml(loadError)}<br><button type="button" class="btn-primary" id="retryLoadBtn">Retry</button>`);
+    document.getElementById('retryLoadBtn')?.addEventListener('click', loadPartners);
+    rowsRangeLabel.textContent = '';
+    paginationControls.innerHTML = '';
+    return;
+  }
+
   const data = filteredSortedPartners();
   const totalRows = data.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
@@ -347,22 +456,25 @@ function renderTable() {
   const start = (currentPage - 1) * rowsPerPage;
   const pageRows = data.slice(start, start + rowsPerPage);
 
-  pTbody.innerHTML = pageRows.map((p) => `
-    <tr data-code="${p.code}">
-      <td data-label="Partner Code"><span class="partner-code-badge">${p.code}</span></td>
-      <td data-label="Partner Name" class="font-medium">${p.name}</td>
-      <td data-label="Contact Person">${p.contact}</td>
-      <td data-label="Phone">${p.phone}</td>
-      <td data-label="Email">${p.email}</td>
-      <td data-label="GST Number">${p.gst}</td>
-      <td data-label="Status"><span class="pill ${tableStatusPillClass[p.status]}">${p.status}</span></td>
-      <td data-label="Created Date">${formatDateDisplay(p.createdDate)}</td>
-      <td data-label="Referral Income (Total)" data-ref-income="${p.code}">…</td>
-      <td data-label="Actions">${actionIconsHtml(p)}</td>
-    </tr>
-  `).join('');
-
-  loadReferralTotals(pageRows);
+  if (pageRows.length === 0) {
+    pTbody.innerHTML = stateRow(partners.length ? 'No channel partners match your search or filter.' : 'No channel partners yet. Click “Add Channel Partner” to onboard one.');
+  } else {
+    pTbody.innerHTML = pageRows.map((p) => `
+      <tr data-id="${escapeHtml(p.id)}">
+        <td data-label="Partner Code"><span class="partner-code-badge">${escapeHtml(p.code)}</span></td>
+        <td data-label="Partner Name" class="font-medium">${escapeHtml(p.name)}</td>
+        <td data-label="Contact Person">${escapeHtml(p.contact || '—')}</td>
+        <td data-label="Phone">${escapeHtml(p.phone || '—')}</td>
+        <td data-label="Email">${escapeHtml(p.email)}</td>
+        <td data-label="GST Number">${escapeHtml(p.gst || '—')}</td>
+        <td data-label="Status"><span class="pill ${tableStatusPillClass[p.status] || 'pill-rejected'}">${escapeHtml(p.status)}</span></td>
+        <td data-label="Created Date">${formatDateDisplay(p.createdDate)}</td>
+        <td data-label="Referral Income (Total)" data-ref-income="${escapeHtml(p.id)}">…</td>
+        <td data-label="Actions">${actionIconsHtml(p)}</td>
+      </tr>
+    `).join('');
+    loadReferralTotals(pageRows);
+  }
 
   rowsRangeLabel.textContent = totalRows === 0
     ? 'No records'
@@ -438,7 +550,7 @@ statusFilterSelect?.addEventListener('change', (e) => {
 });
 
 // ============================================================
-// Add / Edit Channel Partner modal
+// Add / Edit Channel Partner modal  (POST / PUT)
 // ============================================================
 const partnerFormModal = document.getElementById('partnerFormModal');
 const partnerFormTitle = document.getElementById('partnerFormTitle');
@@ -454,54 +566,49 @@ const fldEmail = document.getElementById('fldEmail');
 const fldGst = document.getElementById('fldGst');
 const fldStatus = document.getElementById('fldStatus');
 const fldAddress = document.getElementById('fldAddress');
+const fldAdminGroup = document.getElementById('fldAdminGroup');
+const fldAdminUsername = document.getElementById('fldAdminUsername');
 const pfReferralCode = document.getElementById('pf-referralCode');
 const pfReferralPercent = document.getElementById('pf-referralPercent');
-const pfGenerateCodeBtn = document.getElementById('pf-generateCodeBtn');
 
 let formMode = 'add'; // 'add' | 'edit'
-let editingCode = null;
+let editingId = null;
+
+function clearFormErrors() {
+  document.querySelectorAll('#partnerForm .field-input').forEach((f) => f.classList.remove('invalid'));
+  document.querySelectorAll('#partnerForm .field-error').forEach((e) => { e.textContent = ''; });
+}
+
+function setFieldError(fieldEl, message) {
+  fieldEl.classList.add('invalid');
+  const err = document.getElementById('err-' + fieldEl.id);
+  if (err) err.textContent = message;
+}
 
 function resetForm() {
-  fldPartnerName.value = '';
-  fldContactPerson.value = '';
-  fldPhone.value = '';
-  fldEmail.value = '';
-  fldGst.value = '';
+  [fldPartnerName, fldContactPerson, fldPhone, fldEmail, fldGst, fldAddress,
+    fldAdminUsername, pfReferralCode, pfReferralPercent].forEach((f) => { f.value = ''; });
   fldStatus.value = 'Active';
-  fldAddress.value = '';
-  pfReferralCode.value = '';
-  pfReferralPercent.value = '';
+  clearFormErrors();
 }
-
-// Client-side placeholder generator — mirrors the pattern used for
-// real codes (REF-CP####) once the partner has an assigned code.
-// While adding a brand-new partner (code not yet assigned) it uses
-// the next available partner number so the code is ready ahead of save.
-function generateReferralCode() {
-  const targetCode = formMode === 'edit' ? editingCode : nextPartnerCode();
-  const digits = targetCode.replace(/\D/g, '');
-  return `REF-CP${digits}`;
-}
-
-pfGenerateCodeBtn?.addEventListener('click', () => {
-  pfReferralCode.value = generateReferralCode();
-});
 
 function openAddModal() {
   formMode = 'add';
-  editingCode = null;
+  editingId = null;
   resetForm();
+  fldAdminGroup.classList.remove('hidden');
   partnerFormTitle.textContent = 'Add Channel Partner';
   partnerFormSubtitle.textContent = 'New partner';
   partnerFormSaveBtn.textContent = 'Save partner';
   partnerFormModal.classList.remove('hidden');
 }
 
-function openEditModal(code) {
-  const p = partners.find((x) => x.code === code);
+function openEditModal(id) {
+  const p = findPartner(id);
   if (!p) return;
   formMode = 'edit';
-  editingCode = code;
+  editingId = p.id;
+  resetForm();
   fldPartnerName.value = p.name;
   fldContactPerson.value = p.contact;
   fldPhone.value = p.phone;
@@ -510,7 +617,8 @@ function openEditModal(code) {
   fldStatus.value = p.status;
   fldAddress.value = p.address;
   pfReferralCode.value = p.referralCode || '';
-  pfReferralPercent.value = (p.referralPercent ?? '') === '' ? '' : p.referralPercent;
+  pfReferralPercent.value = p.referralPercent ?? '';
+  fldAdminGroup.classList.add('hidden');             // admin user is only created together with the partner
   partnerFormTitle.textContent = 'Edit Channel Partner';
   partnerFormSubtitle.textContent = `${p.code} · ${p.name}`;
   partnerFormSaveBtn.textContent = 'Save changes';
@@ -526,93 +634,171 @@ partnerFormCloseBtn?.addEventListener('click', closePartnerFormModal);
 partnerFormCancelBtn?.addEventListener('click', closePartnerFormModal);
 partnerFormModal?.addEventListener('click', (e) => { if (e.target === partnerFormModal) closePartnerFormModal(); });
 
-function nextPartnerCode() {
-  const maxNum = partners.reduce((max, p) => {
-    const n = parseInt(p.code.replace(/\D/g, ''), 10);
-    return isNaN(n) ? max : Math.max(max, n);
-  }, 0);
-  return `CP-${String(maxNum + 1).padStart(4, '0')}`;
+// same rules as ChannelPartnerRequestDto
+const GST_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_RE = /^[A-Za-z0-9._-]{3,60}$/;
+
+function validatePartnerForm() {
+  clearFormErrors();
+  let ok = true;
+
+  if (!fldPartnerName.value.trim()) { setFieldError(fldPartnerName, 'Partner name is required'); ok = false; }
+  const email = fldEmail.value.trim();
+  if (!email) { setFieldError(fldEmail, 'Email is required'); ok = false; }
+  else if (!EMAIL_RE.test(email)) { setFieldError(fldEmail, 'Email is not valid'); ok = false; }
+
+  const gst = fldGst.value.trim().toUpperCase();
+  if (gst && !GST_RE.test(gst)) { setFieldError(fldGst, 'GST number is not valid (e.g. 27ABCDE1234F1Z5)'); ok = false; }
+
+  if (pfReferralPercent.value !== '') {
+    const pct = Number(pfReferralPercent.value);
+    if (isNaN(pct) || pct < 0 || pct > 100) { setFieldError(pfReferralPercent, 'Referral % must be between 0 and 100'); ok = false; }
+  }
+
+  if (formMode === 'add' && !USERNAME_RE.test(fldAdminUsername.value.trim())) {
+    setFieldError(fldAdminUsername, 'Username: 3–60 characters, letters, digits, dot, underscore or hyphen');
+    ok = false;
+  }
+  return ok;
 }
 
-partnerFormSaveBtn?.addEventListener('click', () => {
-  const name = fldPartnerName.value.trim();
+function buildPayload() {
   const contact = fldContactPerson.value.trim();
-  const phone = fldPhone.value.trim();
-  const email = fldEmail.value.trim();
-  const gst = fldGst.value.trim();
-  const status = fldStatus.value;
-  const address = fldAddress.value.trim();
-  const referralCode = pfReferralCode.value.trim();
-  const referralPercentRaw = pfReferralPercent.value;
-  const referralPercent = referralPercentRaw === '' ? 0 : parseFloat(referralPercentRaw);
+  const payload = {
+    name: fldPartnerName.value.trim(),
+    contactPerson: contact || null,
+    phone: fldPhone.value.trim() || null,
+    email: fldEmail.value.trim(),
+    gstNo: fldGst.value.trim().toUpperCase() || null,
+    address: fldAddress.value.trim() || null,
+    referralPercent: pfReferralPercent.value === '' ? 0 : Number(pfReferralPercent.value),
+    status: String(fldStatus.value).toUpperCase(),          // ACTIVE | INACTIVE
+  };
+  if (formMode === 'add') {
+    payload.adminUser = {
+      name: contact || payload.name,
+      email: payload.email,
+      username: fldAdminUsername.value.trim(),
+      phone: payload.phone,
+    };
+  }
+  return payload;
+}
 
-  if (!name || !contact || !phone || !email) {
-    showToast('Please fill in partner name, contact person, phone and email');
+partnerFormSaveBtn?.addEventListener('click', (e) => {
+  if (!validatePartnerForm()) {
+    showToast('Please correct the highlighted fields');
     return;
   }
+  const isEdit = formMode === 'edit';
+  const payload = buildPayload();
 
-  if (formMode === 'add') {
-    const code = nextPartnerCode();
-    const newPartner = {
-      code,
-      name, contact, phone, email, gst, address, status,
-      referralCode: referralCode || `REF-${code.replace('-', '')}`,
-      referralPercent,
-      createdDate: new Date().toISOString().slice(0, 10),
-      stats: { customers: 0, projects: 0, quotations: 0, users: 0 },
-    };
-    partners.unshift(newPartner);
-    showToast(`Channel partner ${newPartner.code} added`);
-  } else {
-    const p = partners.find((x) => x.code === editingCode);
-    if (p) {
-      p.name = name; p.contact = contact; p.phone = phone;
-      p.email = email; p.gst = gst; p.address = address; p.status = status;
-      p.referralCode = referralCode || p.referralCode;
-      p.referralPercent = referralPercent;
-      showToast(`Saved changes to ${p.code}`);
+  withBusy(e.currentTarget, async () => {
+    let saved;
+    try {
+      saved = isEdit
+        ? await call(ENDPOINTS.one(editingId), 'PUT', payload)
+        : await call(ENDPOINTS.list, 'POST', payload);
+    } catch (err) {
+      console.error('Save channel partner failed:', err);
+      showToast(errorMessage(err, 'Could not save the channel partner'));
+      return;
     }
-  }
 
-  sortKey = 'createdDate'; sortDir = 'desc'; currentPage = 1;
-  renderKpis();
-  renderTable();
-  closePartnerFormModal();
+    closePartnerFormModal();
+    if (isEdit) {
+      showToast(`Saved changes to ${saved?.code || 'channel partner'}`);
+    } else {
+      showToast(`Channel partner ${saved?.code || ''} added`);
+      showCredentials(saved);
+    }
+    sortKey = 'createdDate'; sortDir = 'desc'; currentPage = 1;
+    await refreshPartners();
+  });
 });
 
 // ============================================================
-// View Channel Partner modal (stats)
+// Credentials of the new admin user (shown once after create)
+// ============================================================
+const credModal = document.getElementById('credModal');
+let credText = '';
+
+function showCredentials(saved) {
+  if (!saved) return;
+  const admin = saved.adminUser || {};
+  document.getElementById('credSubtitle').textContent = `${saved.code || ''} · ${saved.name || ''}`;
+  document.getElementById('credUsername').textContent = admin.username || '—';
+  document.getElementById('credReferral').textContent = saved.referralCode || '—';
+  const pwRow = document.getElementById('credPasswordRow');
+  if (admin.temporaryPassword) {
+    document.getElementById('credPassword').textContent = admin.temporaryPassword;
+    pwRow.style.display = '';
+  } else {
+    pwRow.style.display = 'none';
+  }
+  credText = `Username: ${admin.username || ''}` +
+    (admin.temporaryPassword ? `\nTemporary password: ${admin.temporaryPassword}` : '') +
+    `\nPartner code: ${saved.code || ''}`;
+  credModal.classList.remove('hidden');
+}
+
+function closeCredModal() { credModal.classList.add('hidden'); credText = ''; document.getElementById('credPassword').textContent = '—'; }
+document.getElementById('credCloseBtn')?.addEventListener('click', closeCredModal);
+document.getElementById('credCloseBtn2')?.addEventListener('click', closeCredModal);
+document.getElementById('credCopyBtn')?.addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(credText); showToast('Login details copied'); }
+  catch (_) { showToast('Could not copy — please select and copy manually'); }
+});
+
+// ============================================================
+// View Channel Partner modal (stats + referral activity)
 // ============================================================
 const partnerViewModal = document.getElementById('partnerViewModal');
 const partnerViewTitle = document.getElementById('partnerViewTitle');
 const partnerViewSubtitle = document.getElementById('partnerViewSubtitle');
 
-let viewingCode = null;
+let viewingId = null;
 
-function openViewModal(code) {
-  const p = partners.find((x) => x.code === code);
+async function openViewModal(id) {
+  const p = findPartner(id);
   if (!p) return;
-  viewingCode = code;
+  viewingId = p.id;
 
   partnerViewTitle.textContent = p.name;
   partnerViewSubtitle.textContent = `${p.code} · ${p.status}`;
-  document.getElementById('pvContact').textContent = p.contact;
-  document.getElementById('pvPhone').textContent = p.phone;
-  document.getElementById('pvEmail').textContent = p.email;
+  document.getElementById('pvContact').textContent = p.contact || '—';
+  document.getElementById('pvPhone').textContent = p.phone || '—';
+  document.getElementById('pvEmail').textContent = p.email || '—';
   document.getElementById('pvGst').textContent = p.gst || '—';
   document.getElementById('pvAddress').textContent = p.address || '—';
+  document.getElementById('pvReferralCode').textContent = p.referralCode || '—';
+  document.getElementById('pvReferralPercent').textContent = `${p.referralPercent}%`;
 
-  document.getElementById('pvStatCustomers').textContent = p.stats.customers;
-  document.getElementById('pvStatProjects').textContent = p.stats.projects;
-  document.getElementById('pvStatQuotations').textContent = p.stats.quotations;
-  document.getElementById('pvStatUsers').textContent = p.stats.users;
-
+  setStatCards(p.stats);                 // instant numbers from the list…
+  partnerViewModal.classList.remove('hidden');
   renderReferralActivity(p);
 
-  partnerViewModal.classList.remove('hidden');
+  try {                                  // …then the fresh ones from the stats endpoint
+    const s = await call(ENDPOINTS.stats(p.id));
+    if (!sameId(viewingId, p.id)) return;
+    setStatCards({
+      customers: num(s.customers, 0), projects: num(s.projects, 0),
+      quotations: num(s.quotations, 0), users: num(s.users, 0),
+    });
+  } catch (err) {
+    showToast(errorMessage(err, 'Could not load partner statistics'));
+  }
 }
 
-// ---- Referral Activity: KPI mini-cards + table for the currently viewed partner (API) ----
+function setStatCards(s) {
+  document.getElementById('pvStatCustomers').textContent = s.customers;
+  document.getElementById('pvStatProjects').textContent = s.projects;
+  document.getElementById('pvStatQuotations').textContent = s.quotations;
+  document.getElementById('pvStatUsers').textContent = s.users;
+}
+
+// ---- Referral Activity: KPI mini-cards + table for the viewed partner (API via referral.js) ----
 let viewedReferrals = [];
 
 async function renderReferralActivity(p) {
@@ -627,11 +813,9 @@ async function renderReferralActivity(p) {
   tbody.innerHTML = '';
 
   try {
-    const id = await Referral.partnerId(p);
-    if (id == null) throw new Error('Partner not found');
-    const [sum, page] = await Promise.all([Referral.summary(id), Referral.list(id)]);
-    if (viewingCode !== p.code) return;                       // the modal moved on to another partner
-    viewedReferrals = page.content;
+    const [sum, page] = await Promise.all([Referral.summary(p.id), Referral.list(p.id)]);
+    if (!sameId(viewingId, p.id)) return;                       // modal moved on to another partner
+    viewedReferrals = page.content || [];
 
     document.getElementById('pvRefTotalReferrals').textContent = sum.totalReferrals;
     document.getElementById('pvRefTotalIncome').textContent = formatINR(sum.totalEarned);
@@ -648,28 +832,31 @@ async function renderReferralActivity(p) {
 
     tbody.innerHTML = viewedReferrals.map((r) => {
       const actionCell = isSuperAdmin
-        ? `<button type="button" class="btn-mark-paid" data-referral-id="${r.id}" ${r.status === 'APPROVED' ? '' : 'disabled'}>${r.status === 'PAID' ? 'Paid' : 'Mark as Paid'}</button>`
+        ? `<button type="button" class="btn-mark-paid" data-referral-id="${escapeHtml(r.id)}" ${r.status === 'APPROVED' ? '' : 'disabled'}>${r.status === 'PAID' ? 'Paid' : 'Mark as Paid'}</button>`
         : '';
       return `
       <tr>
-        <td data-label="Quotation No" class="font-medium">${r.quotation.code}</td>
-        <td data-label="Referred Customer">${r.referredCustomer ? r.referredCustomer.name : '—'}</td>
+        <td data-label="Quotation No" class="font-medium">${escapeHtml(r.quotation && r.quotation.code)}</td>
+        <td data-label="Referred Customer">${escapeHtml(r.referredCustomer ? r.referredCustomer.name : '—')}</td>
         <td data-label="Quotation Amount">${formatINR(r.quotationAmount)}</td>
-        <td data-label="Referral %">${r.referralPercent}%</td>
+        <td data-label="Referral %">${escapeHtml(r.referralPercent)}%</td>
         <td data-label="Referral Amount">${formatINR(r.referralAmount)}</td>
-        <td data-label="Status"><span class="pill ${Referral.STATUS_PILL[r.status]}">${Referral.STATUS_LABEL[r.status]}</span></td>
+        <td data-label="Status"><span class="pill ${Referral.STATUS_PILL[r.status] || ''}">${escapeHtml(Referral.STATUS_LABEL[r.status] || r.status)}</span></td>
         <td data-label="Date">${formatDateDisplay(r.paidOn || r.quoteDate)}</td>
         <td data-label="Action" data-role="SUPER_ADMIN">${actionCell}</td>
       </tr>`;
     }).join('');
   } catch (e) {
     tableWrap.classList.add('hidden');
-    emptyState.textContent = e.message || 'Could not load referrals';
+    document.getElementById('pvRefTotalReferrals').textContent = '—';
+    document.getElementById('pvRefTotalIncome').textContent = '—';
+    document.getElementById('pvRefPendingPayout').textContent = '—';
+    emptyState.textContent = errorMessage(e, 'Could not load referrals');
     emptyState.classList.remove('hidden');
   }
 }
 
-// ---- Mark as paid (Super Admin): small form, then PATCH /api/referrals/{id}/mark-paid ----
+// ---- Mark as paid (Super Admin): PATCH /api/referrals/{id}/mark-paid ----
 const markPaidModal = document.getElementById('markPaidModal');
 let markPaidTarget = null;
 
@@ -679,9 +866,10 @@ document.getElementById('referralActivityTbody')?.addEventListener('click', (e) 
   const r = viewedReferrals.find((x) => String(x.id) === btn.getAttribute('data-referral-id'));
   if (!r) return;
   markPaidTarget = r;
-  document.getElementById('mpTitle').textContent = `${r.quotation.code} · ${formatINR(r.referralAmount)} to ${r.referrer.name}`;
-  document.getElementById('mpPaidOn').value = new Date().toISOString().slice(0, 10);
-  document.getElementById('mpPaidOn').max = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('mpTitle').textContent = `${r.quotation.code} · ${formatINR(r.referralAmount)} to ${r.referrer ? r.referrer.name : 'partner'}`;
+  document.getElementById('mpPaidOn').value = today;
+  document.getElementById('mpPaidOn').max = today;
   document.getElementById('mpMode').value = 'BANK_TRANSFER';
   document.getElementById('mpReference').value = '';
   document.getElementById('mpRemarks').value = '';
@@ -712,13 +900,12 @@ document.getElementById('mpConfirmBtn')?.addEventListener('click', async () => {
     });
     const code = markPaidTarget.quotation.code;
     closeMarkPaidModal();
-    const p = partners.find((x) => x.code === viewingCode);
-    if (p) renderReferralActivity(p);
+    const p = findPartner(viewingId);
+    if (p) { renderReferralActivity(p); loadReferralTotals([p]); }
     loadReferralPayoutKpi();
-    loadReferralTotals(partners.filter((x) => x.code === viewingCode));
     showToast(`${code} referral marked as paid`);
   } catch (e2) {
-    err.textContent = e2.message || 'Could not mark as paid';
+    err.textContent = errorMessage(e2, 'Could not mark as paid');
   } finally {
     btn.disabled = false;
   }
@@ -733,11 +920,11 @@ document.getElementById('partnerViewCloseBtn2')?.addEventListener('click', close
 partnerViewModal?.addEventListener('click', (e) => { if (e.target === partnerViewModal) closePartnerViewModal(); });
 
 document.getElementById('pvViewTeamBtn')?.addEventListener('click', () => {
-  if (viewingCode) openTeamModal(viewingCode);
+  if (viewingId != null) openTeamModal(viewingId);
 });
 
 // ============================================================
-// View Team modal (mini user table, filtered by partner code)
+// View Team modal  (GET /api/channel-partners/{id}/users)
 // ============================================================
 const teamModal = document.getElementById('teamModal');
 const teamModalTitle = document.getElementById('teamModalTitle');
@@ -746,37 +933,55 @@ const teamEmptyState = document.getElementById('teamEmptyState');
 const teamTable = document.getElementById('teamTable');
 
 const teamStatusPillClass = { Active: 'pill-accepted', Inactive: 'pill-rejected' };
+let teamRequestFor = null;
 
-function openTeamModal(code) {
-  const p = partners.find((x) => x.code === code);
+async function openTeamModal(id) {
+  const p = findPartner(id);
   if (!p) return;
+  teamRequestFor = p.id;
 
   teamModalTitle.textContent = `Team — ${p.code} · ${p.name}`;
+  teamTable.classList.remove('hidden');
+  teamEmptyState.classList.add('hidden');
+  teamTbody.innerHTML = '<tr><td colspan="5" class="table-state-cell"><span class="spinner"></span>Loading team…</td></tr>';
+  teamModal.classList.remove('hidden');
 
-  const users = partnerUsers.filter((u) => u.channelPartner === code);
+  let users;
+  try {
+    users = toArray(await call(ENDPOINTS.users(p.id)));
+  } catch (err) {
+    if (!sameId(teamRequestFor, p.id)) return;
+    teamTable.classList.add('hidden');
+    teamEmptyState.textContent = errorMessage(err, 'Could not load the team.');
+    teamEmptyState.classList.remove('hidden');
+    return;
+  }
+  if (!sameId(teamRequestFor, p.id)) return;
 
   if (users.length === 0) {
     teamTable.classList.add('hidden');
+    teamEmptyState.textContent = 'No users found for this channel partner yet.';
     teamEmptyState.classList.remove('hidden');
-  } else {
-    teamTable.classList.remove('hidden');
-    teamEmptyState.classList.add('hidden');
-    teamTbody.innerHTML = users.map((u) => `
-      <tr>
-        <td data-label="Name" class="font-medium">${u.name}</td>
-        <td data-label="Role">${u.role}</td>
-        <td data-label="Email">${u.email}</td>
-        <td data-label="Phone">${u.phone}</td>
-        <td data-label="Status"><span class="pill ${teamStatusPillClass[u.status]}">${u.status}</span></td>
-      </tr>
-    `).join('');
+    return;
   }
-
-  teamModal.classList.remove('hidden');
+  teamTable.classList.remove('hidden');
+  teamEmptyState.classList.add('hidden');
+  teamTbody.innerHTML = users.map((u) => {
+    const st = uiStatus(u.status);
+    return `
+      <tr>
+        <td data-label="Name" class="font-medium">${escapeHtml(u.name)}</td>
+        <td data-label="Role">${escapeHtml(u.role ? u.role.name : '—')}</td>
+        <td data-label="Email">${escapeHtml(u.email || '—')}</td>
+        <td data-label="Phone">${escapeHtml(u.phone || '—')}</td>
+        <td data-label="Status"><span class="pill ${teamStatusPillClass[st] || 'pill-rejected'}">${escapeHtml(st)}</span></td>
+      </tr>`;
+  }).join('');
 }
 
 function closeTeamModal() {
   teamModal.classList.add('hidden');
+  teamRequestFor = null;
 }
 
 document.getElementById('teamModalCloseBtn')?.addEventListener('click', closeTeamModal);
@@ -784,32 +989,37 @@ document.getElementById('teamModalCloseBtn2')?.addEventListener('click', closeTe
 teamModal?.addEventListener('click', (e) => { if (e.target === teamModal) closeTeamModal(); });
 
 // ============================================================
-// Row action wiring: view / edit / view team / activate-deactivate
+// Row actions: view / edit / team / activate-deactivate
 // ============================================================
 pTbody?.addEventListener('click', (e) => {
   const actionBtn = e.target.closest('[data-action]');
   if (actionBtn) {
     e.stopPropagation();
-    const code = actionBtn.getAttribute('data-code');
+    const id = actionBtn.getAttribute('data-id');
     const action = actionBtn.getAttribute('data-action');
-    if (action === 'view') openViewModal(code);
-    else if (action === 'edit') openEditModal(code);
-    else if (action === 'team') openTeamModal(code);
-    else if (action === 'deactivate') setPartnerStatus(code, 'Inactive');
-    else if (action === 'activate') setPartnerStatus(code, 'Active');
+    if (action === 'view') openViewModal(id);
+    else if (action === 'edit') openEditModal(id);
+    else if (action === 'team') openTeamModal(id);
+    else if (action === 'deactivate') setPartnerStatus(id, 'Inactive', actionBtn);
+    else if (action === 'activate') setPartnerStatus(id, 'Active', actionBtn);
     return;
   }
-  const row = e.target.closest('tr[data-code]');
-  if (row) openViewModal(row.getAttribute('data-code'));
+  const row = e.target.closest('tr[data-id]');
+  if (row) openViewModal(row.getAttribute('data-id'));
 });
 
-function setPartnerStatus(code, status) {
-  const p = partners.find((x) => x.code === code);
-  if (!p) return;
-  p.status = status;
-  renderKpis();
-  renderTable();
-  showToast(`${p.code} marked ${status}`);
+async function setPartnerStatus(id, status, btn) {
+  const p = findPartner(id);
+  if (!p || (btn && btn.disabled)) return;
+  if (btn) btn.disabled = true;
+  try {
+    await call(ENDPOINTS.status(p.id), 'PATCH', { status: status.toUpperCase() });
+    showToast(`${p.code} marked ${status}`);
+    await refreshPartners();
+  } catch (err) {
+    showToast(errorMessage(err, 'Could not change the status'));
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ============================================================
@@ -817,29 +1027,15 @@ function setPartnerStatus(code, status) {
 // ============================================================
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (!markPaidModal.classList.contains('hidden')) closeMarkPaidModal();
+  if (!credModal.classList.contains('hidden')) closeCredModal();
+  else if (!markPaidModal.classList.contains('hidden')) closeMarkPaidModal();
   else if (!teamModal.classList.contains('hidden')) closeTeamModal();
   else if (!partnerViewModal.classList.contains('hidden')) closePartnerViewModal();
   else if (!partnerFormModal.classList.contains('hidden')) closePartnerFormModal();
 });
 
-/* ---------------- Toast helper ---------------- */
-function showToast(message) {
-  const container = document.getElementById('toast-container');
-  if (!container) return;
-  const toast = document.createElement('div');
-  toast.className = 'toast-animate bg-gray-800 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg';
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 2500);
-}
-
-/* ---------------- Init ---------------- */
-renderKpis();
-renderTable();
-
 // ============================================================
-// Topbar: notification + profile dropdowns (same as dashboard.js)
+// Topbar: notification + profile dropdowns
 // ============================================================
 const notifBtn = document.getElementById('notifBtn');
 const notifDropdown = document.getElementById('notifDropdown');
@@ -847,10 +1043,8 @@ const profileBtn = document.getElementById('profileBtn');
 const profileDropdown = document.getElementById('profileDropdown');
 const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
-function closeAllTopbarDropdowns(except) {
-  [notifDropdown, profileDropdown].forEach((dd) => {
-    if (dd && dd !== except) dd.classList.add('hidden');
-  });
+function closeAllTopbarDropdowns() {
+  [notifDropdown, profileDropdown].forEach((dd) => dd && dd.classList.add('hidden'));
 }
 
 notifBtn?.addEventListener('click', (e) => {
@@ -868,8 +1062,9 @@ profileBtn?.addEventListener('click', (e) => {
 });
 
 document.addEventListener('click', () => closeAllTopbarDropdowns());
+profileLogoutBtn?.addEventListener('click', logoutUser);
 
 // ============================================================
-// Logout — clears session and redirects to index.html
+// Init
 // ============================================================
-profileLogoutBtn?.addEventListener('click', logoutUser);
+loadPartners();

@@ -1,4 +1,4 @@
-<!-- ============ productm.html ============ -->
+<!-- ============ productm.html (integrated with backend :8091 via session.js) ============ -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -85,23 +85,12 @@
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
-              <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+              <span id="notifDot" class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full hidden"></span>
             </button>
 
             <div id="notifDropdown" class="topbar-dropdown hidden">
-              <p class="topbar-dropdown-title">Notifications</p>
-              <div class="topbar-notif-item">
-                <p>Out of stock: 5kW Hybrid Inverter</p>
-                <span>18 min ago</span>
-              </div>
-              <div class="topbar-notif-item">
-                <p>Low stock: 540W Mono PERC Panel</p>
-                <span>1 hr ago</span>
-              </div>
-              <div class="topbar-notif-item">
-                <p>New product added</p>
-                <span>3 hr ago</span>
-              </div>
+              <p class="topbar-dropdown-title">Stock alerts</p>
+              <div id="notifList"></div>
             </div>
           </div>
 
@@ -238,6 +227,13 @@
           <div class="empty-sub">Try adjusting your search or filters</div>
         </div>
 
+        <div class="empty-state hidden" id="load-error">
+          <i class="fas fa-triangle-exclamation"></i>
+          <div class="empty-title">Couldn't load products</div>
+          <div class="empty-sub" id="load-error-msg">Please check your connection and try again.</div>
+          <button class="btn-primary" id="btn-retry-load" style="margin-top:10px"><i class="fas fa-rotate-right"></i> Retry</button>
+        </div>
+
         <div class="flex items-center justify-between mt-2 flex-wrap gap-2">
           <div class="flex items-center gap-2 text-[10.5px] text-gray-400 flex-wrap">
             <span>Rows per page</span>
@@ -267,6 +263,13 @@
             <label>Product Name <span class="req">*</span></label>
             <input type="text" id="pf-name" class="field-input" placeholder="e.g. 540W Mono PERC Solar Panel">
             <span class="field-error" id="err-pf-name"></span>
+          </div>
+          <div class="field-group form-field span-2 hidden" id="pf-partner-wrap">
+            <label>Channel Partner <span class="req">*</span></label>
+            <select id="pf-partner" class="field-input">
+              <option value="">Select channel partner</option>
+            </select>
+            <span class="field-error" id="err-pf-partner"></span>
           </div>
           <div class="field-group form-field">
             <label>Category <span class="req">*</span></label>
