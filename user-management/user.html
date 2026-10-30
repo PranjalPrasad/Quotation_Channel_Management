@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>User Management — Solar Quotation Management</title>
+<title>Sun Greaves EcoTech Software</title>
 
 <!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -70,26 +70,18 @@
       <!-- ============ Topbar (matches dashboard exactly) ============ -->
       <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div>
-          <p class="text-sm text-gray-700">👋 Hello, <span class="font-semibold">Barly Vallendito</span></p>
+          <p class="text-sm text-gray-700">👋 Hello, <span class="font-semibold" id="greetingName">…</span></p>
           <p class="text-[11px] text-gray-400">Welcome</p>
         </div>
 
         <div class="flex items-center gap-2.5 relative">
           <div class="relative">
-            <button id="notifBtn" aria-label="Notifications" class="w-8 h-8 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
+            <button id="notifBtn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" class="w-8 h-8 rounded-full bg-cream shadow-sm border border-peach-300 flex items-center justify-center text-gray-500 hover:text-peach-500 transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              <span id="notifBadge" class="hidden" aria-live="polite">0</span>
             </button>
-
-            <div id="notifDropdown" class="topbar-dropdown hidden">
-              <p class="topbar-dropdown-title">Notifications</p>
-              <div class="topbar-notif-item"><p>New user "Rahul Mehta" added</p><span>10 min ago</span></div>
-              <div class="topbar-notif-item"><p>Password reset for Sneha Kulkarni</p><span>2 hr ago</span></div>
-              <div class="topbar-notif-item"><p>User "Owais Sheikh" deactivated</p><span>5 hr ago</span></div>
-            </div>
+            <!-- filled by /notifications.js from /api/notifications -->
+            <div id="notifDropdown" class="topbar-dropdown notif-dropdown hidden"></div>
           </div>
 
           <div class="relative">
@@ -170,9 +162,6 @@
           </div>
           <select id="filterRole" class="filter-input filter-select">
             <option value="">All Roles</option>
-            <option value="Super Admin">Super Admin</option>
-            <option value="Channel Partner Admin">Channel Partner Admin</option>
-            <option value="Channel Partner Sales">Channel Partner Sales</option>
           </select>
           <select id="filterStatus" class="filter-input filter-select">
             <option value="">All Status</option>
@@ -426,6 +415,7 @@
 
 <!-- IMPORTANT: load session.js first, then the module's own JS -->
 <script src="/session.js"></script>
+<script src="/notifications.js"></script>
 <script src="/user-management/user.js"></script>
 </body>
 </html>

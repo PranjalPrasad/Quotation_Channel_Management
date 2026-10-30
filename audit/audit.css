@@ -1,0 +1,94 @@
+/* ============================================================
+   audit.css
+   Module-specific additions only. Base look comes from the shared
+   /dashboard/dashboard.css and the filter inputs from /channel-partner/channel.css
+   (both must be loaded first).
+   ============================================================ */
+
+/* ---- Filters ---- */
+.audit-filters {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 8px 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+.audit-filter { grid-column: span 3; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.audit-filter--search { grid-column: span 6; }
+.audit-filter--date { grid-column: span 2; }
+.audit-filter--reset { grid-column: span 2; }
+.audit-filter-label { font-size: 10px; font-weight: 600; color: #9CA3AF; letter-spacing: .02em; }
+.audit-filter .partner-filter-input { min-width: 0; }
+.audit-filter .partner-filter-input:disabled { background: #F1E2D1; color: #9CA3AF; cursor: not-allowed; }
+.audit-filter--reset .btn-secondary { height: 34px; width: 100%; }
+
+@media (max-width: 1180px) {
+  .audit-filter, .audit-filter--search { grid-column: span 4; }
+  .audit-filter--date, .audit-filter--reset { grid-column: span 3; }
+}
+@media (max-width: 720px) {
+  .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .audit-filter, .audit-filter--date, .audit-filter--reset { grid-column: span 1; }
+  .audit-filter--search { grid-column: 1 / -1; }
+}
+
+/* ---- Table ---- */
+.audit-table .col-time    { width: 15%; }
+.audit-table .col-partner { width: 16%; }
+.audit-table .col-user    { width: 17%; }
+.audit-table .col-module  { width: 12%; }
+.audit-table .col-action  { width: 13%; }
+.audit-table .col-record  { width: 15%; }
+.audit-table .col-ip      { width: 12%; }
+
+.audit-table tbody td { white-space: nowrap; }
+.audit-table .cell-main { display: block; color: #1F2937; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.audit-table .cell-sub  { display: block; font-size: 10px; color: #9CA3AF; overflow: hidden; text-overflow: ellipsis; }
+.audit-table .state-cell { text-align: center !important; padding: 26px 10px !important; color: #9CA3AF; font-size: 12px; white-space: normal !important; }
+
+.spinner { display:inline-block; width:14px; height:14px; vertical-align:-2px; margin-right:8px;
+  border:2px solid #DCC3AA; border-top-color:#541A1A; border-radius:50%; animation: auditspin .7s linear infinite; }
+@keyframes auditspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }
+
+/* keyboard focus on clickable rows */
+.audit-table tbody tr[tabindex]:focus-visible { outline: 2px solid #541A1A; outline-offset: -2px; }
+
+/* ---- Action pills (shape from .pill in dashboard.css) ---- */
+.pill-create  { background: #D1FAE5; color: #047857; }
+.pill-update  { background: #FEF3C7; color: #B45309; }
+.pill-delete  { background: #FFE4E6; color: #E11D48; }
+.pill-status  { background: #E0F2FE; color: #0369A1; }
+.pill-approve { background: #D1FAE5; color: #047857; }
+.pill-reject  { background: #FFE4E6; color: #E11D48; }
+.pill-auth    { background: #EEF2FF; color: #4F46E5; }
+.pill-money   { background: #F3E8FF; color: #7E22CE; }
+.pill-other   { background: #F1E2D1; color: #6B7280; }
+
+/* mobile: keep the label on the last cell (dashboard.css hides it for action columns) */
+@media (max-width: 720px) {
+  .audit-table td:last-child { justify-content: space-between; }
+  .audit-table td:last-child::before { display: flex; }
+  .audit-table tbody td { white-space: normal; }
+  .audit-table .cell-main, .audit-table .cell-sub { text-align: right; }
+}
+
+/* ---- Detail modal ---- */
+.audit-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0 0 14px; }
+.audit-meta dt { font-size: 10px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: .02em; margin: 0; }
+.audit-meta dd { margin: 2px 0 0; font-size: 12px; color: #1F2937; word-break: break-word; }
+.audit-meta .audit-meta--wide { grid-column: 1 / -1; }
+@media (max-width: 520px) { .audit-meta { grid-template-columns: 1fr; } }
+
+.audit-changes-title { font-size: 11.5px; font-weight: 700; color: #1F2937; margin: 0 0 6px; }
+.audit-changes-wrap { border: 1px solid var(--border-strong); border-radius: 12px; overflow-x: auto; background: #FBF6EF; }
+.audit-changes { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 460px; }
+.audit-changes th { text-align: left; font-size: 10px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: .02em; padding: 7px 10px; border-bottom: 1px solid var(--border-strong); }
+.audit-changes td { padding: 7px 10px; border-bottom: 1px solid var(--border-soft); vertical-align: top; word-break: break-word; color: #374151; }
+.audit-changes tr:last-child td { border-bottom: none; }
+.audit-changes td.field { font-weight: 600; color: #1F2937; width: 26%; }
+.audit-changes .val-old { color: #E11D48; }
+.audit-changes .val-new { color: #047857; }
+.audit-changes .val-empty { color: #A8998A; font-style: italic; }
+.audit-no-changes { font-size: 12px; color: #9CA3AF; padding: 12px; border: 1px dashed var(--border-strong); border-radius: 12px; }
+.audit-ua { font-size: 10.5px; color: #6B7280; }

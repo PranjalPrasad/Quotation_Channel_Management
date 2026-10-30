@@ -66,12 +66,6 @@ function closeAllTopbarDropdowns(except) {
     if (dd && dd !== except) dd.classList.add('hidden');
   });
 }
-notifBtn?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  const willOpen = notifDropdown.classList.contains('hidden');
-  closeAllTopbarDropdowns();
-  notifDropdown.classList.toggle('hidden', !willOpen);
-});
 profileBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
   const willOpen = profileDropdown.classList.contains('hidden');
@@ -319,15 +313,6 @@ function bootstrapUi() {
       th.style.cursor = 'default';
     }
   });
-
-  // 2) role filter works with role CODES (the API filters by roleCode)
-  const roleSel = document.getElementById('filterRole');
-  if (roleSel) {
-    roleSel.innerHTML = '<option value="">All Roles</option>' +
-      '<option value="SUPER_ADMIN">Super Admin</option>' +
-      '<option value="CHANNEL_PARTNER_ADMIN">Partner Admin</option>' +
-      '<option value="CHANNEL_PARTNER_SALES">Partner Sales</option>';
-  }
 
   // 3) optional-password hint
   const pwLabel = document.querySelector('label[for="fldPassword"]');
@@ -718,6 +703,14 @@ async function loadRoleOptions() {
   if (!can('USER:CREATE')) return;                       // endpoint needs USER:CREATE
   try {
     roleOptions = await api('/api/users/role-options');
+    // role filter: the roles come from the backend (the API filters by role CODE)
+    const roleSel = document.getElementById('filterRole');
+    if (roleSel) {
+      const keep = roleSel.value;
+      roleSel.innerHTML = '<option value="">All Roles</option>' +
+        roleOptions.map((r) => `<option value="${escapeHtml(r.code)}">${escapeHtml(r.name)}</option>`).join('');
+      roleSel.value = keep;
+    }
   } catch (err) {
     showToast(err.fullMessage || err.message, 'error');
   }
