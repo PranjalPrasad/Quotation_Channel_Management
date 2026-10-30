@@ -252,7 +252,7 @@ async function populateProductPicker() {
         console.error('Product catalog load failed:', e);
         window.__quotationProductCatalog = [];
         select.innerHTML = `<option value="">Could not load products — reopen this step to retry</option>`;
-        showToast(`Could not load the product catalog${e && e.message ? ': ' + e.message : ''}. You can still add a Custom Item.`, 'error');
+        showToast(`Could not load the product catalog${e && e.message ? ': ' + e.message : ''}. ${e && e.status === 403 ? 'Your role has no access to products - ask the admin to enable it. ' : ''}You can still add a Custom Item.`, 'error');
         return;
     }
 
@@ -485,12 +485,32 @@ function boqFromCatalog(catalog, sizeKw) {
     }));
 }
 
+/* Built-in template row -> catalog category it stands for (so the catalog price/name/unit can replace the template's). */
+const BOQ_TEMPLATE_CATEGORY = {
+    'Solar Panels': 'SOLAR_PANEL', 'Inverter': 'INVERTER',
+    'Mounting Structure': 'MOUNTING_STRUCTURE', 'DC/AC Cable': 'CABLE_WIRING'
+};
+
 function itemsForSize(sizeKw) {
     sizeKw = Number(sizeKw) || 3;
-    const fromCatalog = boqFromCatalog(window.__quotationProductCatalog, sizeKw);
+    const catalog = window.__quotationProductCatalog || [];
+    const fromCatalog = boqFromCatalog(catalog, sizeKw);
     if (fromCatalog) return fromCatalog;
+
+    // No product has "Qty per kW" set: keep the standard quantities, but take name / unit / PRICE from the
+    // catalog product of the same category (in-stock first) instead of the hardcoded template rate.
+    const inStockFirst = (a, b) => (a.stock > 0 ? 0 : 1) - (b.stock > 0 ? 0 : 1);
     return BOQ_TEMPLATE.map(t => {
         const qty = t.fixedQty != null ? t.fixedQty : Math.max(1, Math.round(t.qtyPerKw * sizeKw));
+        const code = BOQ_TEMPLATE_CATEGORY[t.name];
+        const p = code ? catalog.filter(c => c.categoryCode === code).sort(inStockFirst)[0] : null;
+        if (p && p.price > 0) {
+            return {
+                id: newItemId(), productId: p.id, name: p.name,
+                type: [p.brand, p.spec].filter(Boolean).join(' · ') || p.category || t.type,
+                qty, unit: p.unit || t.unit, rate: p.price
+            };
+        }
         return { id: newItemId(), name: t.name, type: t.type, qty, unit: t.unit, rate: t.rate };
     });
 }

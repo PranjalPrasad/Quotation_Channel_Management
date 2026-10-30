@@ -5,6 +5,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Sun Greaves EcoTech Software</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/logo.webp" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/logo.webp" />
+    <link rel="apple-touch-icon" href="/img/logo.webp" />
+    <meta name="theme-color" content="#541A1A" />
 
 <!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -83,15 +88,9 @@
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
-              <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
             </button>
 
-            <div id="notifDropdown" class="topbar-dropdown hidden">
-              <p class="topbar-dropdown-title">Notifications</p>
-              <div class="topbar-notif-item"><p>New project "Sharma Residence Rooftop" created</p><span>18 min ago</span></div>
-              <div class="topbar-notif-item"><p>Project "Global Foods Cold Storage" marked Completed</p><span>3 hr ago</span></div>
-              <div class="topbar-notif-item"><p>Project "Vikram Industries Plant 2" put On Hold</p><span>6 hr ago</span></div>
-            </div>
+            <div id="notifDropdown" class="topbar-dropdown notif-dropdown hidden"></div>
           </div>
 
           <div class="relative">
@@ -231,6 +230,7 @@
                 <th data-key="id">Project ID <span class="sort-icon">⇅</span></th>
                 <th data-key="name">Project Name <span class="sort-icon">⇅</span></th>
                 <th data-key="customer">Customer <span class="sort-icon">⇅</span></th>
+                <th>Quotation</th>
                 <!-- Channel Partner column for Super Admin only -->
                 <th data-key="channelPartner" data-role="SUPER_ADMIN">Channel Partner <span class="sort-icon">⇅</span></th>
                 <th data-key="type">Type <span class="sort-icon">⇅</span></th>
@@ -416,6 +416,14 @@
             </div>
           </div>
         </div>
+
+        <!-- ============ History card (project + linked quotation approval trail) ============ -->
+        <div class="field-group-full">
+          <div class="project-details-card">
+            <p class="project-details-title">History</p>
+            <ul id="projectHistoryList" class="project-history"></ul>
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -453,6 +461,7 @@
 
 <!-- IMPORTANT: load session.js first, then the module's own JS -->
 <script src="/session.js"></script>
+<script src="/notifications.js"></script>
 <script src="/project/project.js"></script>
 </body>
 </html>

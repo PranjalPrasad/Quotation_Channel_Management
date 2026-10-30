@@ -4,7 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Sun Greaves EcoTech Software</title>
-
+<link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/logo.webp" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/logo.webp" />
+    <link rel="apple-touch-icon" href="/img/logo.webp" />
+    <meta name="theme-color" content="#541A1A" />
 <!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -80,24 +84,9 @@
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
-              <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full"></span>
             </button>
 
-            <div id="notifDropdown" class="topbar-dropdown hidden">
-              <p class="topbar-dropdown-title">Notifications</p>
-              <div class="topbar-notif-item">
-                <p>QA-2045 awaiting your approval</p>
-                <span>10 min ago</span>
-              </div>
-              <div class="topbar-notif-item">
-                <p>QA-2041 approved by manager</p>
-                <span>2 hr ago</span>
-              </div>
-              <div class="topbar-notif-item">
-                <p>QA-2038 sent back for revision</p>
-                <span>5 hr ago</span>
-              </div>
-            </div>
+            <div id="notifDropdown" class="topbar-dropdown notif-dropdown hidden"></div>
           </div>
 
           <div class="relative">
@@ -367,6 +356,7 @@
 <!-- common/session.js MUST load before the module's own JS so
      applyRoleBasedMenu() / applyProfileRoleLabel() run first -->
 <script src="/session.js"></script>
+<script src="/notifications.js"></script>
 <script src="/approval/approval.js"></script>
 </body>
 </html>

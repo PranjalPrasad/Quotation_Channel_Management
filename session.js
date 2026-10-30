@@ -23,7 +23,7 @@
     'use strict';
 
     var BACKEND_PORT = 8091;
-    var LOGIN_PAGE = '/index.html';          // the login page of this frontend (was /login.html, which does not exist)
+    var LOGIN_PAGE = '/index.html';          
     var KEY = 'sqms_session';
 
     var host = (location.protocol === 'file:' || !location.hostname) ? 'localhost' : location.hostname;

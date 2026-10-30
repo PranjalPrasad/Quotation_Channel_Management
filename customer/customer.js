@@ -61,18 +61,18 @@ document.getElementById('sidebarNav')?.addEventListener('click', (e) => {
    ============================================================ */
 function readSession() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch (_) { return null; }
 }
 function writeSession(obj) {
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(obj)); } catch (_) {}
+  try { (sessionStorage.getItem(SESSION_KEY) ? sessionStorage : (localStorage.getItem(SESSION_KEY) ? localStorage : sessionStorage)).setItem(SESSION_KEY, JSON.stringify(obj)); } catch (_) {}
 }
 // login response may be stored flat, or wrapped in .data
 function sessionRoot(s) { return s && (s.data && (s.data.accessToken || s.data.token || s.data.user) ? s.data : s); }
 
 function getAccessToken() {
-  try { if (window.Session && typeof Session.getToken === 'function') { const t = Session.getToken(); if (t) return t; } } catch (_) {}
+  try { if (window.Session && typeof Session.token === 'function') { const t = Session.token(); if (t) return t; } } catch (_) {}
   const r = sessionRoot(readSession());
   return r ? (r.accessToken || r.token || null) : null;
 }
@@ -123,7 +123,7 @@ function getLoggedInUserName() {
 function logoutUser() {
   try {
     if (window.Session && typeof Session.logout === 'function') Session.logout();
-    else sessionStorage.removeItem(SESSION_KEY);
+    else { sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_KEY); }
   } catch (_) {}
   window.location.href = '../index.html';
 }

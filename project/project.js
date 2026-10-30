@@ -57,16 +57,16 @@ document.getElementById('sidebarNav')?.addEventListener('click', (e) => {
    (and write back refreshed tokens). Tolerant of different shapes.
    ============================================================ */
 function readSession() {
-  try { const raw = sessionStorage.getItem(SESSION_KEY); return raw ? JSON.parse(raw) : null; }
+  try { const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY); return raw ? JSON.parse(raw) : null; }
   catch (_) { return null; }
 }
 function writeSession(obj) {
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(obj)); } catch (_) {}
+  try { (sessionStorage.getItem(SESSION_KEY) ? sessionStorage : (localStorage.getItem(SESSION_KEY) ? localStorage : sessionStorage)).setItem(SESSION_KEY, JSON.stringify(obj)); } catch (_) {}
 }
 function sessionRoot(s) { return s && (s.data && (s.data.accessToken || s.data.token || s.data.user) ? s.data : s); }
 
 function getAccessToken() {
-  try { if (window.Session && typeof Session.getToken === 'function') { const t = Session.getToken(); if (t) return t; } } catch (_) {}
+  try { if (window.Session && typeof Session.token === 'function') { const t = Session.token(); if (t) return t; } } catch (_) {}
   const r = sessionRoot(readSession());
   return r ? (r.accessToken || r.token || null) : null;
 }
@@ -107,7 +107,7 @@ function getLoggedInUserName() {
 function logoutUser() {
   try {
     if (window.Session && typeof Session.logout === 'function') Session.logout();
-    else sessionStorage.removeItem(SESSION_KEY);
+    else { sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_KEY); }
   } catch (_) {}
   window.location.href = '../index.html';
 }
@@ -379,6 +379,7 @@ function renderTable() {
         <td data-label="Project ID" class="font-medium">${esc(p.code)}</td>
         <td data-label="Project Name">${esc(p.name)}</td>
         <td data-label="Customer">${esc(p.customer && p.customer.name) || '—'}</td>
+        <td data-label="Quotation">${p.quotationCode ? `<a href="/Quotation/quotation.html" class="font-medium" title="Linked quotation (${esc(toDisplay(p.quotationStatus))})">${esc(p.quotationCode)}</a>` : '—'}</td>
         ${partnerCell}
         <td data-label="Type"><span class="type-pill ${TYPE_PILL_CLASS[p.type] || ''}">${esc(toDisplay(p.type))}</span></td>
         <td data-label="Capacity (kW)">${fmtNum(p.capacityKw)} kW</td>
@@ -727,7 +728,54 @@ async function openViewProjectModal(id) {
   if (!p) return;
   renderViewProject(p);
   openModal('viewProjectModal');
+  loadProjectHistory(id);
   try { renderViewProject(await api(`/api/projects/${id}`)); } catch (_) { /* keep the row data */ }
+}
+
+/* ============================================================
+   Project history  → GET /api/projects/{id}/history
+   Project changes + the approval trail of its linked quotation (backend merges both, newest first).
+   ============================================================ */
+function historyWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(/Z|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + 'Z');   // server stores UTC without a zone
+  return isNaN(d) ? '' : d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+function historyLabel(h) {
+  const ch = Array.isArray(h.changes) ? h.changes : [];
+  const field = (k) => ch.find((c) => c.field === k);
+  const isQuote = h.entityType === 'Quotation';
+  const who = isQuote ? `Quotation ${h.entityLabel || ''}`.trim() : 'Project';
+  if (h.action === 'CREATE') {
+    const src = field('sourceQuotation');
+    return src && src.new ? `Project created from quotation ${src.new}` : `${who} created`;
+  }
+  if (h.action === 'STATUS_CHANGE') {
+    const st = field('status');
+    if (st && st.new) {
+      const to = toDisplay(st.new);
+      if (isQuote) return `${who}: ${/^(ACCEPTED|APPROVED)$/.test(st.new) ? 'Approved' : to}`;
+      return `Project status: ${st.old ? toDisplay(st.old) + ' → ' : ''}${to}`;
+    }
+    return `${who} status changed`;
+  }
+  if (h.action === 'DELETE') return `${who} deleted`;
+  return `${who} updated`;
+}
+async function loadProjectHistory(id) {
+  const ul = document.getElementById('projectHistoryList');
+  if (!ul) return;
+  ul.innerHTML = '<li><span class="ph-dot"></span><span>Loading…</span></li>';
+  try {
+    const rows = (await api(`/api/projects/${id}/history`)) || [];
+    ul.innerHTML = rows.length ? rows.map((h) => `
+      <li><span class="ph-dot ${h.entityType === 'Quotation' ? 'quotation' : ''}"></span>
+        <span>${esc(historyLabel(h))}
+          <span class="ph-when">${esc(historyWhen(h.createdAt))}${h.actorName ? ' · ' + esc(h.actorName) : ''}</span></span></li>`).join('')
+      : '<li><span class="ph-dot"></span><span>No activity yet.</span></li>';
+  } catch (err) {
+    ul.innerHTML = `<li><span class="ph-dot"></span><span>${esc(err.message)}</span></li>`;
+  }
 }
 
 /* ============================================================

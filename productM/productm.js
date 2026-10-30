@@ -376,29 +376,6 @@
         document.getElementById('stat-value').textContent = formatINR(totalValue);
     }
 
-    function renderNotifications() {
-        const list = document.getElementById('notifList');
-        const dot = document.getElementById('notifDot');
-        if (!list) return;
-        const alerts = products
-            .filter(p => ['Out of Stock', 'Low Stock'].includes(computeStatusLabel(p)))
-            .sort((a, b) => a.stock - b.stock)
-            .slice(0, 6);
-
-        dot?.classList.toggle('hidden', alerts.length === 0);
-        if (!alerts.length) {
-            list.innerHTML = '<div class="topbar-notif-item"><p class="notif-empty">All products are well stocked</p></div>';
-            return;
-        }
-        list.innerHTML = alerts.map(p => {
-            const out = computeStatusLabel(p) === 'Out of Stock';
-            return `<div class="topbar-notif-item">
-                <p>${out ? 'Out of stock' : 'Low stock'}: ${escapeHtml(p.name)}</p>
-                <span>${out ? 'No units left' : p.stock + ' ' + escapeHtml(p.unit) + ' left (min ' + p.threshold + ')'}</span>
-            </div>`;
-        }).join('');
-    }
-
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str ?? '';
@@ -436,7 +413,6 @@
             emptyState.classList.add('hidden');
             paginationEl.innerHTML = '';
             renderStats();
-            renderNotifications();
             return;
         }
 
@@ -485,7 +461,6 @@
 
         renderPagination(totalPages);
         renderStats();
-        renderNotifications();
     }
 
     function renderPagination(totalPages) {

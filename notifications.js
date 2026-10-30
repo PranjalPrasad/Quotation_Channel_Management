@@ -1,5 +1,5 @@
 /* ============================================================================
- * notifications.js  -  the topbar bell, fed ONLY by the backend (port 8091, through session.js)
+ * notifications.js  -  the topbar bell for EVERY page, fed ONLY by the backend (port 8091, via session.js)
  *
  *   GET    /api/notifications/list?page=&size=&unreadOnly=   PageResponse<NotificationResponseDto>
  *   GET    /api/notifications/unread-count                   { unread }
@@ -7,39 +7,91 @@
  *   PATCH  /api/notifications/markAllRead/read-all           { unread }
  *   DELETE /api/notifications/delete/{id}                    { unread }
  *
- * Load it after /session.js on any page that has  #notifBtn  and  #notifDropdown.
- * If the page still contains hard-coded demo notifications, they are replaced by the real list.
- * Styles (.notif-*, #notifBadge) come from /dashboard/dashboard.css.
+ * Usage: put  <script src="/notifications.js"></script>  right after  /session.js  on a page that has
+ *        <button id="notifBtn"> and <div id="notifDropdown" class="topbar-dropdown notif-dropdown hidden"></div>
+ * Everything else (list, tabs, badge, styles) is created here, so no page needs its own notification CSS/JS.
+ * Pages that still contain an old click handler on #notifBtn are overridden (capture phase), so the
+ * dropdown can never be toggled twice.
  * ========================================================================== */
 (function () {
   'use strict';
 
   var btn = document.getElementById('notifBtn');
   var dd = document.getElementById('notifDropdown');
-  if (!btn || !dd || !window.Session) return;
+  if (!btn || !dd || !window.Session || window.__notificationsReady) return;
+  window.__notificationsReady = true;
 
-  // Replace any demo markup with the real structure.
-  if (!document.getElementById('notifList')) {
-    dd.classList.add('notif-dropdown');
-    dd.innerHTML =
-      '<div class="notif-head"><p class="topbar-dropdown-title">Notifications</p>' +
-      '<button id="notifMarkAllBtn" type="button" class="notif-link-btn" disabled>Mark all as read</button></div>' +
-      '<div class="notif-tabs" role="tablist">' +
-      '<button type="button" class="notif-tab active" data-filter="all" role="tab">All</button>' +
-      '<button type="button" class="notif-tab" data-filter="unread" role="tab">Unread</button></div>' +
-      '<div id="notifList" class="notif-list" role="list"></div>' +
-      '<button id="notifLoadMoreBtn" type="button" class="notif-more hidden">Load more</button>';
+  /* ------------------------------------------------------------------ styles (injected once) */
+  if (!document.getElementById('notifStyles')) {
+    var st = document.createElement('style');
+    st.id = 'notifStyles';
+    st.textContent = [
+      '#notifBtn{position:relative}',
+      '#notifBadge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#810B38;color:#fff;font-size:9px;font-weight:700;line-height:13px;text-align:center;border:1.5px solid #F7ECE1;pointer-events:none}',
+      '#notifBadge.hidden,.notif-more.hidden{display:none!important}',
+      '#notifDropdown.hidden{display:none}',
+      '.notif-dropdown{width:350px;padding:0!important;overflow:hidden}',
+      '.notif-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px 6px}',
+      '.notif-head .topbar-dropdown-title{padding:0;margin:0}',
+      '.notif-link-btn{font-size:11px;font-weight:600;color:#810B38;background:transparent;border:none;padding:3px 7px;border-radius:7px;cursor:pointer}',
+      '.notif-link-btn:hover{background:#EFE1D2}',
+      '.notif-link-btn:disabled{opacity:.4;cursor:not-allowed;background:transparent}',
+      '.notif-tabs{display:flex;gap:6px;padding:0 11px 8px;border-bottom:1px solid #E8D5C0}',
+      '.notif-tab{font-size:11px;font-weight:600;color:#6B7280;background:transparent;border:none;padding:4px 11px;border-radius:999px;cursor:pointer}',
+      '.notif-tab:hover{background:#EFE1D2}',
+      '.notif-tab.active{background:#541A1A;color:#fff}',
+      '.notif-list{max-height:360px;overflow-y:auto;overscroll-behavior:contain;padding:5px}',
+      '.notif-list::-webkit-scrollbar{width:5px}',
+      '.notif-list::-webkit-scrollbar-thumb{background:#DCC3AA;border-radius:10px}',
+      '.notif-item{display:flex;align-items:flex-start;gap:9px;padding:8px;border-radius:9px;cursor:pointer;transition:background-color .15s ease}',
+      '.notif-item:hover{background:#EFE1D2}',
+      '.notif-item.unread{background:rgba(129,11,56,.06)}',
+      '.notif-item.unread:hover{background:rgba(129,11,56,.12)}',
+      '.notif-dot{flex-shrink:0;width:8px;height:8px;margin-top:5px;border-radius:50%;background:#D1D5DB}',
+      '.notif-item.unread .notif-dot.sev-info{background:#3B82F6}',
+      '.notif-item.unread .notif-dot.sev-success{background:#10B981}',
+      '.notif-item.unread .notif-dot.sev-warning{background:#F59E0B}',
+      '.notif-item.unread .notif-dot.sev-error,.notif-item.unread .notif-dot.sev-danger{background:#EF4444}',
+      '.notif-body{flex:1 1 auto;min-width:0}',
+      '.notif-title{font-size:12px;font-weight:500;color:#374151;line-height:1.35;overflow-wrap:anywhere}',
+      '.notif-item.unread .notif-title{font-weight:600;color:#1F2937}',
+      '.notif-msg{font-size:11px;color:#6B7280;line-height:1.35;margin-top:2px;overflow-wrap:anywhere}',
+      '.notif-time{display:block;font-size:10px;color:#9CA3AF;margin-top:3px}',
+      '.notif-del{flex-shrink:0;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:#9CA3AF;border-radius:6px;cursor:pointer;opacity:0;transition:opacity .15s ease}',
+      '.notif-del svg{width:12px;height:12px}',
+      '.notif-item:hover .notif-del,.notif-del:focus-visible{opacity:1}',
+      '.notif-del:hover{background:#FEF2F2;color:#EF4444}',
+      '@media (hover:none){.notif-del{opacity:1}}',
+      '.notif-state{padding:22px 12px;text-align:center;font-size:11.5px;color:#9CA3AF}',
+      '.notif-state button{margin-top:8px;font-size:11px;font-weight:600;color:#810B38;background:transparent;border:none;cursor:pointer;text-decoration:underline}',
+      '.notif-more{display:block;width:100%;font-size:11px;font-weight:600;color:#810B38;background:transparent;border:none;border-top:1px solid #E8D5C0;padding:9px;cursor:pointer}',
+      '.notif-more:hover{background:#EFE1D2}',
+      '.notif-more:disabled{opacity:.5;cursor:wait}',
+      '@media (max-width:520px){.notif-dropdown{position:fixed!important;top:56px;left:12px;right:12px;width:auto;max-width:none}.notif-list{max-height:60vh}}'
+    ].join('\n');
+    document.head.appendChild(st);
   }
-  var badgeEl = document.getElementById('notifBadge');
-  if (!badgeEl) {                                   // old markup had a static red dot instead of a counter
-    btn.querySelectorAll('span').forEach(function (s) { s.remove(); });
-    badgeEl = document.createElement('span');
-    badgeEl.id = 'notifBadge';
-    badgeEl.className = 'hidden';
-    badgeEl.setAttribute('aria-live', 'polite');
-    badgeEl.textContent = '0';
-    btn.appendChild(badgeEl);
-  }
+
+  /* ------------------------------------------------------------------ markup (replaces any demo content) */
+  dd.classList.add('topbar-dropdown', 'notif-dropdown');
+  dd.innerHTML =
+    '<div class="notif-head"><p class="topbar-dropdown-title">Notifications</p>' +
+    '<button id="notifMarkAllBtn" type="button" class="notif-link-btn" disabled>Mark all as read</button></div>' +
+    '<div class="notif-tabs" role="tablist">' +
+    '<button type="button" class="notif-tab active" data-filter="all" role="tab">All</button>' +
+    '<button type="button" class="notif-tab" data-filter="unread" role="tab">Unread</button></div>' +
+    '<div id="notifList" class="notif-list" role="list"></div>' +
+    '<button id="notifLoadMoreBtn" type="button" class="notif-more hidden">Load more</button>';
+
+  btn.querySelectorAll('span').forEach(function (s) { s.remove(); });   // old static red dot / badge
+  var badgeEl = document.createElement('span');
+  badgeEl.id = 'notifBadge';
+  badgeEl.className = 'hidden';
+  badgeEl.setAttribute('aria-live', 'polite');
+  badgeEl.textContent = '0';
+  btn.appendChild(badgeEl);
+  btn.setAttribute('aria-haspopup', 'true');
+  btn.setAttribute('aria-expanded', 'false');
 
   var listEl = document.getElementById('notifList');
   var markAllEl = document.getElementById('notifMarkAllBtn');
@@ -63,7 +115,7 @@
   function timeAgo(iso) {
     if (!iso) return '';
     var str = String(iso);
-    var t = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(str) ? str : str + 'Z').getTime();
+    var t = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(str) ? str : str + 'Z').getTime();   // server sends UTC without a zone
     if (isNaN(t)) return '';
     var s = Math.max(0, Math.floor((Date.now() - t) / 1000));
     if (s < 45) return 'Just now';
@@ -76,6 +128,7 @@
     return new Date(t).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
+  /* Session.authFetch adds the Bearer token to http://<host>:8091 and refreshes it on 401. */
   function call(path, options) {
     return Session.authFetch(BASE + path, options).then(function (res) {
       return res.json().catch(function () { return null; }).then(function (body) {
@@ -117,12 +170,14 @@
     moreEl.textContent = state.loading ? 'Loading…' : 'Load more';
   }
 
+  function isOpen() { return !dd.classList.contains('hidden'); }
+
   function fetchUnreadCount() {
     return call('/unread-count').then(function (data) {
       var prev = state.unread;
       state.unread = (data && data.unread) || 0;
       renderBadge();
-      if (state.unread > prev && !dd.classList.contains('hidden')) load(true);
+      if (state.unread > prev && isOpen()) load(true);       // a new one arrived while the list is open
     }).catch(function (e) { console.warn('Notifications: unread-count failed:', e.message); });
   }
 
@@ -182,22 +237,31 @@
     }).catch(function () { /* keep the item if the server refused */ });
   }
 
-  // ---- events
+  /* ------------------------------------------------------------------ open / close */
+  function closeDropdown() { dd.classList.add('hidden'); btn.setAttribute('aria-expanded', 'false'); }
+
+  // Capture phase + stopImmediatePropagation: any older click handler a page still has on #notifBtn never runs.
   btn.addEventListener('click', function (e) {
+    e.stopImmediatePropagation();
     e.stopPropagation();
     var willOpen = dd.classList.contains('hidden');
     document.querySelectorAll('.topbar-dropdown').forEach(function (x) { if (x !== dd) x.classList.add('hidden'); });
     dd.classList.toggle('hidden', !willOpen);
     btn.setAttribute('aria-expanded', String(willOpen));
-    if (willOpen) load(true);
-  });
+    if (willOpen) { load(true); fetchUnreadCount(); }
+  }, true);
+
   dd.addEventListener('click', function (e) { e.stopPropagation(); });
-  document.addEventListener('click', function () { dd.classList.add('hidden'); btn.setAttribute('aria-expanded', 'false'); });
+  document.addEventListener('click', closeDropdown);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) { closeDropdown(); btn.focus(); } });
 
   tabEls.forEach(function (t) {
     t.addEventListener('click', function () {
+      var unreadOnly = t.getAttribute('data-filter') === 'unread';
+      if (unreadOnly === state.unreadOnly) return;
       tabEls.forEach(function (x) { x.classList.toggle('active', x === t); });
-      state.unreadOnly = t.getAttribute('data-filter') === 'unread';
+      state.unreadOnly = unreadOnly;
+      state.items = [];
       load(true);
     });
   });
@@ -215,11 +279,17 @@
     if (!n) return;
     markRead(id);
     var link = n.entityType && ENTITY_LINKS[String(n.entityType).toUpperCase()];
-    if (link) window.location.href = link;
+    if (link && window.location.pathname.toLowerCase() !== link.toLowerCase()) window.location.href = link;
+    else closeDropdown();
   });
 
-  // ---- start
+  /* ------------------------------------------------------------------ start + polling */
+  renderBadge();
+  renderList();
   fetchUnreadCount();
   setInterval(function () { if (!document.hidden) fetchUnreadCount(); }, POLL_MS);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) fetchUnreadCount(); });
+
+  // Pages can call Notifications.refresh() after an action that creates a notification on the server.
+  window.Notifications = { refresh: function () { fetchUnreadCount(); if (isOpen()) load(true); } };
 })();

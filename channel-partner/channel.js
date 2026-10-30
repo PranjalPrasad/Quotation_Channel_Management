@@ -271,7 +271,6 @@ async function loadPartners() {
     isLoading = false;
   }
   renderKpis();
-  renderNotifications();
   renderTable();
 }
 
@@ -285,7 +284,6 @@ async function refreshPartners() {
     return false;
   }
   renderKpis();
-  renderNotifications();
   renderTable();
   return true;
 }
@@ -333,24 +331,6 @@ function renderKpis() {
   document.getElementById('kpiInactivePartners').textContent = partners.filter((p) => p.status === 'Inactive').length;
   document.getElementById('kpiNewThisMonth').textContent = partners.filter((p) => p.createdDate.startsWith(monthKey)).length;
   loadReferralPayoutKpi();
-}
-
-/** Bell dropdown built from real partner data. */
-function renderNotifications() {
-  const list = document.getElementById('notifList');
-  const dot = document.getElementById('notifDot');
-  if (!list) return;
-  const items = [];
-  [...partners].sort((a, b) => b.createdDate.localeCompare(a.createdDate)).slice(0, 3).forEach((p) => {
-    items.push({ text: `Channel partner "${p.name}" onboarded`, sub: `${p.code} · ${formatDateDisplay(p.createdDate)}` });
-  });
-  partners.filter((p) => p.status === 'Inactive').slice(0, 3).forEach((p) => {
-    items.push({ text: `${p.code} is inactive`, sub: p.name });
-  });
-  dot?.classList.toggle('hidden', items.length === 0);
-  list.innerHTML = items.length
-    ? items.map((i) => `<div class="topbar-notif-item"><p>${escapeHtml(i.text)}</p><span>${escapeHtml(i.sub)}</span></div>`).join('')
-    : '<div class="topbar-notif-item"><p style="color:#9CA3AF;font-weight:400">No notifications</p></div>';
 }
 
 // ============================================================
