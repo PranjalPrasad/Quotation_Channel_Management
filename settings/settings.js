@@ -4,6 +4,7 @@
 // adds the Bearer token and logs the user out on 401.
 //
 //   GET/PUT            /api/settings/branding
+//   POST               /api/files/upload (purpose LOGO; see files.js - the logo is NOT a public URL, it is fetched with the token)
 //   GET/PUT            /api/settings/bank-details
 //   GET/PUT            /api/settings/quotation-defaults
 //   GET/POST           /api/settings/subsidy-rules
@@ -11,8 +12,13 @@
 //   GET/POST           /api/settings/gst-rules
 //   PUT/DELETE         /api/settings/gst-rules/:id
 //
+// Settings are PER TENANT: every call acts on the logged-in user's own partner (the backend never takes a partner id
+// from the page). The Super Admin's settings apply to the platform's own records only, never to partners.
+// Failures are reported with AppLog (Module 0): action, group, HTTP status and error code only - never field values
+// (bank account numbers etc.).
+//
 // Responses may be the bare JSON or wrapped as { data: ... }.
-// Branding: { name, address, phone, email, website, logoDataUrl }
+// Branding: { name, address, phone, email, website, logoPath }   (logoPath comes from POST /api/files/upload)
 // Bank:     { accountName, bankName, accountNumber, ifsc, branch }
 // Defaults: { terms, validityDays, prefix }
 // Subsidy:  { id, type, category, valueType, value, capMin, capMax }
@@ -29,14 +35,72 @@ function esc(v) {
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/** Failure reporting through the shared AppLog (Module 0). Never throws, never logs values. Falls back to the console. */
+function logFailure(action, err, extra) {
+  const ctx = Object.assign({ module: "SETTINGS", action, status: err && err.status, code: err && err.errorCode }, extra || {});
+  const msg = `[SETTINGS] ${action} failed: ${(err && err.message) || "unknown error"}`;
+  try {
+    const L = window.AppLog;
+    if (L && typeof L.error === "function") { L.error("SETTINGS", `${action} failed: ${(err && err.message) || "unknown error"}`, ctx); return; }
+  } catch (_) { /* logging must never break the screen */ }
+  console.error(msg, ctx);
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+// ============================================================
+// Greeting + avatar (same logic as the dashboard)
+// ============================================================
+function decodeJwtPayload(token) {
+  try {
+    const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(decodeURIComponent(escape(atob(b64))));
+  } catch (_) { return null; }
+}
+
+function getLoggedInUserName() {
+  const sources = [];
+  try {
+    if (window.Session) {
+      if (typeof Session.getUser === "function") sources.push(Session.getUser());
+      if (typeof Session.getSession === "function") sources.push(Session.getSession());
+      if (Session.user) sources.push(Session.user);
+    }
+  } catch (_) {}
+  try {
+    const raw = sessionStorage.getItem("sqms_session");
+    if (raw) sources.push(JSON.parse(raw));
+  } catch (_) {}
+
+  for (const s of sources.filter(Boolean)) {
+    const u = s.user || s.data?.user || s.data || s;
+    const name = u.fullName || u.name || u.userName || u.username ||
+      [u.firstName, u.lastName].filter(Boolean).join(" ") ||
+      (u.email ? u.email.split("@")[0] : "");
+    if (name) return String(name).trim();
+    const token = s.token || s.accessToken || u.token;
+    const claims = token ? decodeJwtPayload(token) : null;
+    const fromJwt = claims && (claims.name || claims.fullName || claims.username || claims.sub);
+    if (fromJwt) return String(fromJwt).trim();
+  }
+  return "User";
+}
+
+(function renderUserName() {
+  const name = getLoggedInUserName();
+  setText("greetingName", name);
+  setText("profileInitial", name.charAt(0).toUpperCase());
+})();
+
 // ============================================================
 // Role guard — Settings is Super Admin only. The sidebar item is
-// hidden for other roles via data-role, but we also hard-guard the
-// page body in case someone opens the URL directly.
+// hidden for other roles, and we also hard-guard the page body in
+// case someone opens the URL directly.
+// window.currentUserRole is a read-only global from session.js.
 // ============================================================
-// window.currentUserRole is a read-only global from session.js (login session).
-// There is no fallback role.
-
 function applyRoleBasedVisibility() {
   const userRole = window.currentUserRole;
   document.querySelectorAll("[data-role]").forEach((el) => {
@@ -56,38 +120,46 @@ function enforcePageAccess() {
 }
 
 // ============================================================
-// Sidebar collapse / expand (same behaviour as the other modules)
+// Sidebar collapse / expand (identical to the dashboard)
 // ============================================================
 const sidebar = document.getElementById("sidebar");
 const sidebarToggle = document.getElementById("sidebarToggle");
 const toggleIcon = document.getElementById("toggleIcon");
 const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 
-let expanded = false;
+const drawerMQ = window.matchMedia("(max-width: 1023px)");
+const isDrawerViewport = () => drawerMQ.matches;
+
+// On phone/tablet: open the sidebar drawer on page load? (true = open with backdrop, false = icon rail only)
+const OPEN_BY_DEFAULT_ON_DRAWER = true;
+const defaultSidebarState = () => (isDrawerViewport() ? OPEN_BY_DEFAULT_ON_DRAWER : true);
+let sidebarExpanded = defaultSidebarState();
+
 function setSidebarExpanded(next) {
-  expanded = next;
-  sidebar.classList.toggle("expanded", expanded);
-  sidebar.classList.toggle("collapsed", !expanded);
-  toggleIcon.style.transform = expanded ? "rotate(180deg)" : "rotate(0deg)";
-  const isDrawerViewport = window.matchMedia("(max-width: 1023px)").matches;
-  sidebarBackdrop.classList.toggle("visible", expanded && isDrawerViewport);
+  sidebarExpanded = next;
+  sidebar.classList.toggle("expanded", next);
+  sidebar.classList.toggle("collapsed", !next);
+  toggleIcon.style.transform = next ? "rotate(180deg)" : "rotate(0deg)";
+  const showBackdrop = next && isDrawerViewport();
+  sidebarBackdrop?.classList.toggle("visible", showBackdrop);
+  sidebarBackdrop?.classList.toggle("hidden", !showBackdrop);
 }
-sidebarToggle.addEventListener("click", () => setSidebarExpanded(!expanded));
-sidebarBackdrop.addEventListener("click", () => setSidebarExpanded(false));
-window.addEventListener("resize", () => {
-  if (!window.matchMedia("(max-width: 1023px)").matches) sidebarBackdrop.classList.remove("visible");
-});
-document.querySelectorAll(".nav-list .nav-item").forEach((item) => {
-  item.addEventListener("click", () => {
-    if (window.matchMedia("(max-width: 1023px)").matches) setSidebarExpanded(false);
-  });
+
+setSidebarExpanded(sidebarExpanded);
+sidebarToggle.addEventListener("click", () => setSidebarExpanded(!sidebarExpanded));
+sidebarBackdrop?.addEventListener("click", () => setSidebarExpanded(false));
+drawerMQ.addEventListener("change", () => setSidebarExpanded(defaultSidebarState()));
+
+// nav items are generated by session.js AFTER load -> event delegation
+document.getElementById("sidebarNav")?.addEventListener("click", (e) => {
+  if (e.target.closest(".nav-item") && isDrawerViewport()) setSidebarExpanded(false);
 });
 
 // ============================================================
 // Settings state — filled from the API by loadSettings() (see Init).
 // ============================================================
 let settings = {
-  branding: { logoDataUrl: "", name: "", address: "", phone: "", email: "", website: "" },
+  branding: { logoPath: "", name: "", address: "", phone: "", email: "", website: "" },
   bank: { accountName: "", bankName: "", accountNumber: "", ifsc: "", branch: "" },
   defaults: { terms: "", validityDays: "", prefix: "" },
   subsidyRules: [],
@@ -147,17 +219,30 @@ function setLogoPreview(dataUrl) {
   }
 }
 
-fldLogoUpload.addEventListener("change", () => {
+let localLogoUrl = "";   // blob: URL of a logo uploaded in this visit, revoked when replaced
+
+fldLogoUpload.addEventListener("change", async () => {
   const file = fldLogoUpload.files && fldLogoUpload.files[0];
   if (!file) return;
-  // Sent to the API as a data URL together with the branding payload on Save.
-  const reader = new FileReader();
-  reader.onload = () => {
-    settings.branding.logoDataUrl = reader.result;
-    setLogoPreview(reader.result);
-    showToast("Logo preview updated — click Save Settings to keep it");
-  };
-  reader.readAsDataURL(file);
+  if (!window.FileApi) {
+    logFailure("upload logo", { message: "files.js is not loaded" });
+    showToast("Logo upload is not available on this page");
+    fldLogoUpload.value = "";
+    return;
+  }
+  try {
+    // Uploaded right away; the record only points at it after Save Settings. FileApi logs any failure ([FILE], AppLog).
+    const saved = await FileApi.upload(file, "LOGO");
+    settings.branding.logoPath = saved.path;
+    if (localLogoUrl) URL.revokeObjectURL(localLogoUrl);
+    localLogoUrl = URL.createObjectURL(file);
+    setLogoPreview(localLogoUrl);
+    showToast("Logo uploaded — click Save Settings to keep it");
+  } catch (err) {
+    showToast(err.message || "Could not upload the logo");
+  } finally {
+    fldLogoUpload.value = "";   // the same file can be chosen again
+  }
 });
 
 function fillBrandingForm() {
@@ -167,7 +252,15 @@ function fillBrandingForm() {
   fldCompanyPhone.value = b.phone || "";
   fldCompanyEmail.value = b.email || "";
   fldCompanyWebsite.value = b.website || "";
-  setLogoPreview(b.logoDataUrl || "");
+  showStoredLogo(b.logoPath || "");
+}
+
+/** The stored logo is not a public URL: FileApi fetches it with the token and returns a blob: URL. */
+async function showStoredLogo(path) {
+  setLogoPreview("");
+  if (!path || !window.FileApi) return;
+  const url = await FileApi.objectUrl(path);
+  if (url && settings.branding.logoPath === path) setLogoPreview(url);
 }
 
 // ============================================================
@@ -223,7 +316,7 @@ function renderSubsidyTable() {
       <td data-label="Subsidy Type" class="font-medium">${esc(r.type)}</td>
       <td data-label="Category"><span class="pill ${r.category === "Residential" ? "pill-residential" : "pill-commercial"}">${esc(r.category)}</span></td>
       <td data-label="Percentage / Amount">${formatSubsidyValue(r)}</td>
-      <td data-label="Applicable Capacity Range">${r.capMin} – ${r.capMax} kW</td>
+      <td data-label="Applicable Capacity Range">${esc(r.capMin)} – ${esc(r.capMax)} kW</td>
       <td data-label="Actions">
         <div class="row-actions">
           <button class="action-icon-btn icon-edit" data-action="editSubsidy" data-id="${esc(r.id)}" title="Edit">${ICON_EDIT}</button>
@@ -246,7 +339,7 @@ subsidyTbody.addEventListener("click", (e) => {
         renderSubsidyTable();
         showToast("Subsidy rule deleted");
       })
-      .catch((err) => showToast(err.message || "Could not delete subsidy rule"));
+      .catch((err) => { logFailure("delete subsidy rule", err, { ruleId: id }); showToast(err.message || "Could not delete subsidy rule"); });
   }
 });
 
@@ -302,6 +395,7 @@ document.getElementById("subsidySaveBtn").addEventListener("click", async () => 
     closeModalById("subsidyModal");
     showToast("Subsidy rule saved");
   } catch (err) {
+    logFailure(editingSubsidyId ? "update subsidy rule" : "create subsidy rule", err, { ruleId: editingSubsidyId });
     showToast(err.message || "Could not save subsidy rule");
   }
 });
@@ -319,7 +413,7 @@ function renderGstTable() {
   gstTbody.innerHTML = settings.gstRules.map((r) => `
     <tr data-id="${esc(r.id)}">
       <td data-label="Category" class="font-medium">${esc(r.category)}</td>
-      <td data-label="GST %">${r.gstPercent}%</td>
+      <td data-label="GST %">${esc(r.gstPercent)}%</td>
       <td data-label="Applicable On"><span class="pill ${r.applicableOn === "Product" ? "pill-product" : "pill-service"}">${esc(r.applicableOn)}</span></td>
       <td data-label="Actions">
         <div class="row-actions">
@@ -343,7 +437,7 @@ gstTbody.addEventListener("click", (e) => {
         renderGstTable();
         showToast("GST rule deleted");
       })
-      .catch((err) => showToast(err.message || "Could not delete GST rule"));
+      .catch((err) => { logFailure("delete GST rule", err, { ruleId: id }); showToast(err.message || "Could not delete GST rule"); });
   }
 });
 
@@ -390,6 +484,7 @@ document.getElementById("gstSaveBtn").addEventListener("click", async () => {
     closeModalById("gstModal");
     showToast("GST rule saved");
   } catch (err) {
+    logFailure(editingGstId ? "update GST rule" : "create GST rule", err, { ruleId: editingGstId });
     showToast(err.message || "Could not save GST rule");
   }
 });
@@ -414,13 +509,7 @@ document.addEventListener("keydown", (e) => {
   if (!gstModal.classList.contains("hidden")) closeModalById("gstModal");
 });
 
-// FIX: the subsidy/GST rule fields used to sit inside a real <form> tag
-// with no submit handler. Pressing Enter in any field there would let
-// the browser submit the form and reload the page, silently wiping out
-// every unsaved tab (branding, bank, defaults, etc). The .modal-body
-// wrapper in settings.html is now a plain <div>, and this listener is a
-// second line of defense: if a <form> ever ends up inside a modal again
-// (e.g. future edit), Enter won't be able to trigger a page reload.
+// Safety net: if a <form> ever ends up inside a modal again, Enter must not reload the page.
 document.querySelectorAll(".modal-panel form").forEach((form) => {
   form.addEventListener("submit", (e) => e.preventDefault());
 });
@@ -433,41 +522,54 @@ document.querySelectorAll(".modal-panel form").forEach((form) => {
 document.getElementById("saveSettingsBtn").addEventListener("click", async () => {
   const saveBtn = document.getElementById("saveSettingsBtn");
 
-  const branding = {
+  // Fields the form does not show (payment terms, referral percent) are sent back exactly as loaded,
+  // otherwise saving would blank them on the server. logoPath is the reference returned by the upload.
+  const branding = Object.assign({}, settings.branding, {
     name: fldCompanyName.value.trim(),
     address: fldCompanyAddress.value.trim(),
     phone: fldCompanyPhone.value.trim(),
     email: fldCompanyEmail.value.trim(),
     website: fldCompanyWebsite.value.trim(),
-    logoDataUrl: settings.branding.logoDataUrl || "",
-  };
-  const bank = {
+    logoPath: settings.branding.logoPath || "",
+  });
+  const bank = Object.assign({}, settings.bank, {
     accountName: fldAccountName.value.trim(),
     bankName: fldBankName.value.trim(),
     accountNumber: fldAccountNumber.value.trim(),
     ifsc: fldIfsc.value.trim().toUpperCase(),
     branch: fldBranch.value.trim(),
-  };
-  const defaults = {
+  });
+  const defaults = Object.assign({}, settings.defaults, {
     terms: fldTerms.value,
     validityDays: parseInt(fldValidityDays.value, 10) || 0,
     prefix: (fldPrefix.value.trim() || "SQ").toUpperCase(),
-  };
+  });
+
+  const groups = [
+    { key: "branding", label: "Company branding", path: "branding", body: branding },
+    { key: "bank", label: "Bank details", path: "bank-details", body: bank },
+    { key: "defaults", label: "Quotation defaults", path: "quotation-defaults", body: defaults },
+  ];
 
   saveBtn.disabled = true;
   try {
-    await Promise.all([
-      Session.api(`${SETTINGS_API}/branding`, { method: "PUT", body: branding }),
-      Session.api(`${SETTINGS_API}/bank-details`, { method: "PUT", body: bank }),
-      Session.api(`${SETTINGS_API}/quotation-defaults`, { method: "PUT", body: defaults }),
-    ]);
-    settings.branding = branding;
-    settings.bank = bank;
-    settings.defaults = defaults;
-    showToast("Settings saved");
-  } catch (err) {
-    console.error("Settings save failed:", err);
-    showToast(err.message || "Save failed — nothing was changed on the server");
+    // Three independent saves: report each one, never claim "nothing changed" when another group did save.
+    const results = await Promise.allSettled(
+      groups.map((g) => Session.api(`${SETTINGS_API}/${g.path}`, { method: "PUT", body: g.body })));
+    const failed = [];
+    results.forEach((r, i) => {
+      const g = groups[i];
+      if (r.status === "fulfilled") settings[g.key] = g.body;
+      else {
+        failed.push(g.label);
+        logFailure(`save ${g.label.toLowerCase()}`, r.reason, { group: g.key });
+      }
+    });
+    if (!failed.length) showToast("Settings saved");
+    else {
+      const first = results.find((r) => r.status === "rejected").reason;
+      showToast(`Not saved: ${failed.join(", ")}${first && first.message ? " — " + first.message : ""}`);
+    }
   } finally {
     saveBtn.disabled = false;
   }
@@ -483,11 +585,11 @@ function showToast(message) {
   toast.className = "toast-animate bg-gray-800 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-lg";
   toast.textContent = message;
   container.appendChild(toast);
-  setTimeout(() => toast.remove(), 2500);
+  setTimeout(() => toast.remove(), 2800);
 }
 
 // ============================================================
-// Topbar: notification + profile dropdowns
+// Topbar: notification + profile dropdowns (open / close only)
 // ============================================================
 const notifBtn = document.getElementById("notifBtn");
 const notifDropdown = document.getElementById("notifDropdown");
@@ -497,12 +599,14 @@ const profileLogoutBtn = document.getElementById("profileLogoutBtn");
 
 function closeAllTopbarDropdowns() {
   [notifDropdown, profileDropdown].forEach((dd) => dd && dd.classList.add("hidden"));
+  notifBtn?.setAttribute("aria-expanded", "false");
 }
 notifBtn?.addEventListener("click", (e) => {
   e.stopPropagation();
   const willOpen = notifDropdown.classList.contains("hidden");
   closeAllTopbarDropdowns();
   notifDropdown.classList.toggle("hidden", !willOpen);
+  notifBtn.setAttribute("aria-expanded", String(willOpen));
 });
 profileBtn?.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -510,7 +614,14 @@ profileBtn?.addEventListener("click", (e) => {
   closeAllTopbarDropdowns();
   profileDropdown.classList.toggle("hidden", !willOpen);
 });
+notifDropdown?.addEventListener("click", (e) => e.stopPropagation());
 document.addEventListener("click", () => closeAllTopbarDropdowns());
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !notifDropdown.classList.contains("hidden")) {
+    closeAllTopbarDropdowns();
+    notifBtn.focus();
+  }
+});
 
 profileLogoutBtn?.addEventListener("click", () => Session.logout());
 
@@ -522,7 +633,7 @@ profileLogoutBtn?.addEventListener("click", () => Session.logout());
   try {
     await loadSettings();
   } catch (err) {
-    console.error("Settings load failed:", err);
+    logFailure("load settings", err);
     showToast(err.message || "Could not load settings from the server");
     // Forms stay empty: we never show made-up values as if they were saved settings.
   }

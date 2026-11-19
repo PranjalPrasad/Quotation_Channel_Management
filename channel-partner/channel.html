@@ -1,15 +1,16 @@
-<!-- ============ channel-partner.html (integrated with backend :8091 via session.js) ============ -->
 <!DOCTYPE html>
+<!-- ============ channel-partner.html (integrated with backend :8091 via session.js) ============ -->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Sun Greaves EcoTech Software</title>
 <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/img/logo.webp" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/img/logo.webp" />
-    <link rel="apple-touch-icon" href="/img/logo.webp" />
-    <meta name="theme-color" content="#541A1A" />
+<link rel="icon" type="image/png" sizes="32x32" href="/img/logo.webp" />
+<link rel="icon" type="image/png" sizes="192x192" href="/img/logo.webp" />
+<link rel="apple-touch-icon" href="/img/logo.webp" />
+<meta name="theme-color" content="#541A1A" />
+
 <!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -43,33 +44,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<!-- shared design-system stylesheet used by every module -->
+<!-- shared design-system stylesheet used by every module (must load first) -->
 <link rel="stylesheet" href="/dashboard/dashboard.css" />
-<!-- module-specific additions (partner stat grid, view-team drawer, etc.) -->
+<!-- module-specific additions (partner stat grid, referral, loading states, credentials box, etc.) -->
 <link rel="stylesheet" href="/channel-partner/channel.css" />
-
-<!-- small additions for the backend integration (loading / error states, credentials box) -->
-<style>
-  .spinner { display:inline-block; width:14px; height:14px; vertical-align:-2px; margin-right:8px;
-    border:2px solid #DCC3AA; border-top-color:#541A1A; border-radius:50%; animation: cpspin .7s linear infinite; }
-  @keyframes cpspin { to { transform: rotate(360deg); } }
-  .table-state-cell { text-align:center !important; padding:26px 10px !important; color:#9CA3AF; font-size:12px; white-space:normal !important; }
-  .table-state-cell .btn-primary { margin: 10px auto 0; }
-  @media (max-width: 720px) {
-    #partnersTable tr.table-state-row { border:none; padding:0; }
-    #partnersTable td.table-state-cell { display:block; text-align:center; }
-    #partnersTable td.table-state-cell::before { display:none; }
-  }
-  .field-error { font-size:10px; color:#E11D48; margin-top:2px; }
-  .field-error:empty { display:none; }
-  .field-input.invalid { border-color:#E11D48; }
-  .field-hint { font-size:10px; color:#9CA3AF; margin-top:2px; }
-  .field-input[readonly] { background:#F1E2D1; color:#6B7280; cursor:not-allowed; }
-  .cred-box { background:#F1E2D1; border:1px dashed #810B38; border-radius:12px; padding:10px 12px; margin-top:10px; }
-  .cred-row { display:flex; justify-content:space-between; gap:10px; font-size:12px; padding:3px 0; }
-  .cred-row b { color:#1F2937; word-break:break-all; user-select:all; }
-  .btn-primary:disabled, .btn-secondary:disabled { opacity:.55; cursor:not-allowed; }
-</style>
 </head>
 <body class="bg-cream">
 
@@ -360,7 +338,7 @@
 
   <!-- ============ View Channel Partner Modal (stats) ============ -->
   <div id="partnerViewModal" class="modal-overlay hidden">
-    <div class="modal-panel modal-panel--wide modal-panel--xwide">
+    <div class="modal-panel modal-panel--xwide">
       <div class="modal-header">
         <div>
           <div id="partnerViewTitle" class="modal-title">Partner Details</div>

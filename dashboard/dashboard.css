@@ -19,6 +19,13 @@ img, svg, canvas { max-width: 100%; }
 /* Tailwind border colour override -> darker borders everywhere, no HTML change needed */
 .border-peach-300 { border-color: var(--border-strong) !important; }
 
+/* ============ Widget failure state (one failing widget never breaks the page) ============ */
+[data-widget].widget-failed { position: relative; opacity: .6; }
+[data-widget].widget-failed::after {
+  content: 'Couldn’t load'; position: absolute; top: 6px; right: 10px;
+  font-size: 10px; font-weight: 600; color: #E11D48; pointer-events: none;
+}
+
 /* ============ App shell ============ */
 .app-shell { height: 100vh; height: 100dvh; overflow: hidden; }
 

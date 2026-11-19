@@ -19,7 +19,7 @@
 // Access guard — this module is Super Admin only.
 // ============================================================
 if (window.currentUserRole !== 'SUPER_ADMIN') {
-  window.location.replace('../dashboard/dashboard.html');
+  window.location.replace('/dashboard/dashboard.html');
   throw new Error('Access denied: Super Admin only');
 }
 
@@ -218,7 +218,7 @@ function logoutUser() {
     if (window.Session && typeof Session.logout === 'function') Session.logout();
     else sessionStorage.removeItem('sqms_session');
   } catch (_) {}
-  window.location.href = '../index.html';
+  window.location.href = '/index.html';
 }
 
 // ============================================================
@@ -493,7 +493,7 @@ function updateSortIcons() {
     const icon = th.querySelector('.sort-icon');
     const key = th.getAttribute('data-key');
     th.classList.toggle('sorted', key === sortKey);
-    icon.textContent = key === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '⇅';
+    if (icon) icon.textContent = key === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '⇅';
   });
 }
 
@@ -1015,7 +1015,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================================
-// Topbar: notification + profile dropdowns
+// Topbar: notification + profile dropdowns (open / close only)
 // ============================================================
 const notifBtn = document.getElementById('notifBtn');
 const notifDropdown = document.getElementById('notifDropdown');
@@ -1025,6 +1025,7 @@ const profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
 function closeAllTopbarDropdowns() {
   [notifDropdown, profileDropdown].forEach((dd) => dd && dd.classList.add('hidden'));
+  notifBtn?.setAttribute('aria-expanded', 'false');
 }
 
 notifBtn?.addEventListener('click', (e) => {
@@ -1032,6 +1033,7 @@ notifBtn?.addEventListener('click', (e) => {
   const willOpen = notifDropdown.classList.contains('hidden');
   closeAllTopbarDropdowns();
   notifDropdown.classList.toggle('hidden', !willOpen);
+  notifBtn.setAttribute('aria-expanded', String(willOpen));
 });
 
 profileBtn?.addEventListener('click', (e) => {
@@ -1041,6 +1043,8 @@ profileBtn?.addEventListener('click', (e) => {
   profileDropdown.classList.toggle('hidden', !willOpen);
 });
 
+// clicks inside the notification dropdown (tabs, mark all read, delete…) must not close it
+notifDropdown?.addEventListener('click', (e) => e.stopPropagation());
 document.addEventListener('click', () => closeAllTopbarDropdowns());
 profileLogoutBtn?.addEventListener('click', logoutUser);
 

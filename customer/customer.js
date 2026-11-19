@@ -4,21 +4,61 @@
 
    Endpoints used
    --------------
-   GET    /api/customers?page&size&sort&search&type&status[&partnerId]
-   GET    /api/customers/summary[?partnerId]
+   GET    /api/customers?page&size&sort&search&type&status[&viewPartnerId]
+   GET    /api/customers/summary[?viewPartnerId]
+   GET    /api/customers/{id}[?viewPartnerId]
+   GET    /api/customers/{id}/history[?viewPartnerId]
+   GET    /api/customers/followups?page&size&status&customerId[&viewPartnerId]
    POST   /api/customers
    PUT    /api/customers/{id}
    DELETE /api/customers/{id}
-   GET    /api/customers/{id}/history
-   GET    /api/customers/followups?page&size&status&customerId
    POST   /api/customers/{id}/followups
-   GET    /api/channel-partners/options        (SUPER_ADMIN dropdown)
    POST   /api/auth/refresh                    (silent token refresh)
+
+   Tenant rules (same as Products)
+   -------------------------------
+   * The client NEVER sends a partnerId. Everything is created under the signed-in
+     user's own partner (Super Admin: the PLATFORM partner).
+   * Super Admin may look at ONE partner with ?viewPartnerId= — GET requests only.
+     In that mode this page is READ-ONLY: write buttons are hidden and api() refuses
+     any non-GET request before it leaves the browser (the backend refuses it too).
    ============================================================ */
 
 /* ---------- API config ---------- */
 const API_BASE = (window.API_BASE || 'http://localhost:8091').replace(/\/+$/, '');
 const SESSION_KEY = 'sqms_session';
+const VIEW_PARTNER_KEY = 'sqms_view_partner';   // sessionStorage: {"id":12,"name":"Acme Solar"}
+
+/* ============================================================
+   AppLog (Module 0). Uses window.AppLog when session.js provides it,
+   otherwise falls back to the console so this file works on its own.
+   Rule: log the module tag, method, PATH (never the query string),
+   status and errorCode. Never log request bodies, names, mobiles,
+   e-mails or tokens.
+   ============================================================ */
+const AppLog = (window.AppLog && typeof window.AppLog.error === 'function') ? window.AppLog : {
+  error: (...a) => console.error(...a),
+  warn:  (...a) => console.warn(...a),
+  info:  (...a) => console.info(...a),
+  debug: (...a) => console.debug(...a),
+};
+const LOG_TAG = '[CUSTOMER]';
+
+/* ============================================================
+   Safe form helpers — a missing input can no longer crash the page.
+   A missing field is logged once (id only) so it is easy to spot.
+   ============================================================ */
+const _missingLogged = new Set();
+function fieldEl(id) {
+  const el = document.getElementById(id);
+  if (!el && !_missingLogged.has(id)) {
+    _missingLogged.add(id);
+    AppLog.warn(`${LOG_TAG} form element not found in HTML`, { id });
+  }
+  return el;
+}
+function setVal(id, v) { const el = fieldEl(id); if (el) el.value = v; }
+function getVal(id) { const el = fieldEl(id); return el ? String(el.value || '') : ''; }
 
 /* ============================================================
    Sidebar collapse/expand (same behaviour as dashboard.js)
@@ -105,6 +145,75 @@ function can(perm) {
   return list.includes(perm);
 }
 
+/* ============================================================
+   View-partner mode (Super Admin looking at ONE partner, read only)
+
+   Source: ?viewPartnerId=12[&viewPartnerName=Acme] on this page's URL,
+   remembered in sessionStorage so a reload keeps the view. Only honoured
+   for SUPER_ADMIN. The backend decides again on every request.
+   ============================================================ */
+function loadViewPartner() {
+  if (!isSuperAdmin()) return null;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const idFromUrl = q.get('viewPartnerId');
+    if (idFromUrl && /^\d+$/.test(idFromUrl)) {
+      const v = { id: Number(idFromUrl), name: q.get('viewPartnerName') || '' };
+      sessionStorage.setItem(VIEW_PARTNER_KEY, JSON.stringify(v));
+      return v;
+    }
+    if (q.has('viewPartnerId')) sessionStorage.removeItem(VIEW_PARTNER_KEY);   // empty/invalid param = leave the view
+    else {
+      const raw = sessionStorage.getItem(VIEW_PARTNER_KEY);
+      const v = raw ? JSON.parse(raw) : null;
+      if (v && Number.isInteger(v.id)) return v;
+    }
+  } catch (_) {}
+  return null;
+}
+const viewPartner = loadViewPartner();
+const isViewMode = () => !!viewPartner;
+
+// Every write is blocked in view mode; permission checks for buttons go through this.
+const canWrite = (perm) => !isViewMode() && can(perm);
+
+function readOnlyGuard(what) {
+  if (!isViewMode()) return false;
+  AppLog.warn(`${LOG_TAG} blocked in read-only view: ${what}`);
+  showToast('You are viewing a partner. This page is read only.');
+  return true;
+}
+
+function exitViewMode() {
+  try { sessionStorage.removeItem(VIEW_PARTNER_KEY); } catch (_) {}
+  const url = new URL(window.location.href);
+  url.searchParams.delete('viewPartnerId');
+  url.searchParams.delete('viewPartnerName');
+  window.location.href = url.toString();
+}
+
+function renderViewBanner() {
+  if (!isViewMode()) return;
+  const anchor = document.querySelector('.cm-header');
+  if (!anchor || document.getElementById('viewModeBanner')) return;
+  const label = viewPartner.name ? viewPartner.name : `partner #${viewPartner.id}`;
+  const banner = document.createElement('div');
+  banner.id = 'viewModeBanner';
+  banner.setAttribute('role', 'status');
+  banner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;'
+    + 'background:#FBF6EF;border:1px solid #DCC3AA;border-radius:12px;padding:8px 14px;margin-bottom:12px;'
+    + 'font-size:12px;color:#541A1A;font-weight:500;';
+  const text = document.createElement('span');
+  text.textContent = `Viewing ${label} — read only. You cannot add, edit or delete anything here.`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = 'Back to my data';
+  btn.style.cssText = 'font-size:12px;font-weight:600;color:#810B38;background:none;border:0;cursor:pointer;text-decoration:underline;';
+  btn.addEventListener('click', exitViewMode);
+  banner.append(text, btn);
+  anchor.parentNode.insertBefore(banner, anchor);
+}
+
 /* ---------- Logged-in user name (avatar + dropdown) ---------- */
 function getLoggedInUserName() {
   const u = getSessionUser();
@@ -124,6 +233,7 @@ function logoutUser() {
   try {
     if (window.Session && typeof Session.logout === 'function') Session.logout();
     else { sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_KEY); }
+    sessionStorage.removeItem(VIEW_PARTNER_KEY);
   } catch (_) {}
   window.location.href = '../index.html';
 }
@@ -174,15 +284,22 @@ async function refreshAccessToken() {
 }
 
 async function api(path, { method = 'GET', params, body } = {}, retried = false) {
-  let url = `${API_BASE}${path}`;
-  if (params) {
-    const qs = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && String(v).trim() !== '') qs.append(k, v);
-    });
-    const s = qs.toString();
-    if (s) url += `?${s}`;
+  // Read-only view: a write never leaves the browser.
+  if (method !== 'GET' && isViewMode()) {
+    AppLog.warn(`${LOG_TAG} write blocked in read-only view`, { method, path });
+    throw new ApiError('You are viewing a partner. This page is read only.', 0, 'READ_ONLY_VIEW');
   }
+
+  const query = { ...(params || {}) };
+  if (method === 'GET' && isViewMode()) query.viewPartnerId = viewPartner.id;   // GET only, never on writes
+
+  let url = `${API_BASE}${path}`;
+  const qs = new URLSearchParams();
+  Object.entries(query).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && String(v).trim() !== '') qs.append(k, v);
+  });
+  const qsText = qs.toString();
+  if (qsText) url += `?${qsText}`;
 
   const headers = { Accept: 'application/json' };
   const token = getAccessToken();
@@ -193,11 +310,13 @@ async function api(path, { method = 'GET', params, body } = {}, retried = false)
   try {
     res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
   } catch (_) {
+    AppLog.error(`${LOG_TAG} server not reachable`, { method, path });
     throw new ApiError('Cannot reach the server. Is the backend running on port 8091?', 0);
   }
 
   if (res.status === 401 && !retried) {
     if (await refreshAccessToken()) return api(path, { method, params, body }, true);
+    AppLog.warn(`${LOG_TAG} session expired`, { method, path });
     showToast('Session expired. Please log in again.');
     setTimeout(logoutUser, 800);
     throw new ApiError('Session expired', 401);
@@ -207,10 +326,11 @@ async function api(path, { method = 'GET', params, body } = {}, retried = false)
   try { json = await res.json(); } catch (_) {}
 
   if (!res.ok || (json && json.success === false)) {
-    // Debug aid: shows the server's real reason (errorCode + message + field errors) in the console
-    console.warn(`[api] ${method} ${url} -> ${res.status}`, json);
+    const errorCode = json && json.errorCode;
+    // 5xx = our problem (error), 4xx = the request/permission (warn). Path only: no query string, no body.
+    (res.status >= 500 ? AppLog.error : AppLog.warn)(`${LOG_TAG} API call failed`, { method, path, status: res.status, errorCode });
     const msg = (json && json.message) || (res.status === 403 ? 'You do not have permission to do this.' : `Request failed (${res.status})`);
-    throw new ApiError(msg, res.status, json && json.errorCode, json && json.errors);
+    throw new ApiError(msg, res.status, errorCode, json && json.errors);
   }
   return json ? json.data : null;
 }
@@ -291,7 +411,6 @@ const followupPillClass = { PENDING: 'pill-pending', COMPLETED: 'pill-accepted',
    ============================================================ */
 let customers = [];          // current page of customers (from server)
 let followups = [];          // current page of follow-ups (from server)
-let partnerOptions = [];     // [{id, code, name}] for SUPER_ADMIN
 let searchTerm = '';
 let typeFilter = 'All';
 let statusFilter = 'All';
@@ -334,11 +453,12 @@ const ICONS = {
   quote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line><line x1="9" y1="11" x2="12" y2="11"></line></svg>',
 };
 
+// In view mode only "View" is shown: edit / quotation / delete are all writes.
 function actionIconsHtml(id) {
   const btns = [`<button class="action-icon-btn icon-view" data-action="view" data-id="${id}" title="View">${ICONS.view}</button>`];
-  if (can('CUSTOMER:EDIT')) btns.push(`<button class="action-icon-btn icon-edit" data-action="edit" data-id="${id}" title="Edit">${ICONS.edit}</button>`);
-  btns.push(`<button class="action-icon-btn icon-quote" data-action="quote" data-id="${id}" title="Create Quotation">${ICONS.quote}</button>`);
-  if (can('CUSTOMER:DELETE')) btns.push(`<button class="action-icon-btn icon-delete" data-action="delete" data-id="${id}" title="Delete">${ICONS.delete}</button>`);
+  if (canWrite('CUSTOMER:EDIT')) btns.push(`<button class="action-icon-btn icon-edit" data-action="edit" data-id="${id}" title="Edit">${ICONS.edit}</button>`);
+  if (!isViewMode()) btns.push(`<button class="action-icon-btn icon-quote" data-action="quote" data-id="${id}" title="Create Quotation">${ICONS.quote}</button>`);
+  if (canWrite('CUSTOMER:DELETE')) btns.push(`<button class="action-icon-btn icon-delete" data-action="delete" data-id="${id}" title="Delete">${ICONS.delete}</button>`);
   return `<div class="row-actions">${btns.join('')}</div>`;
 }
 
@@ -398,11 +518,8 @@ function renderTable() {
   tableWrap.classList.remove('hidden');
   tableFooter.classList.remove('hidden');
 
-  const showChannelPartner = isSuperAdmin();
-
-  tbody.innerHTML = customers.map(c => {
-    const partnerCell = showChannelPartner ? `<td data-label="Channel Partner">${esc(partnerLabel(c.partner))}</td>` : '';
-    return `
+  // Every row of a page belongs to ONE partner (own, or the viewed one), so there is no Channel Partner column.
+  tbody.innerHTML = customers.map(c => `
       <tr data-id="${c.id}">
         <td data-label="Customer ID" class="font-medium">${esc(c.code)}</td>
         <td data-label="Customer Name">${esc(c.name)}</td>
@@ -410,17 +527,15 @@ function renderTable() {
         <td data-label="Email">${esc(c.email) || '—'}</td>
         <td data-label="City">${esc(c.city) || '—'}</td>
         <td data-label="Customer Type"><span class="pill ${typePillClass[c.type] || ''}">${esc(cap(c.type))}</span></td>
+        <td data-label="Tax Type">${taxTypeBadge(c.gstNo)}</td>
         <td data-label="Project Location">${esc(c.projectSummary) || '—'}</td>
-        ${partnerCell}
         <td data-label="Status"><span class="pill ${statusPillClass[c.status] || ''}">${esc(cap(c.status))}</span></td>
         <td data-label="Created Date">${formatDateDisplay(c.audit && c.audit.createdAt)}</td>
         <td data-label="Actions">${actionIconsHtml(c.id)}</td>
-      </tr>`;
-  }).join('');
+      </tr>`).join('');
 
-  document.querySelectorAll('#customerTable thead th[data-role="SUPER_ADMIN"]').forEach(th => {
-    th.style.display = showChannelPartner ? '' : 'none';
-  });
+  // keep the header in step with the body even if the HTML still has the old column
+  document.querySelectorAll('#customerTable thead th[data-role="SUPER_ADMIN"]').forEach(th => { th.style.display = 'none'; });
 
   const start = (currentPage - 1) * rowsPerPage;
   document.getElementById('rowsRangeLabel').textContent = `${start + 1}–${start + customers.length} of ${totalRows}`;
@@ -498,13 +613,13 @@ function setupCustomSelect(rootId, onSelect) {
   };
 }
 
-// Optional filter dropdowns (only wire up if present in the HTML)
+// Filter dropdowns (Type / Status above the table)
 const typeSelectCtrl = setupCustomSelect('filterTypeSelect', (val) => { typeFilter = val; currentPage = 1; loadCustomers(); });
 const statusSelectCtrl = setupCustomSelect('filterStatusSelect', (val) => { statusFilter = val; currentPage = 1; loadCustomers(); });
 // Form dropdowns (values are the DISPLAY values; converted to UPPERCASE when sent)
-const fldTypeCtrl = setupCustomSelect('fldTypeSelect', (val) => { document.getElementById('fldType').value = val; });
-const fldStatusCtrl = setupCustomSelect('fldStatusSelect', (val) => { document.getElementById('fldStatus').value = val; });
-const fuStatusCtrl = setupCustomSelect('fuStatusSelect', (val) => { document.getElementById('fuStatus').value = val; });
+const fldTypeCtrl = setupCustomSelect('fldTypeSelect', (val) => setVal('fldType', val));
+const fldStatusCtrl = setupCustomSelect('fldStatusSelect', (val) => setVal('fldStatus', val));
+const fuStatusCtrl = setupCustomSelect('fuStatusSelect', (val) => setVal('fuStatus', val));
 
 /* Generic builder for dropdowns whose options are loaded from the server. */
 function buildDynamicSelect(rootId, hiddenId, items, selectedValue, placeholder) {
@@ -546,16 +661,23 @@ function buildDynamicSelect(rootId, hiddenId, items, selectedValue, placeholder)
 
 document.addEventListener('click', (e) => {
   document.querySelectorAll('.custom-select').forEach(root => {
-    if (!root.contains(e.target)) root.querySelector('.custom-select-panel')?.classList.add('hidden');
+    if (!root.contains(e.target)) {
+      root.querySelector('.custom-select-panel')?.classList.add('hidden');
+      root.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false');
+    }
   });
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') document.querySelectorAll('.custom-select-panel').forEach(p => p.classList.add('hidden'));
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.custom-select-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.custom-select-trigger').forEach(t => t.setAttribute('aria-expanded', 'false'));
+  }
 });
 
 document.getElementById('resetFiltersBtn')?.addEventListener('click', () => {
   searchTerm = ''; typeFilter = 'All'; statusFilter = 'All'; currentPage = 1;
-  document.getElementById('searchName').value = '';
+  const search = document.getElementById('searchName');
+  if (search) search.value = '';
   typeSelectCtrl?.setValue('All');
   statusSelectCtrl?.setValue('All');
   loadCustomers();
@@ -563,19 +685,9 @@ document.getElementById('resetFiltersBtn')?.addEventListener('click', () => {
 });
 
 /* ============================================================
-   Channel partner options (SUPER_ADMIN)  → GET /api/channel-partners/options
-   ============================================================ */
-async function loadPartnerOptions() {
-  if (!isSuperAdmin() || partnerOptions.length) return;
-  try {
-    partnerOptions = (await api('/api/channel-partners/options')) || [];
-  } catch (err) {
-    showToast(`Could not load channel partners: ${err.message}`);
-  }
-}
-
-/* ============================================================
    Add / Edit Customer modal
+   The owner is never chosen in the form: the backend always uses the
+   signed-in user's own partner (Super Admin: the PLATFORM partner).
    ============================================================ */
 const customerFormModal = document.getElementById('customerFormModal');
 let formMode = 'add';
@@ -587,7 +699,7 @@ const FORM_ERR = {            // backend field name → [input id, error span id
   email: ['fldEmail', 'errEmail'],
   pincode: ['fldPincode', 'errPincode'],
   gstNo: ['fldGst', 'errGst'],
-  partnerId: ['fldChannelPartnerSelect', 'errPartner'],
+  state: ['fldState', 'errState'],
 };
 
 function clearFormErrors() {
@@ -605,56 +717,69 @@ function setFieldError(field, message) {
   return true;
 }
 
-async function openCustomerForm(mode, customer) {
+/* ---- GST: B2B / B2C badge (B2B = a valid GSTIN is on file) and the state list ---- */
+function taxTypeBadge(gstin) {
+  const t = GstCommon.customerTaxType(gstin);
+  return `<span class="pill ${t === 'B2B' ? 'pill-b2b' : 'pill-b2c'}" title="${t === 'B2B' ? 'Registered business (GSTIN on file)' : 'Consumer / unregistered'}">${t}</span>`;
+}
+function refreshGstBadge() {
+  const badge = document.getElementById('gstTypeBadge');
+  if (!badge) return;
+  const t = GstCommon.customerTaxType(getVal('fldGst'));
+  badge.textContent = t;
+  badge.className = 'pill ' + (t === 'B2B' ? 'pill-b2b' : 'pill-b2c');
+}
+(function wireGstFields() {
+  const list = document.getElementById('gstStateList');
+  if (list) list.innerHTML = GstCommon.STATES.map(s => `<option value="${esc(s.name)}"></option>`).join('');
+  const gst = document.getElementById('fldGst');
+  gst?.addEventListener('input', () => {
+    const pos = gst.selectionStart;
+    gst.value = GstCommon.normGstin(gst.value);
+    try { gst.setSelectionRange(pos, pos); } catch (_) {}
+    const state = document.getElementById('fldState');
+    const prefix = GstCommon.stateNameByCode(GstCommon.stateCodeFromGstin(gst.value));
+    if (state && !state.value.trim() && prefix && GstCommon.isValidGstin(gst.value)) state.value = prefix;   // convenience only
+    refreshGstBadge();
+  });
+})();
+
+function openCustomerForm(mode, customer) {
+  if (readOnlyGuard(`customer ${mode}`)) return;
   formMode = mode;
   clearFormErrors();
   document.getElementById('customerFormTitle').textContent = mode === 'add' ? 'Add Customer' : 'Edit Customer';
   document.getElementById('customerFormSubtitle').textContent = mode === 'add' ? "Fill in the customer's details" : `Editing ${customer.code}`;
   document.getElementById('customerFormSaveBtn').textContent = mode === 'add' ? 'Save Customer' : 'Update Customer';
 
-  document.getElementById('fldCustomerId').value = customer ? customer.id : '';
-  document.getElementById('fldName').value = customer ? customer.name || '' : '';
-  document.getElementById('fldMobile').value = customer ? customer.mobile || '' : '';
-  document.getElementById('fldEmail').value = customer ? customer.email || '' : '';
-  document.getElementById('fldAddress').value = customer ? customer.address || '' : '';
-  document.getElementById('fldCity').value = customer ? customer.city || '' : '';
-  document.getElementById('fldState').value = customer ? customer.state || '' : '';
-  const pin = document.getElementById('fldPincode'); if (pin) pin.value = customer ? customer.pincode || '' : '';
-  document.getElementById('fldGst').value = customer ? customer.gstNo || '' : '';
+  setVal('fldCustomerId', customer ? customer.id : '');
+  setVal('fldName', customer ? customer.name || '' : '');
+  setVal('fldMobile', customer ? customer.mobile || '' : '');
+  setVal('fldEmail', customer ? customer.email || '' : '');
+  setVal('fldAddress', customer ? customer.address || '' : '');
+  setVal('fldCity', customer ? customer.city || '' : '');
+  setVal('fldState', customer ? customer.state || '' : '');
+  setVal('fldPincode', customer ? customer.pincode || '' : '');
+  setVal('fldGst', customer ? customer.gstNo || '' : '');
+  refreshGstBadge();
 
   const typeVal = customer ? cap(customer.type) : 'Residential';
-  document.getElementById('fldType').value = typeVal;
+  setVal('fldType', typeVal);
   fldTypeCtrl?.setValue(typeVal);
 
   const statusVal = customer ? cap(customer.status) : 'Active';
-  document.getElementById('fldStatus').value = statusVal;
+  setVal('fldStatus', statusVal);
   fldStatusCtrl?.setValue(statusVal);
 
-  // ----- Channel partner -----
-  // SUPER_ADMIN: must pick a partner when CREATING (dropdown from the API).
-  // Everybody else (and edit mode): read-only text, the backend decides.
-  const selectWrap = document.getElementById('fldChannelPartnerSelect');
+  // Channel partner: read-only text, for information only (the backend decides the owner).
   const textInput = document.getElementById('fldChannelPartner');
-  if (isSuperAdmin() && mode === 'add') {
-    selectWrap?.classList.remove('hidden');
-    textInput?.classList.add('hidden');
-    await loadPartnerOptions();
-    buildDynamicSelect(
-      'fldChannelPartnerSelect', 'fldPartnerId',
-      partnerOptions.map(p => ({ value: p.id, label: `${p.code} · ${p.name}` })),
-      '', 'Select channel partner'
-    );
-  } else {
-    selectWrap?.classList.add('hidden');
-    textInput?.classList.remove('hidden');
-    document.getElementById('fldPartnerId').value = '';
-    if (textInput) {
-      textInput.value = customer ? partnerLabel(customer.partner) : getPartnerName();
-      textInput.readOnly = true;
-    }
+  if (textInput) {
+    textInput.value = customer ? partnerLabel(customer.partner) : getPartnerName();
+    textInput.readOnly = true;
   }
 
   customerFormModal.classList.remove('hidden');
+  document.getElementById('fldName')?.focus();
 }
 function closeCustomerForm() { customerFormModal.classList.add('hidden'); }
 
@@ -668,42 +793,53 @@ customerFormModal?.addEventListener('click', (e) => { if (e.target === customerF
 function validateCustomerForm() {
   clearFormErrors();
   let valid = true;
-  const name = document.getElementById('fldName').value.trim();
-  const mobile = document.getElementById('fldMobile').value.trim();
-  const email = document.getElementById('fldEmail').value.trim();
-  const pincode = (document.getElementById('fldPincode')?.value || '').trim();
-  const gst = document.getElementById('fldGst').value.trim().toUpperCase();
+  const name = getVal('fldName').trim();
+  const mobile = getVal('fldMobile').trim();
+  const email = getVal('fldEmail').trim();
+  const pincode = getVal('fldPincode').trim();
+  const gst = getVal('fldGst').trim().toUpperCase();
 
   if (!name) { setFieldError('name', 'Customer name is required.'); valid = false; }
   if (!mobile) { setFieldError('mobile', 'Mobile number is required.'); valid = false; }
   else if (!/^\d{10}$/.test(mobile)) { setFieldError('mobile', 'Enter a valid 10-digit mobile number.'); valid = false; }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFieldError('email', 'Enter a valid email address.'); valid = false; }
   if (pincode && !/^\d{6}$/.test(pincode)) { setFieldError('pincode', 'Pincode must be 6 digits.'); valid = false; }
-  if (gst && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gst)) { setFieldError('gstNo', 'GST number is not valid.'); valid = false; }
-  if (formMode === 'add' && isSuperAdmin() && !document.getElementById('fldPartnerId').value) {
-    setFieldError('partnerId', 'Select a channel partner.'); valid = false;
+  const gstMsg = GstCommon.gstinError(gst, false);
+  if (gstMsg) { setFieldError('gstNo', gstMsg); valid = false; }
+  const stateText = getVal('fldState').trim();
+  const stateCode = GstCommon.stateCodeByName(stateText);
+  if (stateText && !stateCode) { setFieldError('state', 'Pick a state from the list.'); valid = false; }
+  else if (gst && !gstMsg) {
+    if (!stateCode) { setFieldError('state', 'State is required for a customer with a GST number.'); valid = false; }
+    else if (stateCode !== GstCommon.stateCodeFromGstin(gst)) {
+      setFieldError('state', `State does not match the GST number (it starts with ${GstCommon.stateCodeFromGstin(gst)} = ${GstCommon.stateNameByCode(GstCommon.stateCodeFromGstin(gst))}).`);
+      valid = false;
+    }
+  }
+  if (!valid) {
+    const bad = Object.keys(FORM_ERR).filter(k => document.getElementById(FORM_ERR[k][1])?.textContent);
+    GstCommon.logger('CUSTOMER').validation('Customer form', bad);   // field names only, never values
   }
   return valid;
 }
 
 document.getElementById('customerFormSaveBtn')?.addEventListener('click', async () => {
+  if (readOnlyGuard('customer save')) return;
   if (saving || !validateCustomerForm()) return;
 
+  // No partnerId in the payload, ever.
   const payload = {
-    name: document.getElementById('fldName').value.trim(),
-    mobile: document.getElementById('fldMobile').value.trim(),
-    email: document.getElementById('fldEmail').value.trim(),
-    address: document.getElementById('fldAddress').value.trim(),
-    city: document.getElementById('fldCity').value.trim(),
-    state: document.getElementById('fldState').value.trim(),
-    pincode: (document.getElementById('fldPincode')?.value || '').trim(),
-    gstNo: document.getElementById('fldGst').value.trim().toUpperCase(),
-    type: document.getElementById('fldType').value.toUpperCase(),
-    status: document.getElementById('fldStatus').value.toUpperCase(),
+    name: getVal('fldName').trim(),
+    mobile: getVal('fldMobile').trim(),
+    email: getVal('fldEmail').trim(),
+    address: getVal('fldAddress').trim(),
+    city: getVal('fldCity').trim(),
+    state: GstCommon.stateNameByCode(GstCommon.stateCodeByName(getVal('fldState'))) || getVal('fldState').trim(),   // canonical GST state name
+    pincode: getVal('fldPincode').trim(),
+    gstNo: getVal('fldGst').trim().toUpperCase(),
+    type: getVal('fldType').toUpperCase(),
+    status: getVal('fldStatus').toUpperCase(),
   };
-  if (formMode === 'add' && isSuperAdmin()) {
-    payload.partnerId = Number(document.getElementById('fldPartnerId').value);
-  }
 
   const btn = document.getElementById('customerFormSaveBtn');
   const originalText = btn.textContent;
@@ -714,7 +850,7 @@ document.getElementById('customerFormSaveBtn')?.addEventListener('click', async 
       showToast(`Customer ${created.code} added`);
       currentPage = 1;
     } else {
-      const id = document.getElementById('fldCustomerId').value;
+      const id = getVal('fldCustomerId');
       const updated = await api(`/api/customers/${id}`, { method: 'PUT', body: payload });
       showToast(`Customer ${updated.code} updated`);
     }
@@ -745,6 +881,7 @@ function renderViewCustomer(c) {
     <div class="detail-item"><span class="d-label">State</span><span class="d-value">${esc(c.state) || '—'}</span></div>
     <div class="detail-item"><span class="d-label">Pincode</span><span class="d-value">${esc(c.pincode) || '—'}</span></div>
     <div class="detail-item"><span class="d-label">GST Number</span><span class="d-value">${esc(c.gstNo) || '—'}</span></div>
+    <div class="detail-item"><span class="d-label">Tax Type</span><span class="d-value">${taxTypeBadge(c.gstNo)}</span></div>
     <div class="detail-item"><span class="d-label">Customer Type</span><span class="d-value">${esc(cap(c.type))}</span></div>
     <div class="detail-item"><span class="d-label">Channel Partner</span><span class="d-value">${esc(partnerLabel(c.partner))}</span></div>
     <div class="detail-item"><span class="d-label">Status</span><span class="d-value">${esc(cap(c.status))}</span></div>
@@ -758,7 +895,7 @@ function renderViewCustomer(c) {
 }
 async function openViewCustomer(customer) {
   renderViewCustomer(customer);                       // instant, from the table row
-  try { renderViewCustomer(await api(`/api/customers/${customer.id}`)); } catch (_) {}   // then refresh
+  try { renderViewCustomer(await api(`/api/customers/${customer.id}`)); } catch (_) {}   // then refresh (failure already logged by api())
 }
 function closeViewCustomer() { viewCustomerModal.classList.add('hidden'); }
 document.getElementById('viewCustomerCloseBtn')?.addEventListener('click', closeViewCustomer);
@@ -772,6 +909,7 @@ const deleteModal = document.getElementById('deleteModal');
 let pendingDeleteId = null;
 
 function openDeleteModal(customer) {
+  if (readOnlyGuard('customer delete')) return;
   pendingDeleteId = customer.id;
   document.getElementById('deleteCustomerName').textContent = `${customer.name} · ${customer.code}`;
   deleteModal.classList.remove('hidden');
@@ -782,6 +920,7 @@ document.getElementById('deleteCancelBtn')?.addEventListener('click', closeDelet
 deleteModal?.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModal(); });
 
 document.getElementById('deleteConfirmBtn')?.addEventListener('click', async () => {
+  if (readOnlyGuard('customer delete confirm')) return;
   if (!pendingDeleteId) return;
   const id = pendingDeleteId;
   const btn = document.getElementById('deleteConfirmBtn');
@@ -814,7 +953,7 @@ document.getElementById('customerTbody')?.addEventListener('click', (e) => {
   if (action === 'view') openViewCustomer(customer);
   else if (action === 'edit') openCustomerForm('edit', customer);
   else if (action === 'delete') openDeleteModal(customer);
-  else if (action === 'quote') showToast(`Quotation flow started for ${customer.name}`);
+  else if (action === 'quote') { if (!readOnlyGuard('create quotation')) showToast(`Quotation flow started for ${customer.name}`); }
 });
 
 /* ============================================================
@@ -914,6 +1053,7 @@ const followupModal = document.getElementById('followupModal');
 let followupCustomers = [];   // customers shown in the follow-up dropdown
 
 async function openFollowupModal() {
+  if (readOnlyGuard('add follow-up')) return;
   // The dropdown needs ALL visible customers, not only the current table page.
   try {
     const page = await api('/api/customers', { params: { page: 0, size: 100, sort: 'name,asc' } });
@@ -926,10 +1066,10 @@ async function openFollowupModal() {
     followupCustomers.map(c => ({ value: c.id, label: `${c.name} · ${c.code}` })),
     followupCustomers[0].id, 'Select customer'
   );
-  document.getElementById('fuDate').value = new Date().toISOString().slice(0, 10);
-  document.getElementById('fuNextDate').value = '';
-  document.getElementById('fuRemark').value = '';
-  document.getElementById('fuStatus').value = 'Pending';
+  setVal('fuDate', new Date().toISOString().slice(0, 10));
+  setVal('fuNextDate', '');
+  setVal('fuRemark', '');
+  setVal('fuStatus', 'Pending');
   fuStatusCtrl?.setValue('Pending');
   followupModal.classList.remove('hidden');
 }
@@ -941,11 +1081,12 @@ document.getElementById('followupCancelBtn')?.addEventListener('click', closeFol
 followupModal?.addEventListener('click', (e) => { if (e.target === followupModal) closeFollowupModal(); });
 
 document.getElementById('followupSaveBtn')?.addEventListener('click', async () => {
-  const customerId = document.getElementById('fuCustomer').value;
-  const followupDate = document.getElementById('fuDate').value;
-  const nextDate = document.getElementById('fuNextDate').value;
-  const remark = document.getElementById('fuRemark').value.trim();
-  const status = document.getElementById('fuStatus').value.toUpperCase();   // PENDING | COMPLETED
+  if (readOnlyGuard('follow-up save')) return;
+  const customerId = getVal('fuCustomer');
+  const followupDate = getVal('fuDate');
+  const nextDate = getVal('fuNextDate');
+  const remark = getVal('fuRemark').trim();
+  const status = getVal('fuStatus').toUpperCase();   // PENDING | COMPLETED
 
   if (!customerId || !followupDate) return showToast('Customer and date are required');
   if (!remark) return showToast('Remark is required');
@@ -971,7 +1112,8 @@ document.getElementById('followupSaveBtn')?.addEventListener('click', async () =
 
 /* ============================================================
    Export / Print — exports ALL customers matching the current filters
-   (fetched in pages of 100, the backend maximum)
+   (fetched in pages of 100, the backend maximum). Reads only, so it is
+   allowed in view mode (api() adds viewPartnerId to these GETs).
    ============================================================ */
 async function fetchAllFilteredCustomers() {
   const all = [];
@@ -993,14 +1135,9 @@ async function fetchAllFilteredCustomers() {
 }
 
 async function customersToCsvRows() {
-  const showPartner = isSuperAdmin();
   const header = ['Customer ID', 'Name', 'Mobile', 'Email', 'City', 'Type', 'Project Location', 'Status', 'Created Date'];
-  if (showPartner) header.push('Channel Partner');
-  const rows = (await fetchAllFilteredCustomers()).map(c => {
-    const row = [c.code, c.name, c.mobile, c.email, c.city, cap(c.type), c.projectSummary, cap(c.status), (c.audit && c.audit.createdAt || '').slice(0, 10)];
-    if (showPartner) row.push(partnerLabel(c.partner));
-    return row;
-  });
+  const rows = (await fetchAllFilteredCustomers()).map(c =>
+    [c.code, c.name, c.mobile, c.email, c.city, cap(c.type), c.projectSummary, cap(c.status), (c.audit && c.audit.createdAt || '').slice(0, 10)]);
   return [header, ...rows];
 }
 
@@ -1029,11 +1166,11 @@ document.getElementById('printBtn')?.addEventListener('click', () => window.prin
    Boot
    ============================================================ */
 function applyPermissionVisibility() {
-  if (!can('CUSTOMER:CREATE')) {
+  if (!canWrite('CUSTOMER:CREATE')) {
     document.getElementById('addCustomerBtn')?.classList.add('hidden');
     document.getElementById('addFirstCustomerBtn')?.classList.add('hidden');
   }
-  if (!can('CUSTOMER:EDIT')) document.getElementById('addFollowupBtn')?.classList.add('hidden');
+  if (!canWrite('CUSTOMER:EDIT')) document.getElementById('addFollowupBtn')?.classList.add('hidden');
 }
 
 async function refreshAll() {
@@ -1041,6 +1178,7 @@ async function refreshAll() {
   await Promise.all([loadSummary(), loadCustomers(), loadFollowups()]);
 }
 
+renderViewBanner();
 applyPermissionVisibility();
 
 if (!getAccessToken()) {
@@ -1051,5 +1189,5 @@ if (!getAccessToken()) {
 }
 
 // session.js may set the role slightly later → re-render the table (no refetch)
-// so the Channel Partner column shows/hides correctly.
+// so the action buttons match the role.
 window.addEventListener('DOMContentLoaded', () => { if (customers.length) renderTable(); });

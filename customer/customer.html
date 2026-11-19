@@ -189,10 +189,43 @@
       <div class="filter-card">
         <div class="filter-row">
           <div class="filter-group grow">
-            <label class="filter-label">Search</label>
+            <label class="filter-label" for="searchName">Search</label>
             <div class="filter-search-wrap">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
               <input type="text" id="searchName" class="field-input" placeholder="Search by name, mobile or email">
+            </div>
+          </div>
+
+          <!-- Customer Type filter (wired by customer.js → filterTypeSelect) -->
+          <div class="filter-group fixed">
+            <label class="filter-label">Customer Type</label>
+            <div class="custom-select" id="filterTypeSelect">
+              <button type="button" class="custom-select-trigger field-input" aria-haspopup="listbox" aria-expanded="false">
+                <span class="cs-label">All</span>
+                <svg class="cs-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="custom-select-panel hidden" role="listbox">
+                <div class="custom-select-option selected" data-value="All" role="option">All</div>
+                <div class="custom-select-option" data-value="Residential" role="option">Residential</div>
+                <div class="custom-select-option" data-value="Commercial" role="option">Commercial</div>
+                <div class="custom-select-option" data-value="Industrial" role="option">Industrial</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status filter (wired by customer.js → filterStatusSelect) -->
+          <div class="filter-group fixed">
+            <label class="filter-label">Status</label>
+            <div class="custom-select" id="filterStatusSelect">
+              <button type="button" class="custom-select-trigger field-input" aria-haspopup="listbox" aria-expanded="false">
+                <span class="cs-label">All</span>
+                <svg class="cs-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="custom-select-panel hidden" role="listbox">
+                <div class="custom-select-option selected" data-value="All" role="option">All</div>
+                <div class="custom-select-option" data-value="Active" role="option">Active</div>
+                <div class="custom-select-option" data-value="Inactive" role="option">Inactive</div>
+              </div>
             </div>
           </div>
 
@@ -225,9 +258,8 @@
                 <th>Email</th>
                 <th>City</th>
                 <th>Customer Type</th>
+                <th>Tax Type</th>
                 <th>Project Location</th>
-                <!-- Channel Partner column for Super Admin only -->
-                <th data-role="SUPER_ADMIN">Channel Partner</th>
                 <th>Status</th>
                 <th>Created Date</th>
                 <th class="actions-th">Actions</th>
@@ -308,15 +340,16 @@
       <form id="customerForm" class="modal-body" novalidate>
         <input type="hidden" id="fldCustomerId">
 
+        <!-- FIX: this field was missing, which caused the "Cannot set properties of null" error -->
         <div class="field-group full">
           <label class="field-label" for="fldName">Customer Name <span class="req">*</span></label>
-          <input type="text" id="fldName" class="field-input" placeholder="e.g. Amit Sharma">
+          <input type="text" id="fldName" class="field-input" placeholder="Full name or company name">
           <span class="field-error" id="errName"></span>
         </div>
 
         <div class="field-group">
           <label class="field-label" for="fldMobile">Mobile Number <span class="req">*</span></label>
-          <input type="tel" id="fldMobile" class="field-input" placeholder="10-digit mobile">
+          <input type="tel" id="fldMobile" class="field-input" inputmode="numeric" maxlength="10" placeholder="10-digit mobile">
           <span class="field-error" id="errMobile"></span>
         </div>
 
@@ -338,12 +371,22 @@
 
         <div class="field-group">
           <label class="field-label" for="fldState">State</label>
-          <input type="text" id="fldState" class="field-input" placeholder="e.g. Maharashtra">
+          <input type="text" id="fldState" class="field-input" list="gstStateList" autocomplete="off" placeholder="Start typing, e.g. Maharashtra">
+          <datalist id="gstStateList"></datalist>
+          <span class="field-error" id="errState"></span>
         </div>
 
         <div class="field-group">
-          <label class="field-label" for="fldGst">GST Number</label>
-          <input type="text" id="fldGst" class="field-input" placeholder="Optional">
+          <label class="field-label" for="fldPincode">Pincode</label>
+          <input type="text" id="fldPincode" class="field-input" inputmode="numeric" maxlength="6" placeholder="6 digits">
+          <span class="field-error" id="errPincode"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="fldGst">GST Number <span id="gstTypeBadge" class="pill pill-b2c">B2C</span></label>
+          <input type="text" id="fldGst" class="field-input" maxlength="15" autocomplete="off" spellcheck="false" placeholder="Optional — 15 characters" style="text-transform: uppercase;">
+          <!-- FIX: error span was missing, so GST errors never showed -->
+          <span class="field-error" id="errGst"></span>
         </div>
 
         <div class="field-group">
@@ -362,17 +405,6 @@
           </div>
         </div>
 
-        <div class="field-group full">
-          <label class="field-label" for="fldProject">Project Location</label>
-          <input type="text" id="fldProject" class="field-input" placeholder="Site / project address">
-        </div>
-
-        <!-- Assigned Channel Partner field -->
-        <div class="field-group full">
-          <label class="field-label" for="fldChannelPartner">Assigned Channel Partner</label>
-          <input type="text" id="fldChannelPartner" class="field-input" placeholder="Auto-filled from login" readonly>
-        </div>
-
         <div class="field-group">
           <label class="field-label">Status</label>
           <input type="hidden" id="fldStatus" value="Active">
@@ -386,6 +418,12 @@
               <div class="custom-select-option" data-value="Inactive" role="option">Inactive</div>
             </div>
           </div>
+        </div>
+
+        <!-- Assigned Channel Partner field (read-only, for information) -->
+        <div class="field-group full">
+          <label class="field-label" for="fldChannelPartner">Assigned Channel Partner</label>
+          <input type="text" id="fldChannelPartner" class="field-input" placeholder="Auto-filled from login" readonly>
         </div>
       </form>
 
@@ -469,7 +507,7 @@
           <input type="date" id="fuNextDate" class="field-input">
         </div>
         <div class="field-group full">
-          <label class="field-label" for="fuRemark">Remark</label>
+          <label class="field-label" for="fuRemark">Remark <span class="req">*</span></label>
           <input type="text" id="fuRemark" class="field-input" placeholder="e.g. Discussed pricing, sent brochure">
         </div>
         <div class="field-group full">
@@ -483,7 +521,6 @@
             <div class="custom-select-panel hidden" role="listbox">
               <div class="custom-select-option selected" data-value="Pending" role="option">Pending</div>
               <div class="custom-select-option" data-value="Completed" role="option">Completed</div>
-              <div class="custom-select-option" data-value="Overdue" role="option">Overdue</div>
             </div>
           </div>
         </div>
@@ -498,8 +535,10 @@
   <div id="toast-container" class="fixed bottom-5 right-5 z-[400] space-y-2 max-w-[calc(100vw-2.5rem)]" style="position:fixed;bottom:20px;right:20px;z-index:600;display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 40px);"></div>
 
 <!-- IMPORTANT: load session.js first, then the module's own JS -->
+<script src="/shared/logger.js"></script>
 <script src="/session.js"></script>
 <script src="/notifications.js"></script>
+<script src="/shared/gst-common.js"></script>
 <script src="/customer/customer.js"></script>
 </body>
 </html>

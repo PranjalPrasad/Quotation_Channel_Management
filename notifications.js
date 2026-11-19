@@ -7,11 +7,19 @@
  *   PATCH  /api/notifications/markAllRead/read-all           { unread }
  *   DELETE /api/notifications/delete/{id}                    { unread }
  *
+ * The bell is "my notifications": the backend pins every call to the signed-in user's OWN tenant (Super Admin:
+ * the PLATFORM tenant), so no partner id is ever sent from here.
+ *
  * Usage: put  <script src="/notifications.js"></script>  right after  /session.js  on a page that has
  *        <button id="notifBtn"> and <div id="notifDropdown" class="topbar-dropdown notif-dropdown hidden"></div>
  * Everything else (list, tabs, badge, styles) is created here, so no page needs its own notification CSS/JS.
  * Pages that still contain an old click handler on #notifBtn are overridden (capture phase), so the
  * dropdown can never be toggled twice.
+ *
+ * Logging (Module 0): everything goes through window.AppLog with the tag NOTIFY (console only if AppLog is not
+ * loaded). The 30 s unread-count poll backs off exponentially while the server is failing (30 s, 60 s, 2 min, 4 min,
+ * then every 5 min, +/-15 % jitter) and goes back to 30 s on the first success. A failing poll is logged on the
+ * 1st, 2nd, 4th, 8th ... failure only (no flood), and recovery is logged once.
  * ========================================================================== */
 (function () {
   'use strict';
@@ -20,6 +28,17 @@
   var dd = document.getElementById('notifDropdown');
   if (!btn || !dd || !window.Session || window.__notificationsReady) return;
   window.__notificationsReady = true;
+
+  /* ------------------------------------------------------------------ logging */
+  function short(s) { s = String(s == null ? '' : s); return s.length > 200 ? s.slice(0, 200) + '…' : s; }
+
+  /** level: 'debug' | 'info' | 'warn' | 'error'. Never throws; never logs tokens, titles or message text. */
+  function LOG(level, msg, data) {
+    try {
+      if (window.AppLog && typeof window.AppLog[level] === 'function') { window.AppLog[level]('NOTIFY', msg, data); return; }
+      if (window.console && (level === 'warn' || level === 'error')) console[level]('[NOTIFY] ' + msg, data || '');
+    } catch (e) { /* logging must never break the page */ }
+  }
 
   /* ------------------------------------------------------------------ styles (injected once) */
   if (!document.getElementById('notifStyles')) {
@@ -100,8 +119,11 @@
 
   var BASE = '/api/notifications';
   var PAGE_SIZE = 10;
-  var POLL_MS = 30000;
+  var POLL_MS = 30000;            // normal interval
+  var POLL_MAX_MS = 300000;       // longest wait while the server keeps failing (5 min)
+  var POLL_MIN_GAP_MS = 5000;     // coming back to the tab never polls more often than this
   var state = { items: [], page: 0, hasMore: false, unread: 0, unreadOnly: false, loading: false, error: false };
+  var poll = { failures: 0, timer: null, lastAt: 0 };
 
   var ENTITY_LINKS = { QUOTATION: '/Quotation/quotation.html', CUSTOMER: '/customer/customer.html', PROJECT: '/project/project.html' };
   var CLOSE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
@@ -142,6 +164,8 @@
     });
   }
 
+  function errInfo(e) { return { status: e && e.status != null ? e.status : null, message: short(e && e.message) }; }
+
   function renderBadge() {
     var n = state.unread;
     badgeEl.textContent = n > 99 ? '99+' : String(n);
@@ -172,13 +196,63 @@
 
   function isOpen() { return !dd.classList.contains('hidden'); }
 
+  /* ------------------------------------------------------------------ unread-count polling with backoff */
+
+  /** Wait before the next poll: 30 s while healthy, then doubling up to 5 min while failing (deterministic part). */
+  function backoffMs() {
+    if (poll.failures <= 0) return POLL_MS;
+    return Math.min(POLL_MS * Math.pow(2, poll.failures), POLL_MAX_MS);
+  }
+
+  /** The same, +/-15 % jitter so many open tabs do not hit a recovering server at the same moment. */
+  function nextDelayMs() {
+    return Math.round(backoffMs() * (0.85 + Math.random() * 0.3));
+  }
+
+  function isPowerOfTwo(n) { return n > 0 && (n & (n - 1)) === 0; }
+
+  function pollFailed(e) {
+    poll.failures++;
+    // 1st, 2nd, 4th, 8th ... failure only: a server that is down for an hour must not write hundreds of lines
+    if (isPowerOfTwo(poll.failures)) {
+      var info = errInfo(e);
+      LOG('warn', 'unread-count poll failed', {
+        status: info.status, message: info.message, failures: poll.failures, nextRetryMs: backoffMs()
+      });
+    }
+  }
+
+  function pollSucceeded() {
+    if (poll.failures > 0) {
+      LOG('info', 'unread-count poll recovered', { afterFailures: poll.failures });
+      poll.failures = 0;
+    }
+  }
+
+  /** Resolves true/false, never rejects. */
   function fetchUnreadCount() {
+    poll.lastAt = Date.now();
     return call('/unread-count').then(function (data) {
+      pollSucceeded();
       var prev = state.unread;
       state.unread = (data && data.unread) || 0;
       renderBadge();
       if (state.unread > prev && isOpen()) load(true);       // a new one arrived while the list is open
-    }).catch(function (e) { console.warn('Notifications: unread-count failed:', e.message); });
+      return true;
+    }).catch(function (e) {
+      pollFailed(e);
+      return false;
+    });
+  }
+
+  function schedulePoll() {
+    clearTimeout(poll.timer);
+    poll.timer = setTimeout(pollTick, nextDelayMs());
+  }
+
+  function pollTick() {
+    if (document.hidden) { schedulePoll(); return; }          // background tab: skip, check again later
+    fetchUnreadCount().then(schedulePoll);
   }
 
   var reqSeq = 0;
@@ -202,7 +276,8 @@
       state.hasMore = state.page + 1 < ((data && data.totalPages) || 0);
     }).catch(function (e) {
       if (mySeq !== reqSeq) return;
-      console.warn('Notifications: list failed:', e.message);
+      var info = errInfo(e);
+      LOG('warn', 'list failed', { status: info.status, message: info.message, page: nextPage, unreadOnly: state.unreadOnly });
       state.error = true;
     }).then(function () {
       if (mySeq === reqSeq) { state.loading = false; renderList(); }
@@ -215,7 +290,11 @@
     item.read = true; state.unread = Math.max(0, state.unread - 1); renderBadge(); renderList();
     call('/' + id + '/markRead/read', { method: 'PATCH' }).then(function (d) {
       state.unread = (d && d.unread != null) ? d.unread : state.unread; renderBadge();
-    }).catch(function () { item.read = false; fetchUnreadCount(); renderList(); });
+    }).catch(function (e) {
+      var info = errInfo(e);
+      LOG('warn', 'markRead failed', { id: id, status: info.status, message: info.message });
+      item.read = false; fetchUnreadCount(); renderList();
+    });
   }
 
   function markAllRead() {
@@ -226,7 +305,11 @@
       state.unread = (d && d.unread) || 0;
       renderBadge();
       if (state.unreadOnly) load(true); else renderList();
-    }).catch(function () { markAllEl.disabled = false; });
+    }).catch(function (e) {
+      var info = errInfo(e);
+      LOG('warn', 'markAllRead failed', { status: info.status, message: info.message });
+      markAllEl.disabled = false;
+    });
   }
 
   function remove(id) {
@@ -234,7 +317,10 @@
       state.items = state.items.filter(function (i) { return i.id !== id; });
       state.unread = (d && d.unread != null) ? d.unread : state.unread;
       renderBadge(); renderList();
-    }).catch(function () { /* keep the item if the server refused */ });
+    }).catch(function (e) {
+      var info = errInfo(e);
+      LOG('warn', 'delete failed', { id: id, status: info.status, message: info.message });   // keep the item if the server refused
+    });
   }
 
   /* ------------------------------------------------------------------ open / close */
@@ -286,9 +372,14 @@
   /* ------------------------------------------------------------------ start + polling */
   renderBadge();
   renderList();
-  fetchUnreadCount();
-  setInterval(function () { if (!document.hidden) fetchUnreadCount(); }, POLL_MS);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) fetchUnreadCount(); });
+  fetchUnreadCount().then(schedulePoll);
+
+  // Back on the tab: refresh now (not more often than every 5 s), then restart the timer from the current backoff.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    if (Date.now() - poll.lastAt < POLL_MIN_GAP_MS) return;
+    fetchUnreadCount().then(schedulePoll);
+  });
 
   // Pages can call Notifications.refresh() after an action that creates a notification on the server.
   window.Notifications = { refresh: function () { fetchUnreadCount(); if (isOpen()) load(true); } };

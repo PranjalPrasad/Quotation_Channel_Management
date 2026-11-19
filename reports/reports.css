@@ -1,222 +1,18 @@
 /* ============================================================
-   Reports & Analytics — reports.css
-   Shell / Sidebar / Topbar identical to the Dashboard, Quotation,
-   Project, Product and Customer pages. Compact sizing, darker
-   borders, responsive on every breakpoint.
-   Palette: peach-500 #810B38 | peach-700 #541A1A | peach-100 #F1E2D1
-            cream #F7ECE1 | borders #BFA07C / #D3B999
+   Reports & Analytics — module-specific additions only.
+   Shell, sidebar, topbar, dropdowns, notifications, toast, tokens
+   (--border-strong, --border-soft, --rail-w) and all responsive
+   sidebar rules come from /dashboard/dashboard.css, which must
+   be loaded first. Nothing here re-declares them.
    ============================================================ */
-
-/* ============ Tokens ============ */
-:root {
-    --border-strong: #BFA07C; /* cards, inputs, dropdowns */
-    --border-soft:   #D3B999; /* dividers, row lines */
-    --rail-w: 76px;           /* collapsed sidebar width (phone/tablet content offset) */
-}
-
-/* ============ Base ============ */
-* { box-sizing: border-box; }
-
-html, body {
-    height: 100%;
-    -webkit-font-smoothing: antialiased;
-    overflow: hidden; /* page itself never scrolls — only inner panes do */
-}
 
 body { font-family: 'Poppins', sans-serif; }
 
-img, svg, canvas { max-width: 100%; }
-
-/* Tailwind border colour overrides -> darker borders, no HTML change needed */
-.border-peach-300, .border-peach-200 { border-color: var(--border-strong) !important; }
-
-/* ============ App shell — sidebar fixed, only main scrolls ============ */
-.app-shell {
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-}
-
-.app-sidebar {
-    height: 100vh;
-    height: 100dvh;
-    overflow: visible; /* toggle button pokes outside the sidebar edge */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-}
-
-.app-main {
-    height: 100vh;
-    height: 100dvh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    min-width: 0;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)) !important;
-}
-
-/* ============ Mobile / tablet sidebar drawer ============ */
-/* Below 1024px the sidebar is ALWAYS fixed, so expanding/collapsing never
-   pushes or squeezes the content; content starts after the collapsed rail. */
-@media (max-width: 1023px) {
-    .app-shell { position: relative; padding-left: var(--rail-w); }
-    .app-sidebar.sidebar { position: fixed; top: 0; left: 0; z-index: 410; }
-    .sidebar.expanded { box-shadow: 0 16px 40px rgba(84, 26, 26, 0.28); }
-    .sidebar-backdrop.visible {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(31, 17, 17, 0.38);
-        z-index: 400;
-        animation: fadeIn .15s ease-out;
-    }
-}
-.sidebar-backdrop { display: none; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-/* ============ Sidebar (identical to Dashboard) ============ */
-.sidebar { width: 76px; }
-.sidebar.collapsed { width: 76px; }
-.sidebar.expanded { width: 208px; }
-
-.nav-list { box-sizing: border-box; }
-
-.sidebar.expanded .nav-item {
-    width: 100%;
-    justify-content: flex-start;
-    padding-left: 12px;
-    padding-right: 8px;
-}
-.sidebar.expanded .nav-item span {
-    opacity: 1;
-    width: auto;
-    flex: 1 1 auto;
-    margin-left: 9px;
-}
-
-.nav-item {
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    min-height: 36px;
-    border-radius: 11px;
-    color: #9CA3AF;
-    background: transparent;
-    text-decoration: none;
-    transition: background 0.2s ease, color 0.2s ease, width 0.2s ease, padding 0.2s ease;
-    cursor: pointer;
-}
-.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
-.nav-item span {
-    display: block;
-    font-size: 11.5px;
-    font-weight: 500;
-    line-height: 1.3;
-    white-space: nowrap;
-    opacity: 0;
-    width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: left;
-    transition: opacity 0.2s ease, width 0.2s ease, margin 0.2s ease;
-}
-.nav-item:hover { background: #F1E2D1; color: #541A1A; }
-.nav-item.active { background: #541A1A; color: #fff; }
-.nav-item--muted:hover { background: #EFE1D2; color: #6B7280; }
-.nav-item--logout:hover { background: #FEF2F2; color: #EF4444; }
-
-/* ============ Topbar dropdowns (notification / profile / export) ============ */
-.topbar-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    min-width: 200px;
-    max-width: calc(100vw - 24px);
-    background: #F7ECE1;
-    border-radius: 13px;
-    box-shadow: 0 12px 30px rgba(84, 26, 26, 0.15);
-    border: 1px solid var(--border-strong);
-    padding: 7px;
-    z-index: 300;
-}
-.topbar-dropdown.hidden { display: none; }
-
-.topbar-dropdown-title {
-    font-size: 10.5px;
-    font-weight: 700;
-    color: #9CA3AF;
-    text-transform: uppercase;
-    letter-spacing: .02em;
-    padding: 4px 6px 6px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.topbar-notif-item {
-    display: flex;
-    gap: 8px;
-    padding: 6px;
-    border-radius: 9px;
-    transition: background-color .15s ease;
-    cursor: pointer;
-}
-.topbar-notif-item:hover { background: #EFE1D2; }
-.topbar-notif-icon {
-    width: 24px; height: 24px; border-radius: 8px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 10.5px;
-}
-.topbar-notif-item p { font-size: 12px; color: #374151; font-weight: 500; }
-.topbar-notif-item span { font-size: 10px; color: #9CA3AF; }
-
-.topbar-logout-btn {
-    width: 100%;
-    display: flex; align-items: center; gap: 8px;
-    font-size: 12px; font-weight: 600; color: #EF4444;
-    background: transparent; border: none; padding: 7px; border-radius: 9px; cursor: pointer;
-    text-decoration: none;
-}
-.topbar-logout-btn svg { width: 13px; height: 13px; }
-.topbar-logout-btn:hover { background: #FEF2F2; }
-
-#notifBtn {
-    width: 32px; height: 32px;
-    background: #F7ECE1;
-    border: 1px solid var(--border-strong);
-    color: #6B7280;
-    border-radius: 9999px;
-    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
-}
-#notifBtn svg { width: 15px; height: 15px; }
-#notifBtn:hover { background: #F1E2D1; border-color: #810B38; color: #541A1A; }
-#notifBtn span {
-    position: absolute; width: 7px; height: 7px; top: 6px; right: 6px;
-    background: #810B38; border: 1.5px solid #F7ECE1; border-radius: 50%;
-}
-
-#profileBtn {
-    width: 32px; height: 32px;
-    font-size: 12px;
-    background: #541A1A;
-    border-radius: 9999px;
-    color: #fff;
-}
-
-/* ============ Toast ============ */
-.toast-animate { animation: slideIn 0.2s ease-out; }
-@keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+/* Tailwind border-peach-200 -> same darker border as peach-300 (dashboard.css handles peach-300) */
+.border-peach-200 { border-color: var(--border-strong) !important; }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: #DCC3AA; border-radius: 10px; }
-
-/* ============================================================
-   REPORT PAGE COMPONENTS (compact, dashboard card language)
-   ============================================================ */
 
 /* ---- Filter bar ---- */
 .filter-bar {
@@ -238,7 +34,7 @@ img, svg, canvas { max-width: 100%; }
     font-family: inherit;
     transition: border-color .15s ease, box-shadow .15s ease;
 }
-.filter-input:focus { border-color: #541A1A; box-shadow: 0 0 0 3px rgba(84, 26, 26, 0.15); }
+.filter-input:focus { border-color: #541A1A; box-shadow: 0 0 0 3px rgba(84, 26, 26, 0.2); }
 
 /* ---- Report type tabs ---- */
 .report-tab {
@@ -249,8 +45,6 @@ img, svg, canvas { max-width: 100%; }
 }
 .report-tab:hover { background: #F1E2D1; color: #541A1A; }
 .report-tab.active { background: #541A1A; color: #fff; }
-
-/* ---- Tab content containers ---- */
 .tab-content.hidden { display: none; }
 
 /* ---- KPI widget cards ---- */
@@ -259,12 +53,8 @@ img, svg, canvas { max-width: 100%; }
     border: 1px solid var(--border-strong);
     border-radius: 12px;
     padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    min-height: 66px;
-    min-width: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-height: 66px; min-width: 0;
     transition: box-shadow .2s ease, border-color .2s ease;
     box-shadow: 0 1px 2px rgba(84, 26, 26, 0.04);
 }
@@ -295,30 +85,27 @@ img, svg, canvas { max-width: 100%; }
 .chart-card:hover { box-shadow: 0 6px 16px rgba(84, 26, 26, 0.10); border-color: #810B38; }
 .section-title { font-size: 12px; font-weight: 600; color: #1F2937; }
 .section-sub { font-size: 10px; color: #9CA3AF; }
-
 .alert-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; border-radius: 9px; font-size: 11px; }
-
-.pie-wrap { position: relative; width: 100%; }
 .chart-card canvas { max-width: 100%; }
-
 .table-foot { border-top: 1px solid var(--border-soft); }
 
-/* ---- Status pills ---- */
+/* ---- Status pills (same colours as .pill-* in dashboard.css) ---- */
 .status-pill {
-    font-size: 9.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
     display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
 }
-.status-pill.accepted { background: #d1fae5; color: #047857; }
-.status-pill.pending { background: #fef3c7; color: #b45309; }
-.status-pill.rejected { background: #ffe4e6; color: #e11d48; }
+.status-pill.accepted { background: #D1FAE5; color: #047857; }
+.status-pill.pending  { background: #FEF3C7; color: #B45309; }
+.status-pill.rejected { background: #FFE4E6; color: #E11D48; }
+.status-pill.approved { background: #DBEAFE; color: #1D4ED8; }
 
-/* ---- Data table ---- */
-.table-scope { width: 100%; -webkit-overflow-scrolling: touch; }
-.report-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+/* ---- Data table (same sizing as .data-table in dashboard.css) ---- */
+.table-scope { -webkit-overflow-scrolling: touch; }
+.report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .report-table thead th {
     text-align: left; font-size: 10px; font-weight: 600; color: #9CA3AF;
     text-transform: uppercase; letter-spacing: .02em;
-    padding: 7px 8px; border-bottom: 1px solid var(--border-strong);
+    padding: 7px 6px; border-bottom: 1px solid var(--border-strong);
     cursor: pointer; user-select: none; white-space: nowrap;
 }
 .report-table thead th.actions-th { cursor: default; }
@@ -327,11 +114,10 @@ img, svg, canvas { max-width: 100%; }
 .report-table thead th .sort-icon { font-size: 9px; margin-left: 4px; opacity: .5; }
 .report-table thead th.sorted { color: #810B38; }
 .report-table thead th.sorted .sort-icon { opacity: 1; }
-.report-table tbody td { padding: 7px 8px; border-bottom: 1px solid var(--border-soft); color: #374151; vertical-align: middle; }
+.report-table tbody td { padding: 7px 6px; border-bottom: 1px solid var(--border-soft); color: #374151; vertical-align: middle; }
 .report-table tbody tr { transition: background-color .15s ease; }
 .report-table tbody tr:hover { background: #F1E2D1; }
 
-/* desktop / tablet: no wrapping, horizontal scroll inside the card */
 @media (min-width: 721px) {
     .report-table { min-width: 720px; }
     .report-table th, .report-table td { white-space: nowrap; }
@@ -345,14 +131,14 @@ img, svg, canvas { max-width: 100%; }
 }
 .row-action-btn:hover { background: #F1E2D1; color: #810B38; }
 
-/* mobile: stack the report table into cards + touch-friendly buttons */
+/* mobile: stack the report table into cards */
 @media (max-width: 720px) {
     .report-table thead { display: none; }
     .report-table, .report-table tbody, .report-table tr, .report-table td { display: block; width: 100% !important; }
     .report-table tr { border: 1px solid var(--border-strong); border-radius: 12px; margin-bottom: 8px; padding: 6px 8px; }
     .report-table td { border-bottom: none; padding: 5px 2px; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: right; white-space: normal; }
     .report-table td::before {
-        content: attr(data-label); font-size: 9.5px; font-weight: 600; text-transform: uppercase;
+        content: attr(data-label); font-size: 10px; font-weight: 600; text-transform: uppercase;
         letter-spacing: .02em; color: #9CA3AF; text-align: left; flex-shrink: 0;
     }
     .report-table td:last-child { justify-content: flex-end; }
@@ -370,27 +156,21 @@ img, svg, canvas { max-width: 100%; }
 }
 .page-btn:hover { background: #F1E2D1; color: #810B38; }
 .page-btn.active { background: #541A1A; color: #fff; }
-.page-btn.disabled { opacity: .35; cursor: not-allowed; }
-
-select.rows-select {
-    font-size: 10.5px; border: 1px solid var(--border-strong); border-radius: 8px;
-    padding: 3px 6px; color: #374151; background: #F7ECE1;
-}
+.page-btn.disabled { opacity: .4; cursor: not-allowed; }
 
 /* ---- Buttons ---- */
 .export-btn {
-    font-size: 11px; font-weight: 500; padding: 6px 12px; border-radius: 9px;
+    font-size: 11.5px; font-weight: 600; padding: 7px 14px; border-radius: 9px;
     display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
-    border: 1px solid var(--border-strong); color: #1F2937; background: #fff;
+    border: 1px solid var(--border-strong); color: #374151; background: #EFE1D2;
     font-family: inherit; white-space: nowrap;
-    transition: background-color .15s ease, border-color .15s ease, transform .1s ease;
+    transition: opacity .15s ease, background-color .15s ease;
 }
-.export-btn:hover { border-color: #810B38; background: #F1E2D1; }
+.export-btn:hover { opacity: .85; }
 .export-btn:active { transform: scale(0.97); }
-.export-btn.primary { background: #810B38; color: #fff; border-color: #810B38; }
-.export-btn.primary:hover { background: #541A1A; }
+.export-btn.primary { background: #541A1A; color: #fff; border-color: #541A1A; }
 
-/* ---- Export dropdown ---- */
+/* ---- Export dropdown (uses .topbar-dropdown from dashboard.css) ---- */
 .export-wrap { position: relative; }
 .export-menu { min-width: 160px; padding: 5px; }
 .export-menu-item {
@@ -402,66 +182,25 @@ select.rows-select {
 .export-menu-item i { width: 14px; text-align: center; }
 .export-menu-item:hover { background: #EFE1D2; color: #541A1A; }
 
-/* ============================================================
-   RESPONSIVE — mirrors dashboard breakpoints
-   ============================================================ */
-
-/* Tablets (768–1023px) */
-@media (min-width: 768px) and (max-width: 1023px) {
-    .app-main { padding-left: 20px !important; padding-right: 20px !important; }
-    .sidebar.expanded { width: 226px; }
-}
-
-/* Phones (≤767px) */
+/* ---- Responsive (sidebar / padding breakpoints live in dashboard.css) ---- */
 @media (max-width: 767px) {
-    :root { --rail-w: 64px; }
-    .app-main { padding-left: 14px !important; padding-right: 14px !important; padding-top: 14px !important; }
-    .sidebar { width: 64px; }
-    .sidebar.collapsed { width: 64px; }
-    .sidebar.expanded { width: 216px; }
-    .nav-item { width: 34px; height: 34px; }
-    .nav-item svg { width: 15px; height: 15px; }
-    #sidebarToggle { top: 20px; }
-
     .filter-bar .flex { gap: 8px !important; }
     .filter-field { width: 47% !important; flex: 1 1 47%; }
     .filter-bar .ml-auto { margin-left: 0 !important; width: 100%; }
     .export-wrap .export-btn { width: 100%; justify-content: center; }
     .export-menu { left: 0; right: auto; }
 }
-
-/* Small phones (≤480px) */
 @media (max-width: 480px) {
-    :root { --rail-w: 56px; }
-    .app-main { padding-left: 10px !important; padding-right: 10px !important; }
-    .sidebar { width: 56px; }
-    .sidebar.collapsed { width: 56px; }
-    .sidebar.expanded { width: 196px; }
-    .nav-item { width: 30px; height: 30px; border-radius: 9px; }
-    .nav-item svg { width: 13px; height: 13px; }
-    .nav-list { gap: 6px !important; }
-    #sidebarToggle { width: 22px; height: 22px; right: -10px; }
-    #notifBtn, #profileBtn { width: 29px; height: 29px; }
-    #notifBtn svg { width: 13px; height: 13px; }
-    .page-btn { min-width: 28px; height: 28px; font-size: 10px; }
     .widget-value { font-size: 13.5px; }
     .filter-field { width: 100% !important; flex: 1 1 100%; }
 }
 
-/* Extra small screens (≤360px) */
-@media (max-width: 360px) {
-    :root { --rail-w: 50px; }
-    .app-main { padding-left: 8px !important; padding-right: 8px !important; }
-    .sidebar { width: 50px; }
-    .sidebar.collapsed { width: 50px; }
-    .sidebar.expanded { width: 184px; }
-    .nav-item { width: 28px; height: 28px; }
-    .nav-item svg { width: 12px; height: 12px; }
-}
-
-/* ============ Print (Print button prints the report content only) ============ */
+/* ---- Print (Print button prints the report content only) ----
+   dashboard.css hides everything with `body * { visibility: hidden }` for its print slip,
+   so it has to be switched back on here or the page prints blank. */
 @media print {
     html, body { overflow: visible; height: auto; }
+    body * { visibility: visible; }
     .app-sidebar, .sidebar-backdrop, .filter-bar, #reportTabs,
     .actions-th, .row-action-btn, #toast-container, .table-foot { display: none !important; }
     .app-main { height: auto; overflow: visible; }

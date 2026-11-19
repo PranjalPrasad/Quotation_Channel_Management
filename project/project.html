@@ -1,15 +1,15 @@
-<!-- ============ project.html ============ -->
 <!DOCTYPE html>
+<!-- ============ project.html ============ -->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Sun Greaves EcoTech Software</title>
 <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/img/logo.webp" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/img/logo.webp" />
-    <link rel="apple-touch-icon" href="/img/logo.webp" />
-    <meta name="theme-color" content="#541A1A" />
+<link rel="icon" type="image/png" sizes="32x32" href="/img/logo.webp" />
+<link rel="icon" type="image/png" sizes="192x192" href="/img/logo.webp" />
+<link rel="apple-touch-icon" href="/img/logo.webp" />
+<meta name="theme-color" content="#541A1A" />
 
 <!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -44,6 +44,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+<!-- shared design-system stylesheet (must load first) -->
 <link rel="stylesheet" href="/dashboard/dashboard.css" />
 <link rel="stylesheet" href="/project/project.css" />
 </head>
@@ -188,20 +189,14 @@
         </div>
       </div>
 
-      <!-- ============ Search & Filter ============ -->
+      <!-- ============ Search & Filter ============
+           The API has a single `search` parameter (project name, code, location AND customer),
+           so there is one search box instead of three. -->
       <div class="bg-cream rounded-xl p-3 shadow-sm border border-peach-300 mb-2.5">
         <div class="flex flex-wrap items-center gap-2">
           <div class="filter-field relative flex-1 min-w-[160px]">
             <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input id="searchProjectName" type="text" placeholder="Project name…" class="filter-input pl-9 w-full" />
-          </div>
-          <div class="filter-field relative flex-1 min-w-[160px]">
-            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <input id="searchCustomerName" type="text" placeholder="Customer name…" class="filter-input pl-9 w-full" />
-          </div>
-          <div class="filter-field relative flex-1 min-w-[160px]">
-            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            <input id="searchLocation" type="text" placeholder="Location…" class="filter-input pl-9 w-full" />
+            <input id="searchProjectName" type="text" placeholder="Search project, customer, code or location…" class="filter-input pl-9 w-full" />
           </div>
           <select id="filterStatus" class="filter-input filter-select">
             <option value="">All Status</option>
@@ -284,19 +279,22 @@
         </button>
       </div>
 
-      <form id="projectForm" class="modal-body">
+      <form id="projectForm" class="modal-body" onsubmit="return false;">
         <div class="field-group">
           <label class="field-label" for="fldProjectName">Project Name</label>
           <input type="text" id="fldProjectName" class="field-input" placeholder="e.g. Sharma Residence Rooftop" required>
         </div>
+        <!-- full-width row (dashboard.css makes #fldCustomer's group span both columns) -->
         <div class="field-group">
           <label class="field-label" for="fldCustomer">Customer</label>
-          <input type="text" id="fldCustomer" class="field-input" placeholder="e.g. Amit Sharma" required>
+          <select id="fldCustomer" class="field-input" required>
+            <option value="">Select customer</option>
+          </select>
         </div>
-        <!-- Assigned Channel Partner field -->
+        <!-- Assigned Channel Partner: set automatically from the customer -->
         <div class="field-group">
           <label class="field-label" for="fldChannelPartner">Assigned Channel Partner</label>
-          <input type="text" id="fldChannelPartner" class="field-input" placeholder="Auto-filled from login" readonly>
+          <input type="text" id="fldChannelPartner" class="field-input" placeholder="Set automatically from the customer" readonly>
         </div>
         <div class="field-group">
           <label class="field-label" for="fldType">Project Type</label>
@@ -320,7 +318,7 @@
           </select>
         </div>
         <div class="field-group">
-          <label class="field-label" for="fldMonthlyConsumption">Monthly Electricity Consumption (units)</label>
+          <label class="field-label" for="fldMonthlyConsumption">Monthly Consumption (units)</label>
           <input type="number" id="fldMonthlyConsumption" class="field-input" placeholder="e.g. 450" min="0">
         </div>
         <div class="field-group">
@@ -332,7 +330,7 @@
           <input type="number" id="fldRoofArea" class="field-input" placeholder="e.g. 400" min="0">
         </div>
         <div class="field-group">
-          <label class="field-label" for="fldEstimatedGeneration">Estimated Generation (units/month)</label>
+          <label class="field-label" for="fldEstimatedGeneration">Est. Generation (units/month)</label>
           <input type="number" id="fldEstimatedGeneration" class="field-input" placeholder="e.g. 600" min="0">
         </div>
         <div class="field-group">
@@ -373,20 +371,20 @@
       </div>
 
       <div class="modal-body modal-body-scroll">
-        <div class="field-group"><label class="field-label">Project ID</label><p id="viewId" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Project Name</label><p id="viewName" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Customer</label><p id="viewCustomer" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Channel Partner</label><p id="viewChannelPartner" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Project Type</label><p id="viewType" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Capacity (kW)</label><p id="viewCapacity" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Roof Type</label><p id="viewRoofType" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Monthly Consumption</label><p id="viewMonthlyConsumption" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Location</label><p id="viewLocation" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Roof Area</label><p id="viewRoofArea" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Estimated Generation</label><p id="viewEstimatedGeneration" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Status</label><p id="viewStatus" class="read-value"></p></div>
-        <div class="field-group"><label class="field-label">Created Date</label><p id="viewCreatedDate" class="read-value"></p></div>
-        <div class="field-group field-group-full"><label class="field-label">Remarks</label><p id="viewRemarks" class="read-value read-value-block"></p></div>
+        <div class="field-group"><span class="field-label">Project ID</span><p id="viewId" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Project Name</span><p id="viewName" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Customer</span><p id="viewCustomer" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Channel Partner</span><p id="viewChannelPartner" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Project Type</span><p id="viewType" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Capacity (kW)</span><p id="viewCapacity" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Roof Type</span><p id="viewRoofType" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Monthly Consumption</span><p id="viewMonthlyConsumption" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Location</span><p id="viewLocation" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Roof Area</span><p id="viewRoofArea" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Estimated Generation</span><p id="viewEstimatedGeneration" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Status</span><p id="viewStatus" class="read-value"></p></div>
+        <div class="field-group"><span class="field-label">Created Date</span><p id="viewCreatedDate" class="read-value"></p></div>
+        <div class="field-group field-group-full"><span class="field-label">Remarks</span><p id="viewRemarks" class="read-value read-value-block"></p></div>
 
         <!-- ============ Project Details card ============ -->
         <div class="field-group-full">
@@ -457,7 +455,8 @@
     </div>
   </div>
 
-  <div id="toast-container" class="fixed bottom-5 right-5 z-[400] space-y-2 max-w-[calc(100vw-2.5rem)]"></div>
+  <!-- z-[600] so toasts show above the modal overlays (z-index 500) -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[600] space-y-2 max-w-[calc(100vw-2.5rem)]"></div>
 
 <!-- IMPORTANT: load session.js first, then the module's own JS -->
 <script src="/session.js"></script>

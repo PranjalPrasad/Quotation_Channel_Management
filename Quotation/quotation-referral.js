@@ -18,6 +18,23 @@
 
 let referrerPartners = [];          // [{ id, code, name }] from the backend
 
+/** Failures go to AppLog with the [REFERRAL] tag (operation + status only, no names or payment data). */
+function logReferralFailure(operation, err) {
+    const status = err && (err.status ?? err.httpStatus);
+    const msg = `[REFERRAL] ${operation} failed: status=${status ?? 'n/a'} ${(err && err.message) || ''}`;
+    const level = status >= 500 || status === 0 ? 'error' : 'warn';
+    try {
+        const log = window.AppLog;
+        if (log && typeof log[level] === 'function') log[level](msg);
+        else if (log && typeof log.log === 'function') log.log(level, msg);
+        else console[level](msg);
+    } catch (_) { /* logging must never break the wizard */ }
+}
+
+function escAttr(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 async function loadReferrerOptions() {
     const datalist = document.getElementById('referrerList');
     if (!datalist) return;
@@ -26,13 +43,14 @@ async function loadReferrerOptions() {
         referrerPartners = res.data || [];
     } catch (e) {
         referrerPartners = [];
+        logReferralFailure('load referrer options', e);
     }
-    datalist.innerHTML = referrerPartners.map(p => `<option value="${p.name}">${p.code}</option>`).join('');
+    datalist.innerHTML = referrerPartners.map(p => `<option value="${escAttr(p.name)}">${escAttr(p.code)}</option>`).join('');
 }
 
 function selectedReferrerPartner() {
     const name = document.getElementById('f-referredBy').value.trim().toLowerCase();
-    return referrerPartners.find(p => p.name.toLowerCase() === name) || null;
+    return referrerPartners.find(p => String(p.name).toLowerCase() === name) || null;
 }
 
 // Referrer type values are now CUSTOMER | CHANNEL_PARTNER | OTHER (change the <option value>s in quotation.html)

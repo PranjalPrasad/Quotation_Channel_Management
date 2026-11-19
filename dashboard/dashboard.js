@@ -1,17 +1,26 @@
 // ============================================================
 // Dashboard — integrated with the Spring Boot backend (port 8091)
 //
-//   GET    /api/dashboard/summary                  KPIs, charts, recent rows, top partners
+//   GET    /api/dashboard/summary                  KPIs + donut + size chart + win rate + scope label   (one workspace)
+//   GET    /api/dashboard/recent?limit=6           right-panel "Recent Quotations"                       (one workspace)
+//   GET    /api/admin/dashboard                    platform-wide totals, top partners        (Super Admin only)
 //   GET    /api/quotations?page&size&sort          "Recent Quotations" table (server-side paging/sorting)
 //   GET    /api/quotations/{id}                    full quotation (used by Duplicate)
 //   PATCH  /api/quotations/{id}/status             Edit modal -> status
 //   POST   /api/quotations                         Duplicate
+//   GET    /api/channel-partners/options           partner picker (Super Admin only)
 //   GET    /api/notifications/...                  bell dropdown
 //
 // Every response is wrapped as ApiResponse { success, message, data }.
 // Session.authFetch (session.js) prepends window.API_BASE and adds the Bearer token.
-// The backend scopes every number by the logged-in user's role / partner,
-// so this file never filters by role itself — it only decides what to SHOW.
+//
+// WORKSPACE RULE: every dashboard number belongs to ONE workspace. By default it is the caller's own ("My workspace";
+// for Super Admin that is the PLATFORM tenant). A Super Admin can look at one partner through ?viewPartnerId= (read
+// only: create/edit actions are hidden, the server refuses them anyway). Platform-wide totals come only from
+// /api/admin/dashboard and are labelled as such. This file never filters by role itself; the backend scopes the data.
+//
+// WIDGETS ARE INDEPENDENT: key figures + charts, recent panel, platform totals, quotations table and notifications each
+// load on their own. One failing widget shows its own message, is reported to AppLog, and never blocks the others.
 // ============================================================
 
 // ---------------- small shared helpers ----------------
@@ -36,7 +45,35 @@ function showToast(message) {
   setTimeout(() => toast.remove(), 2800);
 }
 
-/** Calls the API, unwraps ApiResponse and throws Error(message) on any failure. */
+// ============================================================
+// Logging — failures go through AppLog (Module 0), tagged [DASHBOARD].
+// ONE place to adapt if AppLog's signature differs: it tries AppLog.<level>(message, context), then
+// AppLog.log(level, message, context), then the console. Context = widget name, status, error code, request id.
+// Never customer names or amounts.
+// ============================================================
+function dashLog(level, message, ctx) {
+  const line = `[DASHBOARD] ${message}`;
+  try {
+    if (window.AppLog) {
+      if (typeof AppLog[level] === 'function') { AppLog[level](line, ctx); return; }
+      if (typeof AppLog.log === 'function') { AppLog.log(level, line, ctx); return; }
+    }
+  } catch (_) { /* logging must never break the page */ }
+  (console[level] || console.log).call(console, line, ctx || '');
+}
+
+function logWidgetFailure(widget, err) {
+  const status = err && err.status;
+  dashLog(status === undefined || status === 0 || status >= 500 ? 'error' : 'warn', 'widget failed', {
+    widget,
+    status: status ?? null,
+    errorCode: (err && err.errorCode) || null,
+    requestId: (err && err.requestId) || null,
+    message: err && err.message,
+  });
+}
+
+/** Calls the API, unwraps ApiResponse and throws Error(message) on any failure (with status, errorCode, requestId). */
 async function apiCall(path, options) {
   if (!window.Session || typeof Session.authFetch !== 'function') {
     throw new Error('Session.authFetch is not available (is session.js loaded?)');
@@ -49,6 +86,8 @@ async function apiCall(path, options) {
       ? body.errors.map((e) => e.message).join(', ') : '';
     const err = new Error((body && body.message) || fieldMsg || `Request failed (${res.status})`);
     err.status = res.status;
+    err.errorCode = body && body.errorCode;
+    err.requestId = body && body.requestId;
     throw err;
   }
   return body.data;
@@ -215,6 +254,91 @@ applyRoleBasedVisibility();
 const isSuperAdmin = () => window.currentUserRole === 'SUPER_ADMIN';
 
 // ============================================================
+// Workspace (scope): whose data the dashboard shows
+// ============================================================
+const workspace = {
+  viewPartnerId: null,    // Super Admin only: the partner being looked at (from ?viewPartnerId=)
+  readOnly: false,        // true while viewing a partner: create/edit actions are hidden
+};
+
+(function initWorkspaceFromUrl() {
+  const raw = new URLSearchParams(window.location.search).get('viewPartnerId');
+  const id = raw ? parseInt(raw, 10) : NaN;
+  if (Number.isFinite(id) && id > 0) {
+    workspace.viewPartnerId = id;
+    workspace.readOnly = true;      // confirmed (or corrected) by the scope block of the summary
+  }
+})();
+
+/** Adds ?viewPartnerId= to a GET path while a Super Admin is viewing a partner. Never used for writes or /api/admin. */
+function scoped(path) {
+  if (!isSuperAdmin() || !workspace.viewPartnerId) return path;
+  return path + (path.includes('?') ? '&' : '?') + 'viewPartnerId=' + encodeURIComponent(workspace.viewPartnerId);
+}
+
+const scopeBar = document.createElement('div');
+scopeBar.id = 'scopeBar';
+scopeBar.className = 'mb-2.5 flex items-center gap-2 flex-wrap text-xs';
+scopeBar.innerHTML = `
+  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-peach-100/60 border border-peach-300 text-gray-700">
+    <span class="text-gray-400">Workspace:</span>
+    <span id="scopeLabel" class="font-semibold">…</span>
+  </span>
+  <span id="scopeNote" class="text-[10.5px] text-gray-400"></span>
+  <select id="scopeSelect" class="rows-select hidden" aria-label="View a partner's dashboard"></select>`;
+document.getElementById('dashError')?.before(scopeBar);
+
+function renderScope(scope) {
+  if (!scope) return;
+  workspace.readOnly = !!scope.readOnly;
+  setText('scopeLabel', scope.label || 'My workspace');
+  let note = '';
+  if (scope.mode === 'PARTNER_VIEW') note = 'Read-only view of this partner';
+  else if (scope.ownRecordsOnly) note = 'Showing only records you created';
+  setText('scopeNote', note);
+  applyReadOnlyUi();
+}
+
+function applyReadOnlyUi() {
+  const btn = document.getElementById('newQuotationBtn');
+  if (btn) btn.classList.toggle('hidden', workspace.readOnly || !can('QUOTATION:CREATE'));
+  renderTable();    // action icons depend on read-only
+}
+
+/** Super Admin partner picker: "My workspace" or one partner. Not essential, so a failure is only logged. */
+async function loadScopePicker() {
+  if (!isSuperAdmin()) return;
+  const sel = document.getElementById('scopeSelect');
+  if (!sel) return;
+  try {
+    const partners = (await apiCall('/api/channel-partners/options')) || [];
+    sel.innerHTML = '<option value="">My workspace</option>' +
+      partners.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    sel.value = workspace.viewPartnerId ? String(workspace.viewPartnerId) : '';
+    sel.classList.remove('hidden');
+  } catch (err) {
+    logWidgetFailure('scopePicker', err);
+  }
+}
+
+document.getElementById('scopeSelect')?.addEventListener('change', (e) => {
+  const id = parseInt(e.target.value, 10);
+  workspace.viewPartnerId = Number.isFinite(id) && id > 0 ? id : null;
+  workspace.readOnly = !!workspace.viewPartnerId;
+  const url = new URL(window.location.href);
+  if (workspace.viewPartnerId) url.searchParams.set('viewPartnerId', workspace.viewPartnerId);
+  else url.searchParams.delete('viewPartnerId');
+  window.history.replaceState(null, '', url);
+  setText('scopeLabel', '…');
+  currentPage = 1;
+  applyReadOnlyUi();
+  // everything that belongs to a workspace reloads; platform totals and notifications do not depend on it
+  runWidget('kpis');
+  runWidget('recent');
+  loadQuotations();
+});
+
+// ============================================================
 // Charts (Chart.js) — created empty, filled from /api/dashboard/summary
 // ============================================================
 Chart.defaults.font.family = "'Poppins', sans-serif";
@@ -271,80 +395,152 @@ window.sizeBarChart = new Chart(document.getElementById('chartSizeDistribution')
 });
 
 // ============================================================
-// Dashboard summary  ->  GET /api/dashboard/summary
+// Widget runner: each widget loads on its own; a failure is isolated, logged, and listed in the banner
 // ============================================================
 const dashError = document.getElementById('dashError');
+const failedWidgets = new Map();          // widget name -> error
 
-async function loadDashboardData() {
+const widgets = {
+  kpis:   { label: 'key figures and charts', load: loadKpis,   onError: clearKpis },
+  recent: { label: 'recent quotations',      load: loadRecentPanel, onError: () => renderRecentError() },
+  admin:  { label: 'platform totals',        load: loadAdmin,  onError: clearAdmin, only: isSuperAdmin },
+};
+
+async function runWidget(name) {
+  const w = widgets[name];
+  if (!w || (w.only && !w.only())) return;
   try {
-    const data = await apiCall('/api/dashboard/summary');
-    dashError.classList.add('hidden');
-    renderDashboardSummary(data);
+    await w.load();
+    failedWidgets.delete(name);
   } catch (err) {
-    console.warn('loadDashboardData() failed:', err.message);
-    setText('dashErrorMsg', err.status === 403
-      ? 'You do not have permission to view dashboard data.'
-      : `Couldn’t load dashboard data: ${err.message}`);
-    dashError.classList.remove('hidden');
+    failedWidgets.set(name, err);
+    logWidgetFailure(name, err);
+    try { w.onError && w.onError(err); } catch (_) { /* a broken error state must not break the page either */ }
+  }
+  renderFailureBanner();
+}
+
+function renderFailureBanner() {
+  if (!failedWidgets.size) { dashError.classList.add('hidden'); return; }
+  const names = [...failedWidgets.keys()].map((n) => widgets[n].label).join(', ');
+  const denied = [...failedWidgets.values()].every((e) => e && e.status === 403);
+  setText('dashErrorMsg', denied
+    ? `You do not have permission to view: ${names}.`
+    : `Couldn’t load: ${names}. The rest of the dashboard is unaffected.`);
+  dashError.classList.remove('hidden');
+}
+
+document.getElementById('dashRetryBtn')?.addEventListener('click', () => {
+  [...failedWidgets.keys()].forEach(runWidget);
+  if (tableError) loadQuotations();
+});
+
+/** Runs one part of a render; if it throws, only that part is skipped and the failure is logged. */
+function safeRender(part, fn) {
+  try { fn(); } catch (err) {
+    dashLog('error', 'render failed', { widget: part, message: err && err.message });
   }
 }
-document.getElementById('dashRetryBtn')?.addEventListener('click', () => { loadDashboardData(); loadQuotations(); });
 
-function renderDashboardSummary(d) {
+// ============================================================
+// Widget: key figures + charts  ->  GET /api/dashboard/summary   (one workspace)
+// ============================================================
+const KPI_IDS = ['kpiTotalQuotations', 'kpiTotalValue', 'kpiTotalValue2', 'kpiAcceptedInline', 'kpiMonthQuotations',
+  'kpiTodayQuotations', 'kpiAccepted', 'kpiRejected', 'kpiPending', 'kpiPendingApprovals', 'kpiWinRate',
+  'kpiMyCustomers', 'kpiMyQuotations', 'kpiMyRevenueMonth', 'kpiMyReferralIncome'];
+
+function clearKpis() {
+  KPI_IDS.forEach((id) => setText(id, '—'));
+  setText('kpiWinRateSub', ' ');
+  const bar = document.getElementById('kpiMonthBar');
+  if (bar) bar.style.width = '0%';
+  window.statusPieChart.data.datasets[0].data = [0, 0, 0];
+  window.statusPieChart.update();
+  window.sizeBarChart.data.datasets[0].data = [0, 0, 0];
+  window.sizeBarChart.update();
+}
+
+async function loadKpis() {
+  const data = await apiCall(scoped('/api/dashboard/summary'));
+  renderSummary(data);
+}
+
+function renderSummary(d) {
   const total = d.totalQuotations ?? 0;
 
-  // ---- hero ----
-  setText('kpiTotalQuotations', total.toLocaleString('en-IN'));
-  setText('kpiTotalValue', formatCompactINR(d.totalQuotationValue));
-  setText('kpiTotalValue2', formatCompactINR(d.totalQuotationValue));
-  setText('kpiAcceptedInline', `${(d.acceptedQuotations ?? 0).toLocaleString('en-IN')} quotations`);
+  safeRender('scope', () => renderScope(d.scope));
 
-  // ---- this month ----
-  setText('kpiMonthQuotations', (d.monthQuotations ?? 0).toLocaleString('en-IN'));
-  setText('kpiMonthLabel', new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }));
-  const monthPct = total > 0 ? Math.min(100, Math.round((d.monthQuotations ?? 0) * 100 / total)) : 0;
-  const bar = document.getElementById('kpiMonthBar');
-  if (bar) bar.style.width = monthPct + '%';
+  safeRender('hero', () => {
+    setText('kpiTotalQuotations', total.toLocaleString('en-IN'));
+    setText('kpiTotalValue', formatCompactINR(d.totalQuotationValue));
+    setText('kpiTotalValue2', formatCompactINR(d.totalQuotationValue));
+    setText('kpiAcceptedInline', `${(d.acceptedQuotations ?? 0).toLocaleString('en-IN')} quotations`);
+    setText('kpiMonthQuotations', (d.monthQuotations ?? 0).toLocaleString('en-IN'));
+    setText('kpiMonthLabel', new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }));
+    const monthPct = total > 0 ? Math.min(100, Math.round((d.monthQuotations ?? 0) * 100 / total)) : 0;
+    const bar = document.getElementById('kpiMonthBar');
+    if (bar) bar.style.width = monthPct + '%';
+  });
 
-  // ---- stat cards ----
-  setText('kpiTodayQuotations', d.todayQuotations ?? 0);
-  setText('kpiAccepted', d.acceptedQuotations ?? 0);
-  setText('kpiRejected', d.rejectedQuotations ?? 0);
-  setText('kpiPending', d.pendingQuotations ?? 0);
+  safeRender('statCards', () => {
+    setText('kpiTodayQuotations', d.todayQuotations ?? 0);
+    setText('kpiAccepted', d.acceptedQuotations ?? 0);
+    setText('kpiRejected', d.rejectedQuotations ?? 0);
+    setText('kpiPending', d.pendingQuotations ?? 0);
+    setText('kpiPendingApprovals', d.pendingApprovals ?? '—');
+    setText('kpiPendingApprovalsLabel', 'Pending Approvals');
+  });
 
-  // ---- common: pending approvals ----
-  setText('kpiPendingApprovals', d.pendingApprovals ?? '—');
-  setText('kpiPendingApprovalsLabel', isSuperAdmin() ? 'Pending Approvals (All Partners)' : 'Pending Approvals');
+  safeRender('winRate', () => {
+    setText('kpiWinRate', `${d.winRatePercent ?? 0}% accepted`);
+    setText('kpiWinRateSub', `${d.acceptedQuotations ?? 0} of ${total} quotations`);
+  });
 
-  // ---- win rate (right panel) ----
-  setText('kpiWinRate', `${d.winRatePercent ?? 0}% accepted`);
-  setText('kpiWinRateSub', `${d.acceptedQuotations ?? 0} of ${total} quotations`);
+  safeRender('statusChart', () => {
+    window.statusPieChart.data.datasets[0].data = [d.pendingQuotations ?? 0, d.acceptedQuotations ?? 0, d.rejectedQuotations ?? 0];
+    window.statusPieChart.update();
+  });
 
-  // ---- charts ----
-  window.statusPieChart.data.datasets[0].data = [d.pendingQuotations ?? 0, d.acceptedQuotations ?? 0, d.rejectedQuotations ?? 0];
-  window.statusPieChart.update();
-  window.sizeBarChart.data.datasets[0].data = [d.smallSystems ?? 0, d.mediumSystems ?? 0, d.largeSystems ?? 0];
-  window.sizeBarChart.update();
+  safeRender('sizeChart', () => {
+    window.sizeBarChart.data.datasets[0].data = [d.smallSystems ?? 0, d.mediumSystems ?? 0, d.largeSystems ?? 0];
+    window.sizeBarChart.update();
+  });
 
-  // ---- Super Admin only ----
-  if (isSuperAdmin()) {
+  // Channel Partner roles only (their own workspace)
+  safeRender('partnerCards', () => {
+    if (window.currentUserRole === 'CHANNEL_PARTNER_ADMIN' || window.currentUserRole === 'CHANNEL_PARTNER_SALES') {
+      setText('kpiMyCustomers', d.totalCustomers ?? '—');
+      setText('kpiMyQuotations', d.totalQuotations ?? '—');
+      setText('kpiMyRevenueMonth', formatCompactINR(d.monthQuotationValue));
+      // null = data scope OWN: the commission belongs to the partner, so it is not shown as this user's number
+      setText('kpiMyReferralIncome', d.totalReferralIncome == null ? '—' : formatCompactINR(d.totalReferralIncome));
+    }
+  });
+
+  applyRoleBasedVisibility();
+}
+
+// ============================================================
+// Widget: platform totals  ->  GET /api/admin/dashboard   (Super Admin only, ALL partners, not workspace based)
+// ============================================================
+const ADMIN_IDS = ['kpiTotalPartners', 'kpiPlatformRevenue', 'kpiReferralPayoutsPending'];
+
+function clearAdmin() {
+  ADMIN_IDS.forEach((id) => setText(id, '—'));
+  setText('kpiActivePartnersSuffix', '');
+  const tbody = document.getElementById('topPartnersTbody');
+  if (tbody) tbody.innerHTML = '<tr class="state-row"><td colspan="4" class="text-center text-rose-500 py-3">Couldn’t load partner data. Use Retry above.</td></tr>';
+}
+
+async function loadAdmin() {
+  const d = await apiCall('/api/admin/dashboard');          // never scoped: this is the platform-wide view
+  safeRender('adminCards', () => {
     setText('kpiTotalPartners', d.totalPartners ?? '—');
     setText('kpiActivePartnersSuffix', d.activePartners != null ? `(${d.activePartners} active)` : '');
-    setText('kpiPlatformRevenue', formatCompactINR(d.totalQuotationValue));
+    setText('kpiPlatformRevenue', formatCompactINR(d.platformRevenue));
     setText('kpiReferralPayoutsPending', formatCompactINR(d.platformPendingReferralPayouts));
-    renderTopPartners(d.topPartners || []);
-  }
-
-  // ---- Channel Partner roles only ----
-  if (window.currentUserRole === 'CHANNEL_PARTNER_ADMIN' || window.currentUserRole === 'CHANNEL_PARTNER_SALES') {
-    setText('kpiMyCustomers', d.totalCustomers ?? '—');
-    setText('kpiMyQuotations', d.totalQuotations ?? '—');
-    setText('kpiMyRevenueMonth', formatCompactINR(d.monthQuotationValue));   // real this-month figure from backend
-    setText('kpiMyReferralIncome', formatCompactINR(d.totalReferralIncome));
-  }
-
-  renderRecentQuotations(d.recentQuotations || []);
-  applyRoleBasedVisibility();
+  });
+  safeRender('topPartners', () => renderTopPartners(d.topPartners || []));
 }
 
 function renderTopPartners(list) {
@@ -363,9 +559,21 @@ function renderTopPartners(list) {
     </tr>`).join('');
 }
 
-// ---- right-panel recent list (from summary.recentQuotations) ----
+// ============================================================
+// Widget: recent list (right panel)  ->  GET /api/dashboard/recent
+// ============================================================
 const statusInitial = { PENDING: 'P', ACCEPTED: 'A', REJECTED: 'R' };
 const statusBadgeBg = { PENDING: 'bg-amber-100 text-amber-600', ACCEPTED: 'bg-emerald-100 text-emerald-600', REJECTED: 'bg-rose-100 text-rose-500' };
+
+async function loadRecentPanel() {
+  const rows = await apiCall(scoped('/api/dashboard/recent?limit=6'));
+  renderRecentQuotations(rows || []);
+}
+
+function renderRecentError() {
+  const list = document.getElementById('recentQuotationsList');
+  if (list) list.innerHTML = '<p class="text-[11px] text-rose-500">Couldn’t load recent quotations.</p>';
+}
 
 function renderRecentQuotations(rows) {
   const list = document.getElementById('recentQuotationsList');
@@ -389,7 +597,7 @@ function renderRecentQuotations(rows) {
 }
 
 // ============================================================
-// Recent Quotations table — server-side paging + sorting
+// Widget: quotations table — server-side paging + sorting (has its own inline error state)
 //   GET /api/quotations?page=<0-based>&size=<n>&sort=<field>,<asc|desc>
 // ============================================================
 const tableStatusPillClass = { PENDING: 'pill-pending', ACCEPTED: 'pill-accepted', REJECTED: 'pill-rejected' };
@@ -435,9 +643,10 @@ function mapListItem(q) {
 }
 
 function actionIconsHtml(id) {
-  const editBtn = can('QUOTATION:EDIT')
+  // while a Super Admin views a partner nothing can be changed: the server refuses writes outside the own workspace
+  const editBtn = !workspace.readOnly && can('QUOTATION:EDIT')
     ? `<button class="action-icon-btn icon-edit" data-action="edit" data-id="${id}" title="Edit status">${ICONS.edit}</button>` : '';
-  const dupBtn = can('QUOTATION:CREATE')
+  const dupBtn = !workspace.readOnly && can('QUOTATION:CREATE')
     ? `<button class="action-icon-btn icon-duplicate" data-action="duplicate" data-id="${id}" title="Duplicate">${ICONS.duplicate}</button>` : '';
   return `
     <div class="row-actions">
@@ -459,7 +668,9 @@ function visibleRows() {
   return rows;
 }
 
-function colCount() { return isSuperAdmin() ? 8 : 7; }
+// the Channel Partner column only makes sense while a Super Admin looks at a partner's list
+const showPartnerColumn = () => isSuperAdmin() && !!workspace.viewPartnerId;
+function colCount() { return showPartnerColumn() ? 8 : 7; }
 
 function renderTable() {
   if (tableLoading && !pageRows.length) {
@@ -473,7 +684,7 @@ function renderTable() {
       <tr data-id="${q.id}">
         <td data-label="Quotation No." class="font-medium">${esc(q.no)}</td>
         <td data-label="Customer">${esc(q.customer)}</td>
-        ${isSuperAdmin() ? `<td data-label="Channel Partner">${esc(q.channelPartner)}</td>` : ''}
+        ${showPartnerColumn() ? `<td data-label="Channel Partner">${esc(q.channelPartner)}</td>` : ''}
         <td data-label="System Size">${formatSize(q.size)}</td>
         <td data-label="Amount">${formatINR(q.amount)}</td>
         <td data-label="Status"><span class="pill ${tableStatusPillClass[q.status] || ''}">${esc(statusLabel(q.status))}</span></td>
@@ -491,7 +702,7 @@ function renderTable() {
   updateSortIcons();
 
   document.querySelectorAll('#quotationsTable thead th[data-key="channelPartner"]').forEach((th) => {
-    th.style.display = isSuperAdmin() ? '' : 'none';
+    th.style.display = showPartnerColumn() ? '' : 'none';
   });
 }
 
@@ -510,7 +721,7 @@ async function loadQuotations() {
   });
 
   try {
-    const data = await apiCall('/api/quotations?' + qs.toString());
+    const data = await apiCall(scoped('/api/quotations?' + qs.toString()));
     if (mySeq !== tableSeq) return;
     pageRows = (data.content || []).map(mapListItem);
     totalRows = data.totalElements ?? pageRows.length;
@@ -518,7 +729,7 @@ async function loadQuotations() {
     if (currentPage > totalPages) { currentPage = totalPages; return loadQuotations(); }
   } catch (err) {
     if (mySeq !== tableSeq) return;
-    console.warn('loadQuotations() failed:', err.message);
+    logWidgetFailure('quotationsTable', err);
     pageRows = [];
     totalRows = 0;
     tableError = err.status === 403 ? 'You do not have permission to view quotations.' : `Couldn’t load quotations: ${err.message}`;
@@ -603,6 +814,7 @@ const findRow = (id) => pageRows.find((q) => String(q.id) === String(id));
 function openModal(id, mode) {
   const q = findRow(id);
   if (!q) return;
+  if (mode === 'edit' && workspace.readOnly) return;       // read-only partner view
   modalQuoteId = q.id;
 
   fldNo.value = q.no;
@@ -656,12 +868,14 @@ modalSaveBtn?.addEventListener('click', async () => {
     });
     closeModal();
     showToast(`${q.no} is now ${statusLabel(fldStatus.value)}`);
-    // counts, charts and the recent list all depend on status -> refresh both sources
-    loadDashboardData();
+    // counts, charts and the recent list all depend on status -> refresh every workspace widget
+    runWidget('kpis');
+    runWidget('recent');
     loadQuotations();
     Notifications.refresh();
   } catch (err) {
     modalSaveBtn.disabled = false;
+    dashLog(err.status >= 500 ? 'error' : 'warn', 'status update failed', { status: err.status ?? null, errorCode: err.errorCode || null, requestId: err.requestId || null });
     showToast(err.status === 403 ? 'You do not have permission to change the status' : err.message);
   }
 });
@@ -684,42 +898,51 @@ function printQuotation(id) {
 function downloadQuotationPdf(id) {
   const q = findRow(id);
   if (!q) return;
-  if (!window.jspdf) { showToast('PDF library failed to load — check your connection'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  if (!window.jspdf) {
+    dashLog('error', 'pdf library not loaded', { widget: 'pdf' });
+    showToast('PDF library failed to load — check your connection');
+    return;
+  }
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
 
-  doc.setFontSize(16);
-  doc.setTextColor(129, 11, 56);
-  doc.text('Solar Quotation Management', 40, 50);
-  doc.setFontSize(11);
-  doc.setTextColor(107, 114, 128);
-  doc.text('Quotation Slip', 40, 68);
-  doc.setDrawColor(129, 11, 56);
-  doc.line(40, 78, 555, 78);
-
-  const rows = [
-    ['Quotation No.', q.no],
-    ['Customer', q.customer],
-    ['System Size', formatSize(q.size)],
-    ['Amount', 'Rs. ' + Number(q.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })],
-    ['Status', statusLabel(q.status)],
-    ['Date', formatDateLong(q.date)],
-  ];
-  let y = 110;
-  doc.setFontSize(11);
-  rows.forEach(([label, value]) => {
+    doc.setFontSize(16);
+    doc.setTextColor(129, 11, 56);
+    doc.text('Solar Quotation Management', 40, 50);
+    doc.setFontSize(11);
     doc.setTextColor(107, 114, 128);
-    doc.text(label, 40, y);
-    doc.setTextColor(31, 41, 55);
-    doc.text(String(value), 220, y);
-    y += 26;
-  });
-  doc.setFontSize(9);
-  doc.setTextColor(156, 163, 175);
-  doc.text(`Generated on ${new Date().toLocaleString('en-IN')}`, 40, y + 20);
+    doc.text('Quotation Slip', 40, 68);
+    doc.setDrawColor(129, 11, 56);
+    doc.line(40, 78, 555, 78);
 
-  doc.save(`${q.no}.pdf`);
-  showToast(`Downloaded ${q.no}.pdf`);
+    const rows = [
+      ['Quotation No.', q.no],
+      ['Customer', q.customer],
+      ['System Size', formatSize(q.size)],
+      ['Amount', 'Rs. ' + Number(q.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })],
+      ['Status', statusLabel(q.status)],
+      ['Date', formatDateLong(q.date)],
+    ];
+    let y = 110;
+    doc.setFontSize(11);
+    rows.forEach(([label, value]) => {
+      doc.setTextColor(107, 114, 128);
+      doc.text(label, 40, y);
+      doc.setTextColor(31, 41, 55);
+      doc.text(String(value), 220, y);
+      y += 26;
+    });
+    doc.setFontSize(9);
+    doc.setTextColor(156, 163, 175);
+    doc.text(`Generated on ${new Date().toLocaleString('en-IN')}`, 40, y + 20);
+
+    doc.save(`${q.no}.pdf`);
+    showToast(`Downloaded ${q.no}.pdf`);
+  } catch (err) {
+    dashLog('error', 'pdf export failed', { widget: 'pdf', message: err && err.message });
+    showToast('Could not create the PDF');
+  }
 }
 
 /* ---- Duplicate: GET the full quotation, POST it back as a new one (server assigns a new number, PENDING, today) ---- */
@@ -769,7 +992,7 @@ function buildCreateRequestFrom(d) {
 
 async function duplicateQuotation(id, btn) {
   const q = findRow(id);
-  if (!q) return;
+  if (!q || workspace.readOnly) return;
   if (btn) btn.disabled = true;
   try {
     const full = await apiCall(`/api/quotations/${q.id}`);
@@ -780,10 +1003,12 @@ async function duplicateQuotation(id, btn) {
     });
     showToast(`Duplicated as ${created.code}`);
     sortKey = 'date'; sortDir = 'desc'; currentPage = 1;
-    loadDashboardData();
+    runWidget('kpis');
+    runWidget('recent');
     loadQuotations();
     Notifications.refresh();
   } catch (err) {
+    dashLog(err.status >= 500 ? 'error' : 'warn', 'duplicate failed', { status: err.status ?? null, errorCode: err.errorCode || null, requestId: err.requestId || null });
     showToast(err.status === 403 ? 'You do not have permission to create quotations' : `Duplicate failed: ${err.message}`);
   } finally {
     if (btn) btn.disabled = false;
@@ -857,7 +1082,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================================
-// Notifications module
+// Widget: notifications (the bell). Independent of the workspace; its failures never touch the other widgets.
 //   GET    /api/notifications/list?page=&size=&unreadOnly=   -> PageResponse<NotificationResponseDto>
 //   GET    /api/notifications/unread-count                   -> { unread }
 //   PATCH  /api/notifications/{id}/markRead/read             -> { unread }
@@ -948,7 +1173,7 @@ const Notifications = (() => {
       renderBadge();
       if (state.unread > prev && !notifDropdown.classList.contains('hidden')) load(true);
     } catch (err) {
-      console.warn('Notifications: unread-count failed:', err.message);
+      logWidgetFailure('notifications.unreadCount', err);
     }
   }
 
@@ -978,7 +1203,7 @@ const Notifications = (() => {
       state.loaded = true;
     } catch (err) {
       if (mySeq !== reqSeq) return;
-      console.warn('Notifications: list failed:', err.message);
+      logWidgetFailure('notifications.list', err);
       state.error = true;
       if (!reset) showToast('Couldn’t load more notifications');
     } finally {
@@ -997,6 +1222,7 @@ const Notifications = (() => {
       state.unread = data.unread ?? state.unread;
       renderBadge();
     } catch (err) {
+      logWidgetFailure('notifications.markRead', err);
       item.read = false;
       fetchUnreadCount();
       renderList();
@@ -1014,6 +1240,7 @@ const Notifications = (() => {
       if (state.unreadOnly) { state.items = []; state.hasMore = false; }
       renderBadge(); renderList();
     } catch (err) {
+      logWidgetFailure('notifications.markAllRead', err);
       showToast('Couldn’t mark all as read');
       renderBadge();
     }
@@ -1030,6 +1257,7 @@ const Notifications = (() => {
       renderBadge();
       if (state.items.length < PAGE_SIZE && state.hasMore) load(true);
     } catch (err) {
+      logWidgetFailure('notifications.remove', err);
       state.items.splice(idx, 0, removed);
       renderList();
       showToast('Couldn’t remove notification');
@@ -1095,9 +1323,13 @@ profileLogoutBtn?.addEventListener('click', () => {
 });
 
 // ============================================================
-// Init
+// Init: every widget starts on its own, so none waits for (or can break) another
 // ============================================================
 renderTable();
-loadDashboardData();
+applyReadOnlyUi();
+runWidget('kpis');
+runWidget('recent');
+runWidget('admin');
 loadQuotations();
+loadScopePicker();
 Notifications.init();

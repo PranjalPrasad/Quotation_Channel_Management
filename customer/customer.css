@@ -213,12 +213,12 @@
 .table-card-head h2 { font-size: 12px; font-weight: 600; color: #374151; margin: 0; }
 .table-card-head p { font-size: 10.5px; color: #9CA3AF; margin: 2px 0 0; }
 .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll.hidden { display: none; }
 .data-table thead th { position: sticky; top: 0; background: #F7ECE1; z-index: 2; cursor: default; }
 
-/* Customer table: 11 columns (10 + Channel Partner for Super Admin) and the
-   Follow-up table (5 columns) — auto layout + horizontal scroll on
-   desktop/tablet instead of the old fixed % widths, which broke whenever
-   the Channel Partner column was shown. Mobile keeps the card-stack look. */
+/* Customer table: 10 columns, and the Follow-up table (5 columns) — auto
+   layout + horizontal scroll on desktop/tablet instead of fixed % widths.
+   Mobile keeps the card-stack look. */
 @media (min-width: 721px) {
   #customerTable { table-layout: auto; min-width: 1100px; }
   #followupTable { table-layout: auto; min-width: 640px; }
@@ -262,6 +262,7 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+.table-footer.hidden { display: none; }
 .table-footer .rows-label { font-size: 10.5px; color: #9CA3AF; }
 
 /* ============ History accordion ============ */
@@ -288,7 +289,7 @@
   transition: max-height .25s ease;
   background: #F1E2D1;
 }
-.history-card.open .history-card-body { max-height: 320px; border-top: 1px solid var(--border-soft); }
+.history-card.open .history-card-body { max-height: 320px; overflow-y: auto; border-top: 1px solid var(--border-soft); }
 .history-timeline { list-style: none; margin: 0; padding: 11px 16px 13px; display: flex; flex-direction: column; gap: 10px; }
 .history-timeline li { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: #374151; }
 .history-dot { width: 8px; height: 8px; border-radius: 50%; background: #810B38; margin-top: 4px; flex-shrink: 0; }
@@ -346,6 +347,7 @@
 .modal-panel .field-input:disabled { background: #F1E2D1; color: #9CA3AF; }
 .modal-panel .field-input::placeholder { color: #8A7660; opacity: 1; }
 .modal-panel .field-input:not(:disabled):focus { background: var(--field-bg); }
+.modal-panel .field-input[readonly] { background: #F1E2D1; color: #6B5A47; cursor: default; }
 
 /* ============================================================
    Responsive — mirrors dashboard.css breakpoints
@@ -383,3 +385,7 @@
   .app-main { height: auto; overflow: visible; }
   #customerTable { min-width: 0; }
 }
+/* GST tax-type badges (B2B = registered, B2C = consumer) */
+.pill-b2b { background: #D1FAE5; color: #047857; }
+.pill-b2c { background: #F1E2D1; color: #6B7280; }
+.field-label .pill { margin-left: 6px; font-size: 9px; padding: 2px 7px; vertical-align: middle; }

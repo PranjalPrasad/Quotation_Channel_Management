@@ -117,7 +117,14 @@
       <!-- ============ Info Banner ============ -->
       <div class="info-banner bg-peach-100/60 rounded-xl px-3.5 py-2 mb-2.5 flex items-center gap-2.5 text-xs text-gray-600">
         <i class="fas fa-circle-info text-peach-500"></i>
-        <span>Product catalog is managed centrally — visible to all channel partners</span>
+        <span id="info-banner-text">Your product catalog — products are private to your own account</span>
+      </div>
+
+      <!-- shown only when Super Admin views a partner's catalog (?viewPartnerId=): read only -->
+      <div id="view-mode-banner" class="hidden rounded-xl px-3.5 py-2 mb-2.5 flex items-center gap-2.5 text-xs border border-peach-300 bg-peach-100">
+        <i class="fas fa-eye text-peach-500"></i>
+        <span id="view-mode-text" class="flex-1 min-w-0">Viewing a partner's catalog — read only</span>
+        <a id="view-mode-back" href="#" class="text-peach-500 font-semibold whitespace-nowrap">Back to my catalog</a>
       </div>
 
       <!-- ============ Stat cards (compact, dashboard style) ============ -->
@@ -194,6 +201,7 @@
               <option value="12">12%</option>
               <option value="18">18%</option>
               <option value="28">28%</option>
+              <option value="40">40%</option>
             </select>
             <button class="btn-primary" id="btn-add-product">
               <i class="fas fa-plus"></i> Add Product
@@ -265,13 +273,6 @@
             <input type="text" id="pf-name" class="field-input" placeholder="e.g. 540W Mono PERC Solar Panel">
             <span class="field-error" id="err-pf-name"></span>
           </div>
-          <div class="field-group form-field span-2 hidden" id="pf-partner-wrap">
-            <label>Channel Partner <span class="req">*</span></label>
-            <select id="pf-partner" class="field-input">
-              <option value="">Select channel partner</option>
-            </select>
-            <span class="field-error" id="err-pf-partner"></span>
-          </div>
           <div class="field-group form-field">
             <label>Category <span class="req">*</span></label>
             <select id="pf-category" class="field-input">
@@ -310,7 +311,9 @@
 
           <div class="field-group form-field">
             <label>HSN Code</label>
-            <input type="text" id="pf-hsn" class="field-input" placeholder="e.g. 85076000">
+            <input type="text" id="pf-hsn" class="field-input" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="4, 6 or 8 digits, e.g. 85414300">
+            <span class="field-hint">4, 6 or 8 digits. Printed on GST invoices.</span>
+            <span class="field-error" id="err-pf-hsn"></span>
           </div>
 
           <div class="field-group form-field">
@@ -318,10 +321,24 @@
             <select id="pf-gst" class="field-input">
               <option value="0">0%</option>
               <option value="5">5%</option>
-              <option value="12">12%</option>
               <option value="18" selected>18%</option>
-              <option value="28">28%</option>
+              <option value="40">40%</option>
             </select>
+            <span class="field-hint" id="pf-gst-hint">Slabs in force: 0, 5, 18 and 40%.</span>
+          </div>
+
+          <div class="field-group form-field">
+            <label>UQC <span class="req">*</span></label>
+            <select id="pf-uqc" class="field-input"></select>
+            <span class="field-hint">GST unit code. Follows the Unit unless you change it.</span>
+            <span class="field-error" id="err-pf-uqc"></span>
+          </div>
+
+          <div class="field-group form-field">
+            <label>Cess %</label>
+            <input type="number" min="0" max="400" step="0.01" id="pf-cess" class="field-input" placeholder="0">
+            <span class="field-hint">Leave empty if no cess applies.</span>
+            <span class="field-error" id="err-pf-cess"></span>
           </div>
 
           <div class="field-group form-field">
@@ -450,8 +467,10 @@
   <div id="toast-container" class="fixed bottom-5 right-5 z-[600] space-y-2 max-w-[calc(100vw-2.5rem)]"></div>
 
 <!-- IMPORTANT: load session.js first, then the module's own JS -->
+<script src="/shared/logger.js"></script>
 <script src="/session.js"></script>
 <script src="/notifications.js"></script>
+<script src="/shared/gst-common.js"></script>
 <script src="/productM/productm.js"></script>
 </body>
 </html>

@@ -2,17 +2,51 @@
 // Cost Calculator — integrated with Spring Boot backend (port 8091)
 //
 // Endpoints used (all under /api, Bearer JWT):
+//   GET    /api/calculations/defaults         default GST % + market rate (caller's own tenant settings)
+//   POST   /api/calculations/preview          settings-based figures: saving, subsidy, net investment
 //   GET    /api/calculations?page=&size=      list (tenant-scoped by backend)
-//   POST   /api/calculations                  create
+//   POST   /api/calculations                  create   (always saved under the caller's own tenant)
 //   PUT    /api/calculations/{id}             update
 //   DELETE /api/calculations/{id}             soft delete
-//   GET    /api/channel-partners/options      partner dropdown (Super Admin only)
 //   POST   /api/auth/refresh                  silent token refresh on 401
+//
+// Tenant rules: every user, Super Admin included, saves under their OWN tenant. There is no partner picker and no
+// partnerId is sent. Estimated saving, subsidy and net investment use the caller's own tenant settings and are
+// always calculated by the server (the browser never holds a market rate or subsidy rule).
 // ============================================================
 
 // Override before this script loads if needed:  window.SQMS_API_BASE = "https://api.example.com"
 const API_BASE = (window.SQMS_API_BASE || "http://localhost:8091").replace(/\/+$/, "");
 const SESSION_KEY = "sqms_session";
+
+// ============================================================
+// Logging — every failure of this page goes through AppLog (Module 0), tagged [CALC].
+// ONE place to adapt if AppLog's signature differs: it tries AppLog.<level>(message, context), then
+// AppLog.log(level, message, context), then falls back to the console.
+// Context carries ids, status codes and field names only: never customer/project names or amounts.
+// ============================================================
+function calcLog(level, message, ctx) {
+  const line = `[CALC] ${message}`;
+  try {
+    if (window.AppLog) {
+      if (typeof AppLog[level] === "function") { AppLog[level](line, ctx); return; }
+      if (typeof AppLog.log === "function") { AppLog.log(level, line, ctx); return; }
+    }
+  } catch (_) { /* logging must never break the page */ }
+  (console[level] || console.log).call(console, line, ctx || "");
+}
+
+function logApiFailure(err, method, path) {
+  const level = (err.status === 0 || err.status >= 500) ? "error" : "warn";
+  calcLog(level, "request failed", {
+    method,
+    path: String(path).split("?")[0],
+    status: err.status,
+    errorCode: err.errorCode || null,
+    requestId: err.requestId || null,
+    fields: (err.fieldErrors || []).map((e) => e.field),
+  });
+}
 
 // ============================================================
 // Sidebar collapse / expand (shared across all modules)
@@ -132,10 +166,12 @@ async function refreshAccessToken() {
 }
 
 class ApiError extends Error {
-  constructor(message, status, fieldErrors) {
+  constructor(message, status, fieldErrors, errorCode, requestId) {
     super(message);
     this.status = status;
     this.fieldErrors = fieldErrors || [];
+    this.errorCode = errorCode || null;
+    this.requestId = requestId || null;
   }
 }
 
@@ -143,6 +179,7 @@ class ApiError extends Error {
  * Calls the backend and unwraps ApiResponse.data.
  * Adds the Bearer token, retries once after a silent refresh on 401,
  * and throws ApiError with the backend's message otherwise.
+ * Every failure is reported once through calcLog (AppLog) before it is thrown.
  */
 async function api(path, { method = "GET", body, params } = {}, _retried = false) {
   let url = `${API_BASE}${path}`;
@@ -162,20 +199,27 @@ async function api(path, { method = "GET", body, params } = {}, _retried = false
   try {
     res = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
   } catch (_) {
-    throw new ApiError(`Cannot reach server at ${API_BASE}. Is the backend running?`, 0);
+    const err = new ApiError(`Cannot reach server at ${API_BASE}. Is the backend running?`, 0);
+    logApiFailure(err, method, path);
+    throw err;
   }
 
   if (res.status === 401 && !_retried) {
     if (await refreshAccessToken()) return api(path, { method, body, params }, true);
+    const err = new ApiError("Session expired. Please log in again.", 401);
+    logApiFailure(err, method, path);
     logoutUser();
-    throw new ApiError("Session expired. Please log in again.", 401);
+    throw err;
   }
 
   const json = await res.json().catch(() => null);
   if (!res.ok || (json && json.success === false)) {
     const fe = json?.errors || [];
     const detail = fe.length ? ` — ${fe.map((e) => `${e.field}: ${e.message}`).join("; ")}` : "";
-    throw new ApiError((json?.message || `Request failed (${res.status})`) + detail, res.status, fe);
+    const err = new ApiError((json?.message || `Request failed (${res.status})`) + detail, res.status, fe,
+      json?.errorCode, json?.requestId);
+    logApiFailure(err, method, path);
+    throw err;
   }
   return json ? json.data : null;
 }
@@ -260,11 +304,12 @@ const toUiType = (enumVal) => {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 };
 
-const MARKET_RATE_PER_KW = 58000; // reference rate for "Estimated Saving" (backend returns 0 for this field)
+const DISCOUNT_TOO_HIGH = "Discount cannot be more than the total of the cost heads";
 
 // ============================================================
-// Live Cost Calculator engine (instant, client-side preview)
-// The server recomputes everything on save, so saved numbers are authoritative.
+// Live Cost Calculator engine (instant, client-side preview of the COST HEADS only)
+// The server recomputes everything on save, so saved numbers are authoritative. Everything that depends on the
+// tenant's settings (estimated saving, subsidy, net investment) comes from the server, see runPreview().
 // ============================================================
 const formIds = {
   material: "cMaterial", installation: "cInstallation", transportation: "cTransportation",
@@ -281,14 +326,17 @@ function readForm(ids) {
   };
 }
 
+function grossOf(v) {
+  return v.material + v.installation + v.transportation + v.civil + v.labour + v.electrical + v.other;
+}
+
 function computeCosts(v, capacity) {
-  const rawSubtotal = v.material + v.installation + v.transportation + v.civil + v.labour + v.electrical + v.other;
-  const subtotal = rawSubtotal - v.discount; // matches backend (no clamping)
+  const rawSubtotal = grossOf(v);
+  const subtotal = rawSubtotal - v.discount; // the server rejects a discount above rawSubtotal
   const gstAmount = subtotal * (v.gstPct / 100);
   const finalCost = subtotal + gstAmount;
   const costPerKw = capacity > 0 ? finalCost / capacity : 0;
-  const estimatedSaving = Math.max(0, MARKET_RATE_PER_KW * capacity - finalCost);
-  return { rawSubtotal, subtotal, gstAmount, finalCost, costPerKw, estimatedSaving };
+  return { rawSubtotal, subtotal, gstAmount, finalCost, costPerKw };
 }
 
 function renderBreakdown(containerId, v, result) {
@@ -333,6 +381,31 @@ function renderBreakdown(containerId, v, result) {
   document.getElementById(containerId).innerHTML = html;
 }
 
+// ---- Rows that depend on the tenant's settings (injected, so calc.html needs no change) ----
+function injectSettingsRows() {
+  if (!document.getElementById("rSubsidy")) {
+    const savingRow = document.getElementById("rSaving")?.closest(".result-row");
+    savingRow?.insertAdjacentHTML("afterend", `
+      <div class="result-row"><span class="result-label">Subsidy</span><span class="result-value" id="rSubsidy">—</span></div>
+      <div class="result-row"><span class="result-label">Net Investment</span><span class="result-value" id="rNetInvestment">—</span></div>`);
+  }
+  if (!document.getElementById("vSaving")) {
+    const grid = document.getElementById("vProjectType")?.closest(".detail-grid");
+    grid?.insertAdjacentHTML("beforeend", `
+      <div class="detail-row"><span class="detail-label">Estimated Saving</span><span class="detail-value" id="vSaving"></span></div>
+      <div class="detail-row"><span class="detail-label">Subsidy</span><span class="detail-value" id="vSubsidy"></span></div>
+      <div class="detail-row"><span class="detail-label">Net Investment</span><span class="detail-value" id="vNetInvestment"></span></div>`);
+  }
+}
+
+/** Shows the server's settings-based figures, or "—" when they are not available. */
+function setSettingsFigures(res) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val == null ? "—" : formatINR(val); };
+  set("rSaving", res ? res.estimatedSaving : null);
+  set("rSubsidy", res ? res.subsidyAmount : null);
+  set("rNetInvestment", res ? res.netInvestment : null);
+}
+
 function recalcLive() {
   const v = readForm(formIds);
   const capacity = parseFloat(document.getElementById("fCapacity").value) || 0;
@@ -354,46 +427,74 @@ function recalcLive() {
   document.getElementById("rGstAmount").textContent = formatINR(result.gstAmount);
   document.getElementById("rGrandTotal").textContent = formatINR(result.finalCost);
   document.getElementById("rCostPerKw").textContent = formatINR(result.costPerKw);
-  document.getElementById("rSaving").textContent = formatINR(result.estimatedSaving);
 
+  schedulePreview();
   return { v, capacity, result };
+}
+
+// ---- Server preview: saving / subsidy / net investment from the caller's own tenant settings ----
+let previewTimer = null;
+let previewSeq = 0;
+let lastPreview = null;
+
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(runPreview, 400);
+}
+
+function previewBody(v, capacity, projectType) {
+  return {
+    capacityKw: capacity,
+    projectType: toApiType(projectType),
+    materialCost: v.material, installationCost: v.installation, transportationCost: v.transportation,
+    civilCost: v.civil, labourCost: v.labour, electricalCost: v.electrical, otherCost: v.other,
+    discount: v.discount, gstPercent: v.gstPct,
+  };
+}
+
+/** Resolves with the server's `result` block, or null when it could not be calculated (api() has logged why). */
+async function runPreview() {
+  const v = readForm(formIds);
+  const capacity = parseFloat(document.getElementById("fCapacity").value) || 0;
+  const projectType = document.getElementById("fProjectType").value;
+  const seq = ++previewSeq;
+
+  // do not call the server with input it will reject: capacity below the minimum, or a discount above the cost total
+  if (!can("VIEW") || !(capacity >= 0.01) || v.discount > grossOf(v)) {
+    lastPreview = null;
+    setSettingsFigures(null);
+    return null;
+  }
+  try {
+    const d = await api("/api/calculations/preview", { method: "POST", body: previewBody(v, capacity, projectType) });
+    if (seq !== previewSeq) return null;            // a newer keystroke is already being calculated
+    lastPreview = d?.result || null;
+    setSettingsFigures(lastPreview);
+    return lastPreview;
+  } catch (_) {
+    if (seq === previewSeq) { lastPreview = null; setSettingsFigures(null); }
+    return null;                                    // no toast on every keystroke; the failure is in AppLog
+  }
 }
 
 document.querySelectorAll(".calc-input").forEach((el) => el.addEventListener("input", recalcLive));
 document.getElementById("fCapacity")?.addEventListener("input", recalcLive);
+document.getElementById("fProjectType")?.addEventListener("change", recalcLive);
 
-// ============================================================
-// Super Admin: partner selector (injected, so calc.html needs no change)
-// Backend requires partnerId for Super Admin on create/update; partner
-// roles are auto-scoped to their own partner server-side.
-// ============================================================
-let partnerOptions = [];
+// ---- Defaults from the caller's own tenant settings (default GST %) ----
+let gstTouched = false;
+document.getElementById("cGstPct")?.addEventListener("input", () => { gstTouched = true; });
 
-function injectPartnerField() {
-  if (!isSuperAdmin() || document.getElementById("fPartner")) return;
-  const grid = document.getElementById("fCustomer")?.closest(".grid");
-  if (!grid) return;
-  const wrap = document.createElement("div");
-  wrap.className = "field-group sm:col-span-2";
-  wrap.innerHTML = `
-    <label class="field-label" for="fPartner">Channel Partner</label>
-    <select id="fPartner" class="field-input"><option value="">Loading partners…</option></select>`;
-  grid.prepend(wrap);
-}
-
-async function loadPartnerOptions() {
-  if (!isSuperAdmin()) return;
-  injectPartnerField();
-  const sel = document.getElementById("fPartner");
-  if (!sel) return;
+async function loadDefaults() {
   try {
-    partnerOptions = (await api("/api/channel-partners/options")) || [];
-    sel.innerHTML = `<option value="">Select channel partner</option>` +
-      partnerOptions.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
-  } catch (err) {
-    sel.innerHTML = `<option value="">Could not load partners</option>`;
-    showToast(err.message);
-  }
+    const d = await api("/api/calculations/defaults");
+    const gst = Number(d?.defaultGstPercent);
+    const input = document.getElementById("cGstPct");
+    if (input && !gstTouched && Number.isFinite(gst)) {
+      input.value = gst;
+      recalcLive();
+    }
+  } catch (_) { /* api() has logged it; the form keeps its built-in GST value */ }
 }
 
 // ============================================================
@@ -424,14 +525,16 @@ function mapDto(d) {
     discount: Number(c.discount) || 0,
     gstPct: Number(r.gstPercent) || 0,
     date: d.createdAt || null,
-    partnerId: d.partner ? d.partner.id : null,
     channelPartner: d.partner ? d.partner.name : null,
-    // authoritative server-side totals
+    // authoritative server-side totals (saving / subsidy / net use the tenant's settings at save time)
     server: {
       subtotal: Number(r.subtotal) || 0,
       gstAmount: Number(r.gstAmount) || 0,
       finalCost: Number(r.grandTotal) || 0,
       costPerKw: Number(r.costPerKw) || 0,
+      estimatedSaving: Number(r.estimatedSaving) || 0,
+      subsidyAmount: Number(r.subsidyAmount) || 0,
+      netInvestment: Number(r.netInvestment) || 0,
     },
   };
 }
@@ -563,9 +666,10 @@ function findRecord(id) { return history.find((r) => r.id === id); }
 
 // ============================================================
 // Save Calculation  →  POST /api/calculations
+// No partnerId: the server saves under the caller's own tenant.
 // ============================================================
-function buildPayload({ customer, project, capacity, projectType, v, partnerId }) {
-  const payload = {
+function buildPayload({ customer, project, capacity, projectType, v }) {
+  return {
     customerName: customer,
     projectName: project || null,
     capacityKw: capacity,
@@ -580,8 +684,6 @@ function buildPayload({ customer, project, capacity, projectType, v, partnerId }
     discount: v.discount,
     gstPercent: v.gstPct,
   };
-  if (partnerId) payload.partnerId = partnerId;
-  return payload;
 }
 
 document.getElementById("saveCalcBtn")?.addEventListener("click", async (e) => {
@@ -594,18 +696,13 @@ document.getElementById("saveCalcBtn")?.addEventListener("click", async (e) => {
 
   if (!customer) { showToast("Customer name is required"); document.getElementById("fCustomer").focus(); return; }
   if (!(capacity >= 0.01)) { showToast("System capacity must be at least 0.01 kW"); document.getElementById("fCapacity").focus(); return; }
-
-  let partnerId = null;
-  if (isSuperAdmin()) {
-    partnerId = parseInt(document.getElementById("fPartner")?.value, 10) || null;
-    if (!partnerId) { showToast("Please select a channel partner"); document.getElementById("fPartner")?.focus(); return; }
-  }
+  if (v.discount > grossOf(v)) { showToast(DISCOUNT_TOO_HIGH); document.getElementById("cDiscount").focus(); return; }
 
   setBusy(btn, true, "Saving…");
   try {
     const saved = await api("/api/calculations", {
       method: "POST",
-      body: buildPayload({ customer, project, capacity, projectType, v, partnerId }),
+      body: buildPayload({ customer, project, capacity, projectType, v }),
     });
     const rec = mapDto(saved);
     history.unshift(rec);
@@ -637,6 +734,10 @@ function openViewModal(id) {
   document.getElementById("vProject").textContent = rec.project || "—";
   document.getElementById("vCapacity").textContent = `${rec.capacity} kW`;
   document.getElementById("vProjectType").textContent = rec.projectType;
+  const setText = (elId, val) => { const el = document.getElementById(elId); if (el) el.textContent = val; };
+  setText("vSaving", formatINR(result.estimatedSaving));
+  setText("vSubsidy", formatINR(result.subsidyAmount));
+  setText("vNetInvestment", formatINR(result.netInvestment));
 
   renderBreakdown("viewCalcBreakdown", rec, result);
   viewModal.classList.remove("hidden");
@@ -691,19 +792,18 @@ document.getElementById("editSaveBtn")?.addEventListener("click", async (e) => {
     civil: num("eCivil"), labour: num("eLabour"), electrical: num("eElectrical"), other: num("eOther"),
     discount: num("eDiscount"), gstPct: num("eGstPct"),
   };
+  if (v.discount > grossOf(v)) { showToast(DISCOUNT_TOO_HIGH); return; }
 
   setBusy(btn, true, "Saving…");
   try {
     const updated = await api(`/api/calculations/${rec.dbId}`, {
       method: "PUT",
-      // Super Admin must send the record's partner (backend rejects null); other roles are auto-scoped.
       body: buildPayload({
         customer,
         project: document.getElementById("eProject").value.trim(),
         capacity,
         projectType: document.getElementById("eProjectType").value,
         v,
-        partnerId: isSuperAdmin() ? rec.partnerId : null,
       }),
     });
     const idx = history.findIndex((r) => r.dbId === rec.dbId);
@@ -713,6 +813,7 @@ document.getElementById("editSaveBtn")?.addEventListener("click", async (e) => {
     showToast(`${rec.id} updated — costs recalculated`);
   } catch (err) {
     showToast(err.message);
+    if (err.status === 404) { editModal.classList.add("hidden"); loadHistory(); }   // it is gone, or not ours: refresh the list
   } finally {
     setBusy(btn, false);
   }
@@ -749,6 +850,7 @@ document.getElementById("deleteConfirmBtn")?.addEventListener("click", async (e)
     deletingId = null;
   } catch (err) {
     showToast(err.message);
+    if (err.status === 404) { deleteModal.classList.add("hidden"); loadHistory(); }
   } finally {
     setBusy(btn, false);
   }
@@ -778,6 +880,7 @@ document.addEventListener("keydown", (e) => {
 // ============================================================
 function exporterReady() {
   if (window.Exporter) return true;
+  calcLog("error", "export module not loaded", { expected: "/shared/exports.js" });
   showToast("Export module not loaded — add /shared/exports.js before calc.js");
   return false;
 }
@@ -789,8 +892,9 @@ document.getElementById("printCalcBtn")?.addEventListener("click", async () => {
   const customer = document.getElementById("fCustomer").value.trim() || "—";
   const project = document.getElementById("fProject").value.trim() || "—";
   const projectType = document.getElementById("fProjectType").value;
-  const partnerSel = document.getElementById("fPartner");
-  const partnerName = partnerSel && partnerSel.value ? partnerSel.options[partnerSel.selectedIndex].text : null;
+
+  // the settings-based figures come from the server: ask for fresh ones so the slip never prints a stale value
+  const settingsFigures = await runPreview();
 
   const details = [
     { label: "Customer", value: customer },
@@ -798,30 +902,41 @@ document.getElementById("printCalcBtn")?.addEventListener("click", async () => {
     { label: "System Capacity", value: `${capacity} kW` },
     { label: "Project Type", value: projectType },
   ];
-  if (partnerName) details.push({ label: "Channel Partner", value: partnerName });
 
-  await Exporter.print({
-    title: "Cost Calculation Slip",
-    docNo: "Draft (not saved)",
-    sections: [
-      { title: "Project Details", rows: details },
-      { title: "Cost Breakdown", rows: [
-        { op: "", label: "Material Cost", value: v.material },
-        { op: "+", label: "Installation Cost", value: v.installation },
-        { op: "+", label: "Transportation Cost", value: v.transportation },
-        { op: "+", label: "Civil Work Cost", value: v.civil },
-        { op: "+", label: "Labour Cost", value: v.labour },
-        { op: "+", label: "Electrical Cost", value: v.electrical },
-        { op: "+", label: "Other Charges", value: v.other },
-        { op: "−", label: "Discount", value: v.discount, negative: true },
-        { op: "", label: "Subtotal", value: result.subtotal, strong: true },
-        { op: "+", label: `GST (${v.gstPct}%)`, value: result.gstAmount },
-      ] },
-      { title: "Summary", rows: [{ label: "Cost per kW", value: result.costPerKw }] },
-    ],
-    total: { label: "Final Cost", value: result.finalCost },
-    note: "This is an estimate. Final amounts are confirmed when the calculation is saved.",
-  });
+  const summary = [{ label: "Cost per kW", value: result.costPerKw }];
+  if (settingsFigures) {
+    summary.push({ label: "Estimated Saving", value: settingsFigures.estimatedSaving });
+    summary.push({ label: "Subsidy", value: settingsFigures.subsidyAmount });
+    summary.push({ label: "Net Investment", value: settingsFigures.netInvestment });
+  }
+
+  try {
+    await Exporter.print({
+      title: "Cost Calculation Slip",
+      docNo: "Draft (not saved)",
+      sections: [
+        { title: "Project Details", rows: details },
+        { title: "Cost Breakdown", rows: [
+          { op: "", label: "Material Cost", value: v.material },
+          { op: "+", label: "Installation Cost", value: v.installation },
+          { op: "+", label: "Transportation Cost", value: v.transportation },
+          { op: "+", label: "Civil Work Cost", value: v.civil },
+          { op: "+", label: "Labour Cost", value: v.labour },
+          { op: "+", label: "Electrical Cost", value: v.electrical },
+          { op: "+", label: "Other Charges", value: v.other },
+          { op: "−", label: "Discount", value: v.discount, negative: true },
+          { op: "", label: "Subtotal", value: result.subtotal, strong: true },
+          { op: "+", label: `GST (${v.gstPct}%)`, value: result.gstAmount },
+        ] },
+        { title: "Summary", rows: summary },
+      ],
+      total: { label: "Final Cost", value: result.finalCost },
+      note: "This is an estimate. Final amounts are confirmed when the calculation is saved.",
+    });
+  } catch (err) {
+    calcLog("error", "print failed", { message: err && err.message });
+    showToast(err.message || "Could not print the slip");
+  }
 });
 
 // ---- History export: one column spec drives both PDF and Excel ----
@@ -846,6 +961,10 @@ function historyColumns() {
     { header: "GST Amount", get: (r) => r.server.gstAmount, type: "money", total: true },
     { header: "Final Cost", get: (r) => r.server.finalCost, type: "money", total: true },
     { header: "Cost / kW", get: (r) => r.server.costPerKw, type: "money", pdf: false },
+    // from the tenant's settings at save time: Excel only
+    { header: "Est. Saving", get: (r) => r.server.estimatedSaving, type: "money", pdf: false },
+    { header: "Subsidy", get: (r) => r.server.subsidyAmount, type: "money", pdf: false },
+    { header: "Net Investment", get: (r) => r.server.netInvestment, type: "money", pdf: false },
     { header: "Date", get: (r) => r.date, type: "date" },
   ];
   if (isSuperAdmin()) cols.push({ header: "Channel Partner", get: (r) => r.channelPartner || "—", width: 24 });
@@ -869,7 +988,10 @@ document.getElementById("exportPdfBtn")?.addEventListener("click", async (e) => 
       rows,
     });
     showToast("Downloaded calculation-history.pdf");
-  } catch (err) { showToast(err.message); }
+  } catch (err) {
+    calcLog("error", "pdf export failed", { rows: rows.length, message: err && err.message });
+    showToast(err.message);
+  }
   finally { setBusy(btn, false); }
 });
 
@@ -887,7 +1009,10 @@ document.getElementById("exportExcelBtn")?.addEventListener("click", () => {
       rows,
     });
     showToast("Downloaded calculation-history.xlsx");
-  } catch (err) { showToast(err.message); }
+  } catch (err) {
+    calcLog("error", "excel export failed", { rows: rows.length, message: err && err.message });
+    showToast(err.message);
+  }
 });
 
 // ============================================================
@@ -898,15 +1023,16 @@ function applyPermissionsToUi() {
   if (saveBtn && !can("CREATE")) { saveBtn.disabled = true; saveBtn.style.opacity = ".5"; saveBtn.title = "You don't have permission to save calculations"; }
 }
 
+injectSettingsRows();
 recalcLive();
 applyPermissionsToUi();
 renderHistoryTable();
 
 // session.js finishes setting the role after DOMContentLoaded, so the role-dependent
-// bits (partner dropdown, Channel Partner column, permissions) are wired once it's ready.
+// bits (Channel Partner column, permissions) are wired once it's ready.
 function initAfterSession() {
   applyPermissionsToUi();
-  loadPartnerOptions();
+  loadDefaults();
   loadHistory();
 }
 if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", initAfterSession);

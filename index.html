@@ -181,7 +181,7 @@
                         <a class="forgot-link" id="forgotLink"><i class="fas fa-question-circle"></i> Forgot password?</a>
                     </div>
 
-                    <div id="loginError" class="alert alert-error" style="display: none;">
+                    <div id="loginError" class="alert alert-error" style="display: none;" role="alert">
                         <i class="fas fa-exclamation-triangle"></i>
                         <span id="errorMessage"></span>
                     </div>
@@ -197,9 +197,24 @@
 
     <div id="forgotModalContainer"></div>
 
-    <!-- session.js (public mode) defines window.API_BASE (http://<this host>:8091), Session and apiFetch -->
+    <!-- logger.js first (AppLog), then session.js (public mode) which defines window.API_BASE, Session and apiFetch -->
+    <script src="/shared/logger.js"></script>
     <script src="/session.js" data-public="true"></script>
     <script>
+        /* ---------------------------------------------------------------- logging + messages */
+
+        /** AppLog is optional. NEVER pass the username, password or any token here. */
+        function LOG(level, msg, data) { if (window.AppLog) window.AppLog[level]('AUTH', msg, data); }
+
+        /** Friendly texts for backend error codes (the server message is used when no entry exists). */
+        var FRIENDLY = {
+            ACCOUNT_INACTIVE: 'Your account has been deactivated. Please contact your administrator.',
+            PARTNER_INACTIVE: 'Your company account is inactive. Please contact your administrator.',
+            ROLE_INACTIVE: 'Your role is no longer active. Please contact your administrator.',
+            SCOPE_NOT_ALLOWED: 'Your account is not set up correctly. Please contact your administrator.',
+            VALIDATION_ERROR: 'Please enter your email or username and your password.'
+        };
+
         /* ---------------------------------------------------------------- backend calls */
 
         /** The backend answers { success, message, data, errorCode, errors }. */
@@ -210,8 +225,8 @@
         /**
          * POST /api/auth/login   { email, password, rememberMe }
          * 200 -> returns body.data { token, accessToken, refreshToken, role, modules[], ... }
-         * 401 -> returns null (wrong credentials)
-         * 400/403/other -> throws an Error with a user-facing message
+         * 401 -> returns null (wrong credentials, one generic answer)
+         * 429 / 403 / 400 / 5xx / offline -> throws an Error with a friendly, user-facing message
          */
         async function authenticate(email, password, rememberMe) {
             let res;
@@ -222,17 +237,31 @@
                     body: JSON.stringify({ email: email, password: password, rememberMe: !!rememberMe })
                 });
             } catch (networkErr) {
-                throw Object.assign(new Error('Cannot reach the server at ' + window.API_BASE +
-                    '. Make sure the backend is running.'), { userFacing: true });
+                LOG('error', 'login failed: server unreachable');
+                throw Object.assign(new Error('Cannot reach the server. Please check your connection and try again.'),
+                    { userFacing: true });
             }
 
             const body = await readBody(res);
 
-            if (res.status === 401) return null;
+            if (res.status === 401) {
+                LOG('warn', 'login failed', { status: 401, errorCode: body && body.errorCode });
+                return null;
+            }
             if (res.ok && body && body.data && body.data.token) return body.data;
 
-            const message = (body && body.message) ||
-                (res.status === 403 ? 'Access denied' : 'Login service error (' + res.status + ')');
+            const code = body && body.errorCode;
+            LOG('warn', 'login failed', { status: res.status, errorCode: code });
+            let message;
+            if (res.status === 429) {
+                message = (body && body.message) || 'Too many failed attempts. Please wait a few minutes and try again.';
+            } else if (FRIENDLY[code]) {
+                message = FRIENDLY[code];
+            } else if (res.status >= 500) {
+                message = 'The server had a problem. Please try again in a moment.';
+            } else {
+                message = (body && body.message) || 'Sign in failed. Please try again.';
+            }
             throw Object.assign(new Error(message), { userFacing: true });
         }
 
@@ -246,13 +275,16 @@
                     body: JSON.stringify({ identifier: identifier })
                 });
             } catch (e) {
+                LOG('error', 'forgot password failed: server unreachable');
                 throw new Error('Cannot reach the server. Please try again later.');
             }
             const body = await readBody(res);
             if (!res.ok) {
+                LOG('warn', 'forgot password failed', { status: res.status, errorCode: body && body.errorCode });
                 const first = body && body.errors && body.errors[0] && body.errors[0].message;
                 throw new Error(first || (body && body.message) || 'Could not send the reset link.');
             }
+            LOG('info', 'forgot password requested');
             return (body && body.message) || 'If an account exists, a password reset link has been sent.';
         }
 
@@ -262,11 +294,11 @@
             return (dash || mods[0] || {}).path || '/dashboard/dashboard.html';
         }
 
-        // Already logged in? Skip the login screen.
+        // Already logged in? Skip the login screen (a forced password change goes to its own page).
         (function () {
             const existing = Session.get();
             if (existing && existing.token && existing.modules && existing.modules.length) {
-                window.location.replace(firstModulePath(existing));
+                window.location.replace(existing.mustChangePassword ? '/change-password.html' : firstModulePath(existing));
             }
         })();
 
@@ -299,9 +331,24 @@
             loginError.querySelector('i').className = kind === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
             errorMessage.textContent = msg;
             loginError.style.display = 'flex';
-            loginAlertTimer = setTimeout(() => { loginError.style.display = 'none'; }, kind === 'success' ? 8000 : 5000);
+            loginAlertTimer = setTimeout(() => { loginError.style.display = 'none'; }, kind === 'success' ? 8000 : 8000);
         }
         const showLoginError = msg => showLoginAlert(msg, 'error');
+
+        // One-shot notice left by session.js / change-password / reset-password:
+        // "session expired", "account deactivated", "password changed ...".
+        (function showNotice() {
+            try {
+                const raw = sessionStorage.getItem('sqms_login_notice');
+                if (!raw) return;
+                sessionStorage.removeItem('sqms_login_notice');
+                const n = JSON.parse(raw);
+                if (n && n.message) {
+                    showLoginAlert(n.message, n.kind === 'success' ? 'success' : 'error');
+                    LOG('info', 'login page notice', { reason: n.reason || null });
+                }
+            } catch (e) { /* ignore */ }
+        })();
 
         /* ---------------------------------------------------------------- overlays */
         function showOverlayMessage(type) {
@@ -386,13 +433,22 @@
                 // "Remember me" keeps the session across browser restarts (30 day refresh token on the server).
                 const session = Session.save(resp, rememberCheckbox.checked);
 
+                // First login / password reset by an admin: must set a new password before anything else.
+                if (session.mustChangePassword) {
+                    LOG('info', 'login ok, password change required');
+                    window.location.href = '/change-password.html';
+                    return;
+                }
+
                 if (!session.modules.length) {
                     Session.clear();
+                    LOG('warn', 'login blocked: no modules assigned');
                     showLoginError('Your account has no modules assigned. Please contact the administrator.');
                     resetButton();
                     return;
                 }
 
+                LOG('info', 'login ok');
                 showOverlayMessage('success');
                 setTimeout(() => { window.location.href = firstModulePath(session); }, 1500);
             } catch (err) {

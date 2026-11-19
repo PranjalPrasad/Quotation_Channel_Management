@@ -7,6 +7,7 @@
    GET    /api/projects?page&size&sort&search&status&type
    GET    /api/projects/summary
    GET    /api/projects/{id}
+   GET    /api/projects/{id}/history
    POST   /api/projects
    PUT    /api/projects/{id}
    DELETE /api/projects/{id}
@@ -15,7 +16,8 @@
    ============================================================ */
 
 /* ---------- API config ---------- */
-const API_BASE = (window.API_BASE || 'http://localhost:8091').replace(/\/+$/, '');
+// named PROJECT_API_BASE so it can never clash with a global API_BASE declared by session.js
+const PROJECT_API_BASE = (window.API_BASE || 'http://localhost:8091').replace(/\/+$/, '');
 const SESSION_KEY = 'sqms_session';
 
 /* ============================================================
@@ -109,7 +111,7 @@ function logoutUser() {
     if (window.Session && typeof Session.logout === 'function') Session.logout();
     else { sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_KEY); }
   } catch (_) {}
-  window.location.href = '../index.html';
+  window.location.href = '/index.html';
 }
 
 /* ============================================================
@@ -131,7 +133,7 @@ async function refreshAccessToken() {
   if (!rt) return false;
   refreshPromise = (async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+      const res = await fetch(`${PROJECT_API_BASE}/api/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: rt }),
@@ -155,7 +157,7 @@ async function refreshAccessToken() {
 }
 
 async function api(path, { method = 'GET', params, body } = {}, retried = false) {
-  let url = `${API_BASE}${path}`;
+  let url = `${PROJECT_API_BASE}${path}`;
   if (params) {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -209,6 +211,7 @@ function closeAllTopbarDropdowns(except) {
   [notifDropdown, profileDropdown, exportMenu].forEach((dd) => {
     if (dd && dd !== except) dd.classList.add('hidden');
   });
+  notifBtn?.setAttribute('aria-expanded', String(!!notifDropdown && !notifDropdown.classList.contains('hidden')));
 }
 [[notifBtn, notifDropdown], [profileBtn, profileDropdown], [exportBtn, exportMenu]].forEach(([btn, dd]) => {
   btn?.addEventListener('click', (e) => {
@@ -216,8 +219,11 @@ function closeAllTopbarDropdowns(except) {
     const willOpen = dd.classList.contains('hidden');
     closeAllTopbarDropdowns();
     dd.classList.toggle('hidden', !willOpen);
+    notifBtn?.setAttribute('aria-expanded', String(!notifDropdown.classList.contains('hidden')));
   });
 });
+// clicks inside the notification dropdown (tabs, mark all read, delete…) must not close it
+notifDropdown?.addEventListener('click', (e) => e.stopPropagation());
 document.addEventListener('click', () => closeAllTopbarDropdowns());
 profileLogoutBtn?.addEventListener('click', logoutUser);
 
@@ -462,16 +468,11 @@ rowsPerPageSelect?.addEventListener('change', () => {
 /* ============================================================
    Search & filter
    The API has ONE `search` parameter that matches project name, project
-   code, location AND customer name. So the three separate boxes become
-   a single search box (#searchProjectName).
+   code, location AND customer name, so there is a single search box.
    ============================================================ */
 const searchProjectNameInput = document.getElementById('searchProjectName');
 const filterStatus = document.getElementById('filterStatus');
 const resetFiltersBtn = document.getElementById('resetFiltersBtn');
-
-// Safety net if the old Customer / Location boxes are still in the HTML.
-['searchCustomerName', 'searchLocation'].forEach(id => document.getElementById(id)?.closest('.filter-field')?.remove());
-if (searchProjectNameInput) searchProjectNameInput.placeholder = 'Search project, customer, code or location…';
 
 const debouncedSearch = debounce(() => { currentPage = 1; loadProjects(); }, 350);
 searchProjectNameInput?.addEventListener('input', () => { searchTerm = searchProjectNameInput.value; debouncedSearch(); });
@@ -501,9 +502,32 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ============================================================
-   Customer dropdown for the form  → GET /api/customers
-   (API max page size is 100, so we page until everything is loaded)
+   Add / Edit Project form
    ============================================================ */
+const projectFormTitle = document.getElementById('projectFormTitle');
+const projectFormSubtitle = document.getElementById('projectFormSubtitle');
+const projectForm = document.getElementById('projectForm');
+const projectFormError = document.getElementById('projectFormError');
+const projectFormSaveBtn = document.getElementById('projectFormSaveBtn');
+
+const fld = {
+  name: document.getElementById('fldProjectName'),
+  customer: document.getElementById('fldCustomer'),                 // <select>
+  channelPartner: document.getElementById('fldChannelPartner'),
+  type: document.getElementById('fldType'),
+  capacity: document.getElementById('fldCapacity'),
+  roofType: document.getElementById('fldRoofType'),
+  monthlyConsumption: document.getElementById('fldMonthlyConsumption'),
+  location: document.getElementById('fldLocation'),
+  roofArea: document.getElementById('fldRoofArea'),
+  estimatedGeneration: document.getElementById('fldEstimatedGeneration'),
+  installationType: document.getElementById('fldInstallationType'), // optional select (not in the form yet)
+  status: document.getElementById('fldStatus'),
+  remarks: document.getElementById('fldRemarks'),
+};
+
+/* ---------- Customer dropdown  → GET /api/customers
+   (API max page size is 100, so we page until everything is loaded) ---------- */
 let customerOptions = [];    // full customer objects
 
 async function loadCustomerOptions() {
@@ -537,50 +561,9 @@ function syncPartnerFromCustomer() {
   const c = customerOptions.find(x => String(x.id) === fld.customer.value);
   if (fld.channelPartner) {
     fld.channelPartner.readOnly = true;
-    fld.channelPartner.placeholder = 'Set automatically from the customer';
     fld.channelPartner.value = c ? partnerLabel(c.partner) : '';
   }
 }
-
-/* ============================================================
-   Add / Edit Project form
-   ============================================================ */
-const projectFormTitle = document.getElementById('projectFormTitle');
-const projectFormSubtitle = document.getElementById('projectFormSubtitle');
-const projectForm = document.getElementById('projectForm');
-const projectFormError = document.getElementById('projectFormError');
-const projectFormSaveBtn = document.getElementById('projectFormSaveBtn');
-
-// project.html must have <select id="fldCustomer">. If it still has the old text input,
-// swap it for a select here so a name is never sent where the API needs a customerId.
-(function ensureCustomerSelect() {
-  const el = document.getElementById('fldCustomer');
-  if (el && el.tagName !== 'SELECT') {
-    const sel = document.createElement('select');
-    sel.id = 'fldCustomer';
-    sel.className = el.className;
-    sel.required = true;
-    sel.innerHTML = '<option value="">Select customer</option>';
-    el.replaceWith(sel);
-  }
-})();
-
-const fld = {
-  name: document.getElementById('fldProjectName'),
-  customer: document.getElementById('fldCustomer'),                 // now a <select>
-  channelPartner: document.getElementById('fldChannelPartner'),
-  type: document.getElementById('fldType'),
-  capacity: document.getElementById('fldCapacity'),
-  roofType: document.getElementById('fldRoofType'),
-  monthlyConsumption: document.getElementById('fldMonthlyConsumption'),
-  location: document.getElementById('fldLocation'),
-  roofArea: document.getElementById('fldRoofArea'),
-  estimatedGeneration: document.getElementById('fldEstimatedGeneration'),
-  installationType: document.getElementById('fldInstallationType'), // optional new select
-  status: document.getElementById('fldStatus'),
-  remarks: document.getElementById('fldRemarks'),
-};
-
 fld.customer?.addEventListener('change', syncPartnerFromCustomer);
 
 function showFormError(msg) {
@@ -884,7 +867,7 @@ applyRoleBasedVisibility();
 applyPermissionVisibility();
 
 if (!getAccessToken()) {
-  window.location.href = '../index.html';      // not logged in
+  window.location.href = '/index.html';      // not logged in
 } else {
   refreshAll();
 }

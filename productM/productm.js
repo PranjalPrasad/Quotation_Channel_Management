@@ -5,15 +5,24 @@
    session.js (loaded before this file) provides:
      - window.API_BASE   (must be http://localhost:8091)
      - Session.api(path, { method, body })  -> { success, message, data }
+     - window.AppLog (Module 0, optional): AppLog.info|warn|error(message, context)
+
+   Tenant rules:
+     - Everybody (Super Admin included) works in THEIR OWN catalog. Super Admin's own catalog is the
+       PLATFORM catalog. There is no partner selection on create and no partnerId in any payload.
+     - Super Admin can LOOK at one partner's catalog with ?viewPartnerId=<id> on this page. That is
+       READ ONLY: the id is sent on GET requests only, and Add / Edit / Delete / Stock buttons are hidden.
 
    Endpoints (ProductController):
      GET    /api/products                     list (PageResponse { content, totalPages })
-     POST   /api/products                     create   (Super Admin must send partnerId)
+     POST   /api/products                     create
      PUT    /api/products/{id}                update
      DELETE /api/products/{id}                delete
-     GET    /api/products/{id}/stock-history  stock ledger
+     GET    /api/products/{id}/stock-history  stock ledger (own catalog only)
      POST   /api/products/{id}/stock-history  { type: IN|OUT, quantity, reason }
-     GET    /api/channel-partners/options     partner dropdown (Super Admin)
+
+   Logging: every API failure and every form validation error goes to AppLog ([PRODUCT]),
+   API failures with the server requestId.
    ========================================================= */
 
 (function () {
@@ -24,7 +33,6 @@
     // ---------------------------------------------------
     const ENDPOINTS = {
         list: '/api/products',
-        partnerOptions: '/api/channel-partners/options',
         one: (id) => `/api/products/${encodeURIComponent(id)}`,
         stockHistory: (id) => `/api/products/${encodeURIComponent(id)}/stock-history`
     };
@@ -52,14 +60,70 @@
     // Backend caps page size at 100 (PageFilterRequestDto.MAX_SIZE); all pages are loaded.
     const FETCH_PAGE_SIZE = 100;
 
+    // ---- Logging (Module 0 AppLog, falls back to the console) ----
+    const LOG_TAG = '[PRODUCT]';
+    function applog(level, message, context) {
+        try {
+            const L = window.AppLog;
+            if (L && typeof L[level] === 'function') { L[level](LOG_TAG.replace(/[\[\]]/g, ''), message, context); return; }
+        } catch (_) { /* fall through to console */ }
+        const c = console[level] || console.log;
+        c.call(console, LOG_TAG, message, context === undefined ? '' : context);
+    }
+
+    function requestIdOf(err) {
+        if (!err) return '';
+        return err.requestId || err.request_id
+            || (err.body && err.body.requestId) || (err.data && err.data.requestId)
+            || (err.response && err.response.requestId) || '';
+    }
+
+    // ---- Who is looking at what ----
+    const isSuperAdmin = () => {
+        try {
+            const role = window.Session && Session.getRole ? Session.getRole() : null;
+            return String(role || '').toUpperCase().replace(/[^A-Z]/g, '') === 'SUPERADMIN';
+        } catch (_) { return false; }
+    };
+
+    // ?viewPartnerId=<id>: only a Super Admin can use it, and it only ever makes the page read only.
+    const VIEW_PARTNER_ID = (function () {
+        try {
+            const raw = new URLSearchParams(window.location.search).get('viewPartnerId');
+            return raw && /^\d+$/.test(raw) && isSuperAdmin() ? raw : null;
+        } catch (_) { return null; }
+    })();
+    const READ_ONLY = !!VIEW_PARTNER_ID;
+
     async function call(path, method, body) {
+        const m = String(method || 'GET').toUpperCase();
         if (!window.Session || typeof Session.api !== 'function') {
+            applog('error', 'Session is not available (is session.js loaded?)', { method: m, path: path.split('?')[0] });
             throw new Error('Session is not available (is session.js loaded?)');
         }
-        const opts = { method: method || 'GET' };
+        // The view partner goes on GET requests only; every write is for the caller's own catalog.
+        let url = path;
+        if (m === 'GET' && VIEW_PARTNER_ID && !/[?&]viewPartnerId=/.test(url)) {
+            url += (url.includes('?') ? '&' : '?') + 'viewPartnerId=' + encodeURIComponent(VIEW_PARTNER_ID);
+        }
+        const opts = { method: m };
         if (body !== undefined) opts.body = body;
-        const res = await Session.api(path, opts);
-        return res && res.data !== undefined ? res.data : res;
+        try {
+            const res = await Session.api(url, opts);
+            return res && res.data !== undefined ? res.data : res;
+        } catch (err) {
+            applog('error', 'API call failed', {
+                method: m,
+                path: path.split('?')[0],                       // no query string: it can carry search text
+                status: err && err.status,
+                code: err && err.errorCode,
+                requestId: err && err.requestId || null,
+                message: err && err.message,
+                requestId: requestIdOf(err) || null,
+                fieldErrors: err && Array.isArray(err.errors) ? err.errors.length : 0
+            });
+            throw err;
+        }
     }
 
     const toArray = (data) => Array.isArray(data) ? data
@@ -77,7 +141,7 @@
         const price = num(r.price ?? r.sellingPrice, 0);
         return {
             id: r.id,
-            partnerId: r.partnerId ?? (r.partner && r.partner.id) ?? null,
+            partnerName: (r.partner && (r.partner.name || r.partner.companyName || r.partner.code)) || '',
             name: r.name || '',
             category: categoryFromApi(r.category),
             brand: r.brand || '',
@@ -94,6 +158,8 @@
             description: r.description || '',
             hsn: r.hsn ?? r.hsnCode ?? '',
             gst: num(r.gstPercent ?? r.gst ?? r.gstRate, 18),
+            uqc: r.uqc ?? r.uqcCode ?? '',            // ASSUMED field name (GST API docs not available)
+            cess: (r.cessPercent ?? r.cessRate ?? r.cess) == null ? '' : num(r.cessPercent ?? r.cessRate ?? r.cess, 0),   // ASSUMED field name
             warranty: num(r.warrantyYears ?? r.warranty, 0)
         };
     }
@@ -235,7 +301,10 @@
 
     function errorMessage(err, fallback) {
         if (err && err.status === 403) return 'You do not have permission to do that.';
-        return (err && err.message) || fallback;
+        const msg = (err && err.message) || fallback;
+        const ref = requestIdOf(err);
+        // a server-side failure: give the user a reference to quote to support
+        return err && err.status >= 500 && ref ? `${msg} (ref ${String(ref).slice(0, 8)})` : msg;
     }
 
     async function withBusy(btn, fn) {
@@ -333,12 +402,13 @@
         try {
             products = await fetchAllProducts();
         } catch (err) {
-            console.error('Failed to load products:', err);
+            applog('error', 'Could not load products', { status: err && err.status, requestId: requestIdOf(err) || null });
             products = [];
             loadError = errorMessage(err, 'Could not load products.');
         } finally {
             isLoading = false;
         }
+        updateViewModeText();
         render();
     }
 
@@ -438,7 +508,7 @@
                 <td data-label="Specification">${escapeHtml(p.spec || '—')}</td>
                 <td data-label="Qty / kW">${formatQtyPerKw(p)}</td>
                 <td data-label="HSN Code">${escapeHtml(p.hsn || '—')}</td>
-                <td data-label="GST %">${p.gst}%</td>
+                <td data-label="GST %">${p.gst}%${Number(p.cess) > 0 ? `<span class="field-hint" style="display:block">+ cess ${p.cess}%</span>` : ''}</td>
                 <td data-label="Selling Price">
                     <div class="price-cell">
                         ${hasDiscount ? `<span class="price-mrp">₹${p.mrp.toLocaleString('en-IN')}</span>` : ''}
@@ -450,9 +520,10 @@
                 <td data-label="Actions">
                     <div class="row-actions">
                         <button class="action-icon-btn icon-view" data-action="view" data-id="${escapeHtml(p.id)}" title="View"><i class="fas fa-eye"></i></button>
+                        ${READ_ONLY ? '' : `
                         <button class="action-icon-btn icon-edit" data-action="edit" data-id="${escapeHtml(p.id)}" title="Edit"><i class="fas fa-pen"></i></button>
                         <button class="action-icon-btn icon-stock" data-action="stock" data-id="${escapeHtml(p.id)}" title="Stock History"><i class="fas fa-clock-rotate-left"></i></button>
-                        <button class="action-icon-btn danger" data-action="delete" data-id="${escapeHtml(p.id)}" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                        <button class="action-icon-btn danger" data-action="delete" data-id="${escapeHtml(p.id)}" title="Delete"><i class="fas fa-trash-alt"></i></button>`}
                     </div>
                 </td>
             `;
@@ -542,6 +613,7 @@
         const action = btn.dataset.action;
         const product = products.find(p => sameId(p.id, btn.dataset.id));
         if (!product) return;
+        if (READ_ONLY && action !== 'view') { blockedReadOnly(action); return; }
 
         if (action === 'view') openViewModal(product);
         if (action === 'edit') openProductModal(product);
@@ -555,7 +627,6 @@
     const form = {
         id: document.getElementById('pf-id'),
         name: document.getElementById('pf-name'),
-        partner: document.getElementById('pf-partner'),
         category: document.getElementById('pf-category'),
         brand: document.getElementById('pf-brand'),
         sku: document.getElementById('pf-sku'),
@@ -563,6 +634,8 @@
         unit: document.getElementById('pf-unit'),
         hsn: document.getElementById('pf-hsn'),
         gst: document.getElementById('pf-gst'),
+        uqc: document.getElementById('pf-uqc'),
+        cess: document.getElementById('pf-cess'),
         warranty: document.getElementById('pf-warranty'),
         mrp: document.getElementById('pf-mrp'),
         discount: document.getElementById('pf-discount'),
@@ -606,41 +679,21 @@
         recalcDiscountFromPrice();
     });
 
-    // ---- Channel partner ----
-    // Backend rule (TenantResolver.requirePartnerIdForCreate): on CREATE, a Super Admin (data scope ALL)
-    // MUST send the partnerId of a real channel partner. Partner users never send it (the backend uses
-    // their own partner). On EDIT nobody sends it.
-    const isSuperAdmin = () => {
-        try {
-            const role = window.Session && Session.getRole ? Session.getRole() : null;
-            return String(role || '').toUpperCase().replace(/[^A-Z]/g, '') === 'SUPERADMIN';
-        } catch (_) { return false; }
-    };
-    // If the backend ever answers "partnerId is required", this flips on as a safety net.
-    let partnerForced = false;
-    const needsPartnerPick = () => !form.id.value && (partnerForced || isSuperAdmin());
-    let partnerOptions = null;
+    // ---- GST fields: rate slabs, UQC (follows Unit until the user picks one) ----
+    let uqcTouched = false;
+    form.uqc.innerHTML = GstCommon.UQC.map(u => `<option value="${u.code}">${u.label}</option>`).join('');
+    form.uqc.addEventListener('change', () => { uqcTouched = true; });
+    form.unit.addEventListener('change', () => { if (!uqcTouched) form.uqc.value = GstCommon.uqcForUnit(form.unit.value); });
+    form.hsn.addEventListener('input', () => { form.hsn.value = form.hsn.value.replace(/\D/g, '').slice(0, 8); });
 
-    async function fillPartnerSelect(selectedId) {
-        const wrap = document.getElementById('pf-partner-wrap');
-        wrap.classList.toggle('hidden', !needsPartnerPick());
-        if (!needsPartnerPick()) return;
-        if (!partnerOptions) {
-            try {
-                partnerOptions = toArray(await call(ENDPOINTS.partnerOptions));
-            } catch (err) {
-                showToast(errorMessage(err, 'Could not load channel partners'), 'error');
-                return;
-            }
-        }
-        // the options endpoint already returns only active PARTNER records (platform is excluded)
-        form.partner.innerHTML = '<option value="">Select channel partner</option>' +
-            partnerOptions.map(o => {
-                const label = o.name || o.label || o.companyName || o.partnerName || '';
-                const text = label && o.code ? `${label} (${o.code})` : (label || o.code || ('Partner #' + o.id));
-                return `<option value="${escapeHtml(o.id)}">${escapeHtml(text)}</option>`;
-            }).join('');
-        form.partner.value = selectedId != null ? String(selectedId) : '';
+    /** 0/5/18/40 are the slabs in force; a withdrawn slab (12/28) stays selectable only on a product that already has it. */
+    function setGstRateOptions(current) {
+        form.gst.innerHTML = GstCommon.rateOptions(current).map(r =>
+            `<option value="${r}">${r}%${GstCommon.isLegacyRate(r) ? ' (withdrawn slab)' : ''}</option>`).join('');
+        const hint = document.getElementById('pf-gst-hint');
+        if (hint) hint.textContent = GstCommon.isLegacyRate(current)
+            ? 'This product still has a withdrawn slab. Pick a current slab when you save.'
+            : 'Slabs in force: 0, 5, 18 and 40%.';
     }
 
     function openProductModal(product) {
@@ -656,7 +709,11 @@
             form.spec.value = product.spec;
             form.unit.value = product.unit;
             form.hsn.value = product.hsn || '';
+            setGstRateOptions(product.gst);
             form.gst.value = product.gst;
+            form.uqc.value = product.uqc || GstCommon.uqcForUnit(product.unit);
+            uqcTouched = !!product.uqc;
+            form.cess.value = product.cess ?? '';
             form.warranty.value = product.warranty || '';
             form.mrp.value = product.mrp ?? '';
             form.discount.value = product.discount ?? '';
@@ -673,21 +730,30 @@
             form.unit.value = 'Nos';
             form.status.value = 'Active';
             form.threshold.value = 10;
+            setGstRateOptions(18);
             form.gst.value = 18;
+            form.uqc.value = GstCommon.uqcForUnit(form.unit.value);
+            uqcTouched = false;
+            form.cess.value = '';
             form.warranty.value = '';
         }
         openModal('modal-product');
-        fillPartnerSelect(product ? product.partnerId : null);
     }
 
-    document.getElementById('btn-add-product').addEventListener('click', () => openProductModal(null));
+    document.getElementById('btn-add-product').addEventListener('click', () => {
+        if (READ_ONLY) { blockedReadOnly('add'); return; }
+        openProductModal(null);
+    });
 
     function clearErrors() {
         document.querySelectorAll('#modal-product .field-input').forEach(f => f.classList.remove('invalid'));
         document.querySelectorAll('#modal-product .field-error').forEach(e => e.textContent = '');
     }
 
+    let invalidFields = [];   // field names of the current validation run, for the log
+
     function setFieldError(fieldEl, errorId, message) {
+        invalidFields.push(String(errorId || '').replace(/^err-pf-/, ''));
         fieldEl.classList.add('invalid');
         const err = document.getElementById(errorId);
         if (err) err.textContent = message;
@@ -695,9 +761,9 @@
 
     function validateProductForm() {
         clearErrors();
+        invalidFields = [];
         let valid = true;
 
-        if (needsPartnerPick() && !form.partner.value) { setFieldError(form.partner, 'err-pf-partner', 'Please select a channel partner'); valid = false; }
         if (!form.name.value.trim()) { setFieldError(form.name, 'err-pf-name', 'Product name is required'); valid = false; }
         if (!form.category.value) { setFieldError(form.category, 'err-pf-category', 'Please select a category'); valid = false; }
         if (!form.brand.value.trim()) { setFieldError(form.brand, 'err-pf-brand', 'Brand is required'); valid = false; }
@@ -713,10 +779,19 @@
         if (form.qtyPerKw.value === '' || Number(form.qtyPerKw.value) < 0) {
             setFieldError(form.qtyPerKw, 'err-pf-qtyperkw', 'Enter a valid quantity per kW (0 if not applicable)'); valid = false;
         }
+        const hsnMsg = GstCommon.hsnError(form.hsn.value, false);
+        if (hsnMsg) { setFieldError(form.hsn, 'err-pf-hsn', hsnMsg); valid = false; }
+        if (!form.uqc.value) { setFieldError(form.uqc, 'err-pf-uqc', 'Select the UQC'); valid = false; }
+        const cessMsg = GstCommon.cessError(form.cess.value);
+        if (cessMsg) { setFieldError(form.cess, 'err-pf-cess', cessMsg); valid = false; }
+        if (!valid) {
+            applog('warn', 'Product form validation failed', { mode: form.id.value ? 'edit' : 'create', fields: invalidFields.slice() });
+        }
         return valid;
     }
 
-    // Field names here match ProductRequestDto exactly.
+    // Field names here match ProductRequestDto exactly. There is no partnerId: the product always belongs
+    // to the logged-in user's own catalog (Super Admin: the platform catalog).
     //
     // IMPORTANT (backend rule, ProductServiceImpl.computePrice): when BOTH mrp and discountPercent are sent,
     // the backend recomputes price = mrp x (1 - discount/100) and IGNORES the price we send. The form rounds
@@ -740,7 +815,6 @@
         }
 
         return {
-            ...(needsPartnerPick() ? { partnerId: Number(form.partner.value) } : {}),
             name: form.name.value.trim(),
             category: CATEGORY_TO_API[form.category.value] || form.category.value,
             brand: form.brand.value.trim(),
@@ -749,6 +823,8 @@
             unit: form.unit.value,
             hsn: form.hsn.value.trim() || null,
             gstPercent: Number(form.gst.value) || 0,
+            uqc: form.uqc.value,                                   // ASSUMED field name
+            cessPercent: form.cess.value !== '' ? Number(form.cess.value) : null,   // ASSUMED field name
             warrantyYears: form.warranty.value !== '' ? Number(form.warranty.value) : 0,
             mrp: mrp,
             discountPercent: discountPercent,
@@ -762,6 +838,7 @@
     }
 
     document.getElementById('btn-save-product').addEventListener('click', (e) => {
+        if (READ_ONLY) { blockedReadOnly('save'); return; }
         if (!validateProductForm()) {
             showToast('Please fill all required fields correctly', 'error');
             return;
@@ -774,17 +851,10 @@
                 if (isEdit) await call(ENDPOINTS.one(form.id.value), 'PUT', payload);
                 else await call(ENDPOINTS.list, 'POST', payload);
             } catch (err) {
-                console.error('Save product failed:\n' + JSON.stringify({ status: err && err.status, code: err && err.errorCode, message: err && err.message, errors: err && err.errors, sentPayload: payload }, null, 2));
+                // the API failure itself was already logged (with requestId) by call()
                 const detail = err && Array.isArray(err.errors) && err.errors.length
                     ? err.errors.map(x => ((x.field || x.fieldName || x.path) ? (x.field || x.fieldName || x.path) + ': ' : '') + (x.message || x.defaultMessage || '')).join(' • ')
                     : '';
-                // Safety net: backend wants a partner but the dropdown was not shown
-                if (!isEdit && !partnerForced && /partnerid is required|channel partner/i.test((err && err.message) || '')) {
-                    partnerForced = true;
-                    await fillPartnerSelect(null);
-                    showToast('Please select a channel partner and save again.', 'error');
-                    return;
-                }
                 showToast(detail || errorMessage(err, 'Could not save the product'), 'error');
                 return;
             }
@@ -815,7 +885,8 @@
                 <div class="view-item"><div class="view-label">Category</div><div class="view-value">${escapeHtml(p.category)}</div></div>
                 <div class="view-item"><div class="view-label">Specification</div><div class="view-value">${escapeHtml(p.spec || '—')}</div></div>
                 <div class="view-item"><div class="view-label">HSN Code</div><div class="view-value">${escapeHtml(p.hsn || '—')}</div></div>
-                <div class="view-item"><div class="view-label">GST Rate</div><div class="view-value">${p.gst}%</div></div>
+                <div class="view-item"><div class="view-label">GST Rate</div><div class="view-value">${p.gst}%${Number(p.cess) > 0 ? ` + ${p.cess}% cess` : ''}</div></div>
+                <div class="view-item"><div class="view-label">UQC</div><div class="view-value">${escapeHtml(p.uqc || '—')}</div></div>
                 <div class="view-item"><div class="view-label">Warranty</div><div class="view-value">${p.warranty > 0 ? p.warranty + ' Years' : '—'}</div></div>
                 <div class="view-item"><div class="view-label">MRP</div><div class="view-value">₹${(p.mrp ?? p.price).toLocaleString('en-IN')}</div></div>
                 <div class="view-item"><div class="view-label">Selling Price</div><div class="view-value">₹${p.price.toLocaleString('en-IN')} / ${escapeHtml(p.unit)}${hasDiscount ? ` <span class="discount-badge">${discountLabel(p)}% OFF</span>` : ''}</div></div>
@@ -899,11 +970,17 @@
     }
 
     document.getElementById('btn-add-stock-entry')?.addEventListener('click', (e) => {
+        if (READ_ONLY) { blockedReadOnly('stock'); return; }
         if (!stockHistoryProduct) return;
         const qty = parseInt(slQty.value, 10);
-        if (!qty || qty <= 0) { showToast('Enter a valid quantity', 'error'); return; }
+        if (!qty || qty <= 0) {
+            applog('warn', 'Stock form validation failed', { fields: ['quantity'] });
+            showToast('Enter a valid quantity', 'error');
+            return;
+        }
         const type = slType.value;
         if (type === 'out' && qty > stockHistoryProduct.stock) {
+            applog('warn', 'Stock form validation failed', { fields: ['quantity'], reason: 'more than current stock' });
             showToast('Cannot remove more than current stock', 'error');
             return;
         }
@@ -943,6 +1020,7 @@
     }
 
     document.getElementById('btn-confirm-delete-product').addEventListener('click', (e) => {
+        if (READ_ONLY) { blockedReadOnly('delete'); return; }
         const target = productToDelete;
         if (!target) return;
         withBusy(e.currentTarget, async () => {
@@ -960,8 +1038,33 @@
     });
 
     // ---------------------------------------------------
-    // 12. Initial load
+    // 12. Read-only mode (Super Admin viewing a partner) + initial load
     // ---------------------------------------------------
+    function blockedReadOnly(action) {
+        // buttons are hidden in read-only mode, so this only happens through the console or a stale DOM
+        applog('warn', 'Blocked a write while viewing a partner (read only)', { action, viewPartnerId: VIEW_PARTNER_ID });
+        showToast('Read only: you are viewing a partner\'s catalog.', 'error');
+    }
+
+    function applyReadOnlyMode() {
+        if (!READ_ONLY) return;
+        document.getElementById('btn-add-product')?.classList.add('hidden');
+        document.getElementById('info-banner-text').textContent = 'Read only — you are viewing a partner\'s product catalog';
+        document.getElementById('view-mode-banner')?.classList.remove('hidden');
+        const back = document.getElementById('view-mode-back');
+        if (back) back.href = window.location.pathname;           // same page without ?viewPartnerId=
+        updateViewModeText();
+        applog('info', 'Read-only view of a partner catalog', { viewPartnerId: VIEW_PARTNER_ID });
+    }
+
+    function updateViewModeText() {
+        if (!READ_ONLY) return;
+        const name = products.length && products[0].partnerName ? products[0].partnerName : '';
+        document.getElementById('view-mode-text').textContent =
+            `Viewing ${name ? name + ' (partner #' + VIEW_PARTNER_ID + ')' : 'partner #' + VIEW_PARTNER_ID} — read only`;
+    }
+
+    applyReadOnlyMode();
     loadProducts();
 
     window.SolarProducts = {
