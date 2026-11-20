@@ -128,10 +128,10 @@
   }
 
   /* ------------------------------------------------------- GST profile enums */
-  var REGISTRATION_TYPES = [['REGULAR', 'Regular'], ['COMPOSITION', 'Composition'], ['SEZ', 'SEZ unit / developer'],
-    ['CASUAL', 'Casual taxable person']];
+  // Values must match the backend enums (RegistrationType, FilingFrequency, AatoSlab)
+  var REGISTRATION_TYPES = [['REGULAR', 'Regular'], ['COMPOSITION', 'Composition'], ['UNREGISTERED', 'Unregistered']];
   var FILING_FREQUENCIES = [['MONTHLY', 'Monthly'], ['QRMP', 'Quarterly (QRMP)']];
-  var TURNOVER_SLABS = [['UP_TO_5_CR', 'Up to ₹5 crore'], ['ABOVE_5_CR', 'Above ₹5 crore']];
+  var TURNOVER_SLABS = [['UP_TO_5CR', 'Up to ₹5 crore'], ['ABOVE_5CR', 'Above ₹5 crore']];
 
   /* ------------------------------------------------------------------ money */
   /** Indian grouping (12,34,567.50). Never used to recompute taxes - display only. */

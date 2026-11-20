@@ -3,11 +3,13 @@
 // Loaded AFTER settings.js and /shared/gst-common.js. Uses Session.api (auth, refresh, 401 handling,
 // ?viewPartnerId on GET only) and the global showToast() from settings.js.
 //
-// ENDPOINT + FIELD NAMES BELOW ARE ASSUMED (docs/GST_API.md was not available when this was written):
-//   GET /api/settings/gst-profile      -> { gstin, legalName, tradeName, stateCode, registrationType,
-//                                           filingFrequency, turnoverSlab, invoicePrefix }
-//   PUT /api/settings/gst-profile      (same body; a 404 on GET means "not configured yet")
-// Change GST_PROFILE_API / FIELD_MAP / the enum values in gst-common.js once the real contract is known.
+// Backend contract (GstController):
+//   GET /api/gst/profile   (GST_REPORTS:VIEW)   -> { id, legalName, tradeName, gstin, stateCode, stateName, registrationType,
+//                                                    filingFrequency, aatoSlab, invoicePrefix, configured }
+//                                                   (200 with defaults and configured=false when nothing is saved yet)
+//   PUT /api/gst/profile   (GST_REPORTS:MANAGE) body { legalName, tradeName, gstin, stateCode, registrationType,
+//                                                    filingFrequency, aatoSlab, invoicePrefix }
+// The form field is still called "turnoverSlab" in the UI; it is sent / read as aatoSlab.
 //
 // Never sent: partnerId / viewPartnerId. Never logged: GSTIN, names, prefix (field NAMES only).
 // ============================================================
@@ -17,7 +19,7 @@
 
   const G = window.GstCommon;
   const log = G.logger("GST");
-  const GST_PROFILE_API = "/api/settings/gst-profile";
+  const GST_PROFILE_API = "/api/gst/profile";
 
   // form control -> [payload field, error span id]
   const FIELD_MAP = {
@@ -31,7 +33,7 @@
     invoicePrefix: ["gpPrefix", "errGpPrefix"],
   };
   // backend names we might receive for a field (e.g. "state" instead of "stateCode")
-  const FIELD_ALIASES = { state: "stateCode", gstNo: "gstin", gstNumber: "gstin", prefix: "invoicePrefix", registration: "registrationType" };
+  const FIELD_ALIASES = { aatoSlab: "turnoverSlab", state: "stateCode", gstNo: "gstin", gstNumber: "gstin", prefix: "invoicePrefix", registration: "registrationType" };
 
   const $ = (id) => document.getElementById(id);
   const el = {
@@ -67,8 +69,16 @@
       tradeName: input("tradeName").value.trim(),
       registrationType: input("registrationType").value,
       filingFrequency: input("filingFrequency").value,
-      turnoverSlab: input("turnoverSlab").value,
+      turnoverSlab: input("turnoverSlab").value,   // UI name; sent to the backend as aatoSlab (see toPayload)
       invoicePrefix: input("invoicePrefix").value.trim().toUpperCase(),
+    };
+  }
+  /** Request body for PUT /api/gst/profile (backend field names). */
+  function toPayload(p) {
+    return {
+      legalName: p.legalName, tradeName: p.tradeName, gstin: p.gstin || null, stateCode: p.stateCode,
+      registrationType: p.registrationType, filingFrequency: p.filingFrequency,
+      aatoSlab: p.turnoverSlab, invoicePrefix: p.invoicePrefix,
     };
   }
   function writeForm(p) {
@@ -80,7 +90,7 @@
     input("tradeName").value = p.tradeName || "";
     input("registrationType").value = p.registrationType || G.REGISTRATION_TYPES[0][0];
     input("filingFrequency").value = p.filingFrequency || G.FILING_FREQUENCIES[0][0];
-    input("turnoverSlab").value = p.turnoverSlab || G.TURNOVER_SLABS[0][0];
+    input("turnoverSlab").value = p.aatoSlab || p.turnoverSlab || G.TURNOVER_SLABS[0][0];
     input("invoicePrefix").value = p.invoicePrefix || p.prefix || "";
   }
   const snapshot = () => JSON.stringify(readForm());
@@ -127,17 +137,18 @@
     const bad = [];
     const fail = (field, msg) => { setFieldError(field, msg); bad.push(field); };
 
-    const gErr = G.gstinError(p.gstin, true);
+    const gstinRequired = p.registrationType !== "UNREGISTERED";   // backend: GSTIN optional only for an unregistered business
+    const gErr = G.gstinError(p.gstin, gstinRequired);
     if (gErr) fail("gstin", gErr);
     if (!p.stateCode) fail("stateCode", "Select the state.");
-    else if (!gErr && G.stateCodeFromGstin(p.gstin) !== p.stateCode) {
+    else if (!gErr && p.gstin && G.stateCodeFromGstin(p.gstin) !== p.stateCode) {
       fail("stateCode", `State does not match the GSTIN (it starts with ${G.stateCodeFromGstin(p.gstin)} = ${G.stateNameByCode(G.stateCodeFromGstin(p.gstin))}).`);
     }
     if (!p.legalName) fail("legalName", "Legal name is required.");
     if (!p.registrationType) fail("registrationType", "Select a registration type.");
     if (!p.filingFrequency) fail("filingFrequency", "Select the return filing frequency.");
     if (!p.turnoverSlab) fail("turnoverSlab", "Select the turnover slab.");
-    if (p.invoicePrefix && !/^[A-Z0-9/-]{1,8}$/.test(p.invoicePrefix)) fail("invoicePrefix", "Use up to 8 letters, digits, “/” or “-”.");
+    if (p.invoicePrefix && !/^[A-Z0-9]{1,4}$/.test(p.invoicePrefix)) fail("invoicePrefix", "Use 1 to 4 letters or digits.");
 
     if (bad.length) log.validation("GST profile", bad);
     return bad.length === 0;
@@ -169,7 +180,7 @@
     try {
       const res = await Session.api(GST_PROFILE_API);
       const data = res && typeof res === "object" && "data" in res ? res.data : res;
-      exists = !!(data && (data.gstin || data.gstNo || data.legalName));
+      exists = !!(data && (data.configured === true || data.gstin || data.gstNo || data.legalName));
       writeForm(exists ? data : null);
     } catch (err) {
       if (err && err.status === 404) {            // not configured yet: empty form, not an error
@@ -203,7 +214,7 @@
 
     saving = true; paintStatus();
     try {
-      await Session.api(GST_PROFILE_API, { method: "PUT", body: payload });
+      await Session.api(GST_PROFILE_API, { method: "PUT", body: toPayload(payload) });
       exists = true; baseline = snapshot();
       showToast("GST profile saved");
     } catch (err) {

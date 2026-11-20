@@ -9,7 +9,10 @@
 //
 // Rules (enforced by the backend, mirrored here only to hide buttons):
 //   - approve / reject need APPROVAL:EDIT (and QUOTATION:EDIT); only quotations of the caller's OWN tenant can be changed
-//   - the creator of a quotation cannot approve or reject it (403 SELF_APPROVAL)
+//   - the creator of a quotation cannot approve or reject it (403 SELF_APPROVAL). The list/detail response carries
+//     audit.createdById. The Review button stays visible (as before); a creator's decision is stopped with a clear message,
+//     EXCEPT for SUPER_ADMIN and CHANNEL_PARTNER_ADMIN, who can approve / reject their own quotations.
+//     If the backend runs with approval.self-approval-allowed=true, set  window.SQMS_SELF_APPROVAL_ALLOWED = true  before this script.
 //   - viewPartnerId mode (Super Admin looking at one partner, ?viewPartnerId=ID on this page) is READ-ONLY:
 //     the list is loaded with that id, and no Review button / modal is offered. The backend refuses the write anyway.
 // Failures are reported with AppLog (Module 0): ids and status codes only, never names.
@@ -382,6 +385,7 @@ function mapQuotation(d) {
     id: d.code,
     customer: customerName || "—",
     salesExec: audit.createdBy || "—",
+    createdById: audit.createdById != null ? Number(audit.createdById) : null,
     partner: d.partner ? d.partner.name : null,
     project: d.systemSizeKw != null ? `Solar System — ${Number(d.systemSizeKw)} kW` : "—",
     amount: Number(d.totalAmount) || 0,
@@ -522,6 +526,25 @@ const ICONS = {
   view: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
   review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>',
 };
+
+// Mirrors backend ApprovalGuard (rule: no self-approval). Backend stays the real enforcer.
+const SELF_APPROVAL_ALLOWED = window.SQMS_SELF_APPROVAL_ALLOWED === true;
+const SELF_APPROVAL_EXEMPT_ROLES = ["SUPER_ADMIN", "CHANNEL_PARTNER_ADMIN"]; // same list as backend ApprovalGuard
+
+function currentUserId() {
+  try {
+    const u = window.Session && typeof Session.getUser === "function" ? Session.getUser() : null;
+    return u && u.id != null ? Number(u.id) : null;
+  } catch (_) { return null; }
+}
+
+/** True when the logged-in user created this quotation (so the backend would answer 403 SELF_APPROVAL). */
+function isOwnQuotation(a) {
+  if (SELF_APPROVAL_ALLOWED) return false;
+  if (SELF_APPROVAL_EXEMPT_ROLES.includes(getUserRole())) return false; // admins may decide their own quotations
+  const me = currentUserId();
+  return me !== null && a.createdById != null && a.createdById === me;
+}
 
 function canReview(a) {
   if (isViewOnly()) return false;   // viewPartnerId mode is read-only: no approve / reject
@@ -858,9 +881,10 @@ function decisionErrorMessage(err) {
 }
 
 approvalSubmitBtn?.addEventListener("click", async () => {
-  if (!reviewingId || !selectedDecision || isViewOnly()) return;
+  if (!reviewingId || !selectedDecision || isViewOnly() || approvalSubmitBtn.disabled) return;
   const a = findApproval(reviewingId);
   if (!a) return;
+  if (isOwnQuotation(a)) { showToast(decisionErrorMessage({ errorCode: "SELF_APPROVAL" })); closeApprovalModal(); return; }
   const apiStatus = DECISION_TO_API[selectedDecision];
   if (!apiStatus) return;
 
@@ -878,6 +902,13 @@ approvalSubmitBtn?.addEventListener("click", async () => {
   } catch (err) {
     logFailure(`${selectedDecision.toLowerCase()} decision`, err, { quotationId: a.dbId, code: err.errorCode || err.status });
     showToast(decisionErrorMessage(err));
+    // Backend says self-approval: remember it so the Review button disappears for this row
+    if (err.errorCode === "SELF_APPROVAL") {
+      const row = approvals.find((x) => x.dbId === a.dbId);
+      if (row) row.createdById = currentUserId();
+      closeApprovalModal();
+      renderTable();
+    }
     // 404 = not in your tenant / already gone, 409 = state changed meanwhile: reload so the table tells the truth
     if (err.status === 404 || err.status === 409) { closeApprovalModal(); loadApprovals(); }
   } finally {
